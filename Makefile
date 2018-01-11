@@ -2,7 +2,7 @@
 .SECONDARY:
 
 input:
-	rsync --progress hancock@mwa-process02.ivec.org:'~stingay/MWA-SkyMapper/*.fits' .
+	rsync --progress -t hancock@mwa-process02.ivec.org:'~stingay/MWA-SkyMapper/*.fits' .
 
 K2_trim_%.fits: K2_final_%.fits
 	getfits -o $@ -x 4800 4800 $< 3000 3400
