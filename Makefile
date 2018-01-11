@@ -25,3 +25,9 @@ cube_%MHz.fits: K2_%MHz.dat
 
 median_%MHz.fits: cube_%MHz.fits
 	python make_median.py
+
+median_%MHz_bkg.fits: median_%MHz.fits
+	BANE $<
+
+median_%MHz_comp.fits: median_%MHz.fits median_%MHz_bkg.fits k2.mim
+	aegean $< --autoload --table $< --island --region k2.mim
