@@ -1,5 +1,8 @@
-.PHONY: input
+.PHONY: input clean
 .SECONDARY:
+
+clean:
+	rm *.fits *.dat k2.mim k2.reg
 
 input:
 	rsync --progress -t hancock@mwa-process02.ivec.org:'~stingay/MWA-SkyMapper/*.fits' .
