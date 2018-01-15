@@ -14,7 +14,7 @@ K2_trim_%_bkg.fits: K2_trim_%.fits
 	BANE $<
 
 K2_trim_%_comp.fits: K2_trim_%.fits K2_trim_%_bkg.fits k2.mim
-	aegean $< --autoload --table $< --island --region k2.mim
+	aegean $< --autoload --table $< --island --region k2.mim --noregroup
 
 k2.mim k2.reg: 
 	MIMAS +c 337.5 -14.5 18 -o k2.mim
@@ -34,3 +34,6 @@ median_%MHz_bkg.fits: median_%MHz.fits
 
 median_%MHz_comp.fits: median_%MHz.fits median_%MHz_bkg.fits k2.mim
 	aegean $< --autoload --table $< --island --region k2.mim
+
+154MHz_flux_table.fits 185MHz_flux_table.fits:
+	./construct_flux_table.sh
