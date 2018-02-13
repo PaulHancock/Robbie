@@ -1,9 +1,7 @@
 #! /bin/bash
 
-field=$1
-
-nimg=(`ls HGL_${field}/1*image.fits | wc`)
-nimg=${nimg[0]}
+nimg=($( ls K2_trim_[0-9]*[0-9].fits | wc -l ))
+#nimg=${nimg[0]}
 
 echo ${field} ${nimg}
 
