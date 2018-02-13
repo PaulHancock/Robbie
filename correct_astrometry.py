@@ -136,6 +136,8 @@ def correct_tab2(ref, tab, ref_cat=None, radius=2/60.):
         # accept only matches within radius
         distance_mask = np.where(dist.degree < radius) # this mask is into cat
         match_mask = idx[distance_mask] # this mask is into ref_cat
+        if len(match_mask)<1:
+            break
         # calculate the ra/dec offsets
         dra = ref_cat.ra.degree[match_mask] - cat.ra.degree[distance_mask]
         ddec = ref_cat.dec.degree[match_mask] - cat.dec.degree[distance_mask]
@@ -334,7 +336,11 @@ def xmatch_freq(freq):
         f_base = line.split()[0].split('.')[0]
         f_in = "{0}_comp.fits".format(f_base)
         f_out = "{0}_xm.fits".format(f_base)
-        print "{0} -> {1}".format(f_in, f_out)
+        print "{0} -> {1}".format(f_in, f_out),
+        if os.path.exists(f_out):
+            print "(skip)"
+            continue
+        print
         xmatch_one(infile=f_in, fout=f_out, ref_cat=None, ref_table=ref_table)
 
 
