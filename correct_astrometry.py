@@ -163,6 +163,8 @@ def correct_tab2(ref, tab, ref_cat=None, radius=2/60.):
     ## cartesian!!
     separation = Table({'Separation':np.hypot(dra,ddec)}, names=('Separation',), dtype=(np.float32,))
     xmatch = hstack([orig[mask][distance_mask], ref[match_mask], separation])
+    xmatch['peak_flux'] = xmatch['peak_flux_1']
+    xmatch['local_rms'] = xmatch['local_rms_1']
     
     return tab, xmatch
 
