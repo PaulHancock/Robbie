@@ -1,0 +1,32 @@
+#!/bin/bash -l
+
+#SBATCH --account=mwasci
+#SBATCH --partition=gpuq
+#SBATCH --time=01:30:00
+#SBATCH --nodes=1
+#SBATCH --mem=32gb
+#SBATCH --output=/scratch2/mwaops/phancock/queue/priorize_NNN.o%A_%a
+#SBATCH --error=/scratch2/mwaops/phancock/queue/priorize_NNN.e%A_%a    
+#SBATCH --array=1-NIMG
+
+set -x
+aprun="aprun -n 1 -d 8"
+
+jobdir=/scratch2/mwaops/phancock/warping/HGL_NNN
+
+jnum=$SLURM_ARRAY_TASK_ID
+
+cd ${jobdir}
+files=(`ls 1*warped.fits`)
+imfile=${files[jnum-1]}
+
+if [[ ! -e ${imfile%%.fits}_priorized.fits ]]
+then
+    if [[ ! -e ${imfile%%.fits}_bkg.fits ]]
+    then
+	aprun BANE ${imfile} --nomask 
+	[[ $? ]] || exit
+    fi
+    aprun aegean --autoload ${imfile} --input ../HGL_NNN_mean_comp.fits --priorized 3 --out /dev/null --table ${imfile%%.fits}_priorized.fits 
+    [[ $? ]] || exit
+fi
