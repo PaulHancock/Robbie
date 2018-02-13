@@ -1,4 +1,4 @@
-.PHONY: input clean
+.PHONY: input clean xmatch
 .SECONDARY:
 
 clean:
@@ -40,3 +40,7 @@ median_%MHz_comp.fits: median_%MHz.fits median_%MHz_bkg.fits k2.mim
 
 154MHz_flux_table_var.fits: 154MHz_flux_table.fits
 	python calc_var.py
+
+xmatch:
+	python correct_astrometry.py xmatch 154
+	python correct_astrometry.py xmatch 185
