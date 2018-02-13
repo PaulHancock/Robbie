@@ -5,23 +5,22 @@
 #SBATCH --time=01:00:00
 #SBATCH --nodes=1
 #SBATCH --mem=32gb
-#SBATCH --output=/scratch2/mwaops/phancock/queue/warp_hgl_NNN.o%A_%a
-#SBATCH --error=/scratch2/mwaops/phancock/queue/warp_hgl_NNN.e%A_%a    
+#SBATCH --output=/astro/mwasci/phancock/warping/queue/warp_NNN.o%A_%a
+#SBATCH --error=/astro/mwasci/phancock/warping/queue/warp_NNN.e%A_%a    
 #SBATCH --array=1-NIMG
 
 set -x
-aprun="aprun -n 1 -d 8"
 
-jobdir=/scratch2/mwaops/phancock/warping/HGL_NNN
+jobdir=/astro/mwasci/phancock/warping
 
 jnum=$SLURM_ARRAY_TASK_ID
 
 cd ${jobdir}
-files=(`ls 1*image.fits`)
+files=(`ls K2_trim_[0-9]*[0-9].fits`)
 imfile=${files[jnum-1]}
-xmfile=${imfile:0:10}_xm.fits
+xmfile="${imfile%%.fits}_xm.fits"
 
 if [[ ! -e ${imfile%%.fits}_warped.fits ]]
 then
-    aprun python $MWA_CODE_BASE/MWA_Tools/scripts/fits_warp.py --infits ${imfile} --plot --xm ${xmfile} --suffix warped
+    fits_warp.py --infits ${imfile} --plot --xm ${xmfile} --suffix warped
 fi
