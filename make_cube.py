@@ -4,6 +4,7 @@ from __future__ import print_function
 from glob import glob
 from astropy.io import fits
 import numpy as np
+import os
 
 def stack(files, out):
     """
@@ -39,4 +40,5 @@ if __name__ == "__main__":
         fname = 'K2_{0}MHz.dat'.format(f)
         files = [a.split()[0] for a in open(fname).readlines()]
         outname='cube_{0}MHz.fits'.format(f)
-        stack(files=files, out=outname) 
+        if not os.path.exists(outname):
+            stack(files=files, out=outname) 

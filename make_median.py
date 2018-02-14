@@ -3,7 +3,7 @@ from __future__ import print_function
 
 from astropy.io import fits
 import numpy as np
-
+import os
 
 def median(cube, out):
     """
@@ -35,4 +35,5 @@ if __name__ == "__main__":
     cubes = ['cube_154MHz.fits', 'cube_185MHz.fits']
     for c in cubes:
         out = 'median'+c[4:]
-        median(c, out=out)
+        if not os.path.exists(out):
+            median(c, out=out)
