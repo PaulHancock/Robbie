@@ -4,7 +4,7 @@
 help:
 	echo "Use clean, input,.... "
 
-all: input trimmed split bkg cubes medians priors xmatch
+all: input trimmed split bkg cubes medians sfind xmatch push_warp
 
 clean:
 	rm *.fits *.dat k2.mim k2.reg
@@ -15,8 +15,7 @@ input:
 trimmed:
 	./trim_all.sh
 
-split:
-	./split_freqs.sh
+split: K2_154MHz.dat K2_185MHz.dat
 
 bkg:
 	./bkg_all.sh
@@ -24,6 +23,9 @@ bkg:
 cubes: cube_154MHz.fits cube_185MHz.fits
 
 medians: median_154MHz.fits median_185MHz.fits
+
+sfind: median_154MHz_comp.fits median_185MHz_comp.fits
+	./sfind_all.sh
 
 priors: median_154MHz_comp.fits median_185MHz_comp.fits
 	./priorize_all.sh
@@ -76,7 +78,4 @@ pull_warp:
 	./pullFromGalaxy.sh
 
 submit_jobs:
-	ssh galaxy 'bash -s' << 'ENDSSH'
-	cd /astro/mwasci/phancock/warping/
-	./warp_all.sh
-	ENDSSH
+	./run_jobs.sh
