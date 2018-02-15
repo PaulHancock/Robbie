@@ -15,7 +15,7 @@ do
 	    table=${f%%.fits}_comp.fits
 	    if [[ ! -e ${table} ]]
 	    then
-		aegean ${f} --autoload --table ${f} --priorized 2 --input median_${freq}MHz_comp.fits --noregroup
+		aegean ${f} --autoload --table ${f} --priorized 1 --input median_${freq}MHz_comp.fits --noregroup
 	    fi
 	done
     fi
