@@ -4,29 +4,41 @@
 #SBATCH --partition=gpuq
 #SBATCH --time=01:30:00
 #SBATCH --nodes=1
-#SBATCH --mem=32gb
-#SBATCH --output=/scratch2/mwaops/phancock/queue/priorize_NNN.o%A_%a
-#SBATCH --error=/scratch2/mwaops/phancock/queue/priorize_NNN.e%A_%a    
+#SBATCH --output=/astro/mwasci/phancock/warping/queue/priorize_NNN.o%A_%a
+#SBATCH --error=/astro/mwasci/phancock/warping/priorize_NNN.e%A_%a    
 #SBATCH --array=1-NIMG
 
 set -x
-aprun="aprun -n 1 -d 8"
 
-jobdir=/scratch2/mwaops/phancock/warping/HGL_NNN
+jobdir=/astro/mwasci/phancock/warping
 
 jnum=$SLURM_ARRAY_TASK_ID
 
 cd ${jobdir}
-files=(`ls 1*warped.fits`)
-imfile=${files[jnum-1]}
+files=($( ls K2_trim_[0-9]*[0-9]_warped.fits ))
+image=${files[jnum-1]}
+base=${image%%_warped.fits}
 
-if [[ ! -e ${imfile%%.fits}_priorized.fits ]]
+
+# figure out the freq based on the file lists
+if [[ $( grep ${base} K2_154MHz.fits ) ]]
 then
-    if [[ ! -e ${imfile%%.fits}_bkg.fits ]]
-    then
-	aprun BANE ${imfile} --nomask 
-	[[ $? ]] || exit
-    fi
-    aprun aegean --autoload ${imfile} --input ../HGL_NNN_mean_comp.fits --priorized 3 --out /dev/null --table ${imfile%%.fits}_priorized.fits 
-    [[ $? ]] || exit
+    freq=154
+elif [[ $( grep ${base} K2_185MHz.fits ) ]]
+then
+    freq=185
+else
+    echo "freq unknown ${image}"
+    exit 0
+fi
+
+master=median_${freq}MHz_comp.fits
+
+if [[ ! -e ${image%%.fits}_comp.fits ]]
+then
+    bkg=${base}_bkg.fits
+    rms=${base}_rms.fits
+    aegean ${image} --background ${bkg} --noise ${rms}\
+                    --table ${image} --priorized 1 \
+		    --input ${master} --noregroup
 fi
