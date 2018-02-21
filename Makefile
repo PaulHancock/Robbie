@@ -54,7 +54,7 @@ k2.mim k2.reg:
 	MIMAS +c 337.5 -14.5 18 -o k2.mim
 	MIMAS --mim2reg k2.mim k2.reg
 
-K2_154MHz.dat, K2_185MHz.dat:
+K2_154MHz.dat K2_185MHz.dat:
 	./split_freqs.sh
 
 cube_154MHz.fits cube_185MHz.fits: K2_154MHz.dat K2_185MHz.dat
@@ -87,3 +87,9 @@ pull_warp:
 
 submit_jobs:
 	./run_jobs.sh
+
+makefile2dot.py:
+	wget https://github.com/vak/makefile2dot/raw/master/makefile2dot.py
+
+vis.png: Makefile makefile2dot.py
+	python makefile2dot.py < $< | dot -Tpng > $@
