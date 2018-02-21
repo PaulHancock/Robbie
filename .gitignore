@@ -1,3 +1,5 @@
 *.fits
 *.dat
 .idea
+vis.png
+makefile2dot.py
