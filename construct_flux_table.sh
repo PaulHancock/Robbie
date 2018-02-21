@@ -2,7 +2,7 @@
 
 for freq in 154 185
 do
-    files=( $( cat K2_${freq}MHz.dat | awk '{print $1}' | sed 's/.fits/_comp.fits/g' | xargs ls ) )
+    files=( $( cat K2_${freq}MHz.dat | awk '{print $1}' | sed 's/.fits/_warped_comp.fits/g' | xargs ls ) )
     cmd="java -jar /home/hancock/Software/stilts.jar tmatchn nin=${#files[@]} matcher=exact out=${freq}MHz_flux_table.fits"
     for n in ${!files[@]}
     do
