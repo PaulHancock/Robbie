@@ -14,6 +14,6 @@ do
 	    cmd="${cmd} in${j}=${files[${i}]} suffix${j}=_${j} values${j}='uuid'"
 	fi
     done
-    cmd="${cmd} out=joined_${freq}MHz.fits ofmt=fits"
+    cmd="${cmd} out=joined_${freq}MHz.csv ofmt=csv"
     $( ${cmd} )
 done
