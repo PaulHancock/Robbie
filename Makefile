@@ -1,4 +1,4 @@
-.PHONY: help all clean input trimmed split bkg cubes medians priors xmatch push_warp pull_warp submit_jobs
+.PHONY: help all clean input trimmed split bkg cubes medians priors stats xmatch push_warp pull_warp submit_jobs
 .SECONDARY:
 
 help:
@@ -33,8 +33,13 @@ sfind: median_154MHz_comp.fits median_185MHz_comp.fits
 priors: median_154MHz_comp.fits median_185MHz_comp.fits
 	./priorize_all.sh
 
-joined_154MHz.fits joined_185MHz.fits: K2_154MHz.dat K2_185MHz.dat
+stats: joined_wvar_154MHz.csv joined_wvar_185MHz.csv
+
+joined_154MHz.csv joined_185MHz.csv: K2_154MHz.dat K2_185MHz.dat
 	./join_catalogues.sh
+
+joined_wvar_%MHz.csv: joined_%MHz.csv
+	python var_stats.py $< $@
 
 K2_trim_%.fits: K2_final_%.fits
 	getfits -o $@ -x 4800 4800 $< 3000 3400
