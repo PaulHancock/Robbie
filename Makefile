@@ -33,13 +33,10 @@ sfind: median_154MHz_comp.fits median_185MHz_comp.fits
 priors: median_154MHz_comp.fits median_185MHz_comp.fits
 	./priorize_all.sh
 
-stats: joined_wvar_154MHz.csv joined_wvar_185MHz.csv
+stats: 154MHz_flux_table.fits 185MHz_flux_table.fits
 
 joined_154MHz.csv joined_185MHz.csv: K2_154MHz.dat K2_185MHz.dat
 	./join_catalogues.sh
-
-joined_wvar_%MHz.csv: joined_%MHz.csv
-	python var_stats.py $< $@
 
 K2_trim_%.fits: K2_final_%.fits
 	getfits -o $@ -x 4800 4800 $< 3000 3400
@@ -60,10 +57,10 @@ k2.mim k2.reg:
 K2_154MHz.dat, K2_185MHz.dat:
 	./split_freqs.sh
 
-cube_154MHz.fits cube_185MHz.fits: K2_154MHz.dat, K2_185MHz.dat
+cube_154MHz.fits cube_185MHz.fits: K2_154MHz.dat K2_185MHz.dat
 	python make_cube.py
 
-median_154MHz.fits median_185MHz.fits: cube_154MHz.fits, cube_185MHz.fits
+median_154MHz.fits median_185MHz.fits: cube_154MHz.fits cube_185MHz.fits
 	python make_median.py
 
 median_%MHz_bkg.fits: median_%MHz.fits
