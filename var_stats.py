@@ -29,7 +29,7 @@ def add_stats_pd(infile, outfile):
 
     desc = 1./n * (np.sum((tab[fluxcols].values - mean.values[:, None])**2, axis=1) - np.sum(tab[errcols]**2, axis=1))
     md = 1/mean * np.sqrt(desc.abs())
-    tab['md'] = md * ( (desc < 0) * -2 +1 )
+    tab['md'] = md * ((desc < 0) * -2 + 1)
 
     if os.path.exists(outfile):
         os.remove(outfile)
