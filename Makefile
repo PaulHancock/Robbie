@@ -4,13 +4,16 @@
 help:
 	echo "Use clean, input,.... "
 
-all: input trimmed split bkg cubes medians sfind xmatch push_warp
+all: input rmbad trimmed split bkg cubes medians sfind xmatch push_warp
 
 clean:
 	rm *.fits *.dat k2.mim k2.reg
 
 input:
 	rsync --ignore-existing --progress hancock@mwa-process02.ivec.org:'~stingay/MWA-SkyMapper/*.fits' .
+
+rmbad: bad_files.dat
+	./kill_bad.sh
 
 trimmed:
 	./trim_all.sh
@@ -49,7 +52,7 @@ k2.mim k2.reg:
 	MIMAS +c 337.5 -14.5 18 -o k2.mim
 	MIMAS --mim2reg k2.mim k2.reg
 
-K2_154MHz.dat K2_185MHz.dat:
+K2_154MHz.dat, K2_185MHz.dat:
 	./split_freqs.sh
 
 cube_154MHz.fits cube_185MHz.fits: K2_154MHz.dat, K2_185MHz.dat
