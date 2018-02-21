@@ -29,7 +29,7 @@ def pval(series, fluxes=[], errs=[]):
     return max(p, 1e-150)
 
 
-def load_table(filename, clip=slice(0,None)):
+def load_table(filename):
     """
 
     Parameters
@@ -45,8 +45,8 @@ def load_table(filename, clip=slice(0,None)):
     df = tab.to_pandas()
 
     # ignore the last few epochs as they have messed up images.
-    flux_cols = [n for n in tab.colnames if n.startswith('peak')][clip]
-    err_flux_cols = [n for n in tab.colnames if n.startswith('err_peak')][clip]
+    flux_cols = [n for n in tab.colnames if n.startswith('peak')]
+    err_flux_cols = [n for n in tab.colnames if n.startswith('err_peak')]
 
 
     mean_flux = df[flux_cols].mean(axis=1)
@@ -67,5 +67,5 @@ def load_table(filename, clip=slice(0,None)):
 
 
 if __name__ == '__main__':
-    load_table('154MHz_flux_table.fits', clip=slice(0, 10))
-    load_table('185MHz_flux_table.fits', clip=slice(0, 10))
+    load_table('154MHz_flux_table.fits')
+    load_table('185MHz_flux_table.fits')
