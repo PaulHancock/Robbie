@@ -5,7 +5,7 @@
 #SBATCH --time=01:30:00
 #SBATCH --nodes=1
 #SBATCH --output=/astro/mwasci/phancock/warping/queue/priorize_NNN.o%A_%a
-#SBATCH --error=/astro/mwasci/phancock/warping/priorize_NNN.e%A_%a    
+#SBATCH --error=/astro/mwasci/phancock/warping/queue/priorize_NNN.e%A_%a
 #SBATCH --array=1-NIMG
 
 set -x
@@ -39,6 +39,6 @@ then
     bkg=${base}_bkg.fits
     rms=${base}_rms.fits
     aegean ${image} --background ${bkg} --noise ${rms}\
-                    --table ${image} --priorized 1 \
-		    --input ${master} --noregroup
+                    --table ${image} --priorized 2 \
+		            --input ${master} --noregroup
 fi
