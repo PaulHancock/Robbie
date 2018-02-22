@@ -7,6 +7,7 @@ import pandas as pd
 import numpy as np
 from scipy import stats
 
+
 def chisq(series, fluxes=[], errs=[]):
     f = series[fluxes].values
     e = series[errs].values
@@ -26,27 +27,62 @@ def pval(series, fluxes=[], errs=[]):
     if npts < 2:
         return 0
     p = stats.chi2.sf(chi, npts - 1)
-    return max(p, 1e-150)
+    return max(p, 1e-10)
 
 
-def load_table(filename):
+def modulation_index(series, fluxes=[], errs=[]):
+    f = series[fluxes]
+    return np.std(f)/np.mean(f)
+
+
+def debias_modulation_index(series, fluxes=[], errs=[]):
+    f = series[fluxes].values
+    e = series[errs].values
+    m = e == e
+    f = f[m]
+    e = e[m]
+    mean = np.mean(f)
+    desc = np.sum((f - mean)**2) - np.sum(e**2)
+    md = 1./mean * np.sqrt(np.abs(desc)/len(m))
+    md = md*((desc > 0)*2 - 1)
+
+    return md
+
+
+def norm(series, fluxes=[]):
+    f = series[fluxes].values
+    mean = np.mean(f)
+    return f/mean
+
+
+def load_corrected_table(filename):
+    tab = Table.read(filename)
+    df = tab.to_pandas()
+    flux_cols = [n for n in df.columns if n.startswith('peak')]
+    err_flux_cols = [n for n in df.columns if n.startswith('err_peak')]
+
+    mean_fluxes = df[flux_cols].apply(norm, axis=1, fluxes=flux_cols)
+    mean_lc = mean_fluxes.median(axis=0)
+    df[flux_cols] = df[flux_cols] / mean_lc
+    df[err_flux_cols] = df[err_flux_cols].divide(mean_lc.values)
+    return df
+
+
+def add_stats(df, outfile):
     """
 
     Parameters
     ----------
-    filename
-    clip
+    tab : pandas.Dataframe
+
+    outfile: string
 
     Returns
     -------
 
     """
-    tab = Table.read(filename)
-    df = tab.to_pandas()
-
-    # ignore the last few epochs as they have messed up images.
-    flux_cols = [n for n in tab.colnames if n.startswith('peak')]
-    err_flux_cols = [n for n in tab.colnames if n.startswith('err_peak')]
+    flux_cols = [n for n in df.columns if n.startswith('peak')]
+    err_flux_cols = [n for n in df.columns if n.startswith('err_peak')]
 
 
     mean_flux = df[flux_cols].mean(axis=1)
@@ -61,11 +97,20 @@ def load_table(filename):
     pval_flux = df.apply(pval, axis=1, fluxes=flux_cols, errs=err_flux_cols)
     df['pval_peak_flux'] = pd.Series(pval_flux, index=df.index)
 
+    m = df.apply(modulation_index, axis=1, fluxes=flux_cols, errs=err_flux_cols)
+    df['m'] = pd.Series(m, index=df.index)
+
+    md = df.apply(debias_modulation_index, axis=1, fluxes=flux_cols, errs=err_flux_cols)
+    df['md'] = pd.Series(md, index=df.index)
+
+
     tab2 = Table.from_pandas(df)
-    outfile = filename.split('.')[0] + '_var.fits'
     tab2.write(outfile, overwrite=True)
 
 
 if __name__ == '__main__':
-    load_table('154MHz_flux_table.fits')
-    load_table('185MHz_flux_table.fits')
+    for infile in ['154MHz_flux_table.fits', '185MHz_flux_table.fits']:
+        df = load_corrected_table(infile)
+        outfile = infile.split('.')[0]+'_var.fits'
+        add_stats(df, outfile)
+
