@@ -330,7 +330,7 @@ def make_plots():
 
 
 def xmatch_freq(freq):
-    refname = 'median_{0}MHz_comp.fits'.format(freq)
+    refname = 'GLEAM_SUB.fits'.format(freq)
     ref_table = Table.read(refname)
     ref_cat = SkyCoord(ref_table['ra'], ref_table['dec'], unit=(u.degree, u.degree))
     flist = 'K2_{0}MHz.dat'.format(freq)
