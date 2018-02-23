@@ -27,13 +27,13 @@ cubes: cube_154MHz.fits cube_185MHz.fits
 
 medians: median_154MHz.fits median_185MHz.fits
 
-sfind: median_154MHz_comp.fits median_185MHz_comp.fits
+sfind:
 	./sfind_all.sh
 
 priors: median_154MHz_comp.fits median_185MHz_comp.fits
 	./priorize_all.sh
 
-stats: 154MHz_flux_table.fits 185MHz_flux_table.fits
+stats: 154MHz_flux_table_var.fits 185MHz_flux_table_var.fits
 
 joined_154MHz.csv joined_185MHz.csv: K2_154MHz.dat K2_185MHz.dat
 	./join_catalogues.sh
@@ -93,3 +93,6 @@ makefile2dot.py:
 
 vis.png: Makefile makefile2dot.py
 	python makefile2dot.py < $< | dot -Tpng > $@
+
+GLEAM_SUB.fits: k2.mim
+	MIMAS --maskcat k2.mim ~/alpha/DATA/GLEAM_EGC.fits GLEAM_SUB.fits --colnames RAJ2000 DEJ2000 --negate
