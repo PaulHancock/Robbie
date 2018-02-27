@@ -21,10 +21,10 @@ base=${image%%_warped.fits}
 
 
 # figure out the freq based on the file lists
-if [[ $( grep ${base} K2_154MHz.fits ) ]]
+if [[ $( grep ${base} K2_154MHz.dat ) ]]
 then
     freq=154
-elif [[ $( grep ${base} K2_185MHz.fits ) ]]
+elif [[ $( grep ${base} K2_185MHz.dat ) ]]
 then
     freq=185
 else
