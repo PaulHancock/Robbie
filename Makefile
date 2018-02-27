@@ -35,8 +35,8 @@ priors: median_154MHz_comp.fits median_185MHz_comp.fits
 
 stats: 154MHz_flux_table_var.fits 185MHz_flux_table_var.fits
 
-joined_154MHz.csv joined_185MHz.csv: K2_154MHz.dat K2_185MHz.dat
-	./join_catalogues.sh
+#joined_154MHz.csv joined_185MHz.csv: K2_154MHz.dat K2_185MHz.dat
+#	./join_catalogues.sh
 
 K2_trim_%.fits: K2_final_%.fits
 	getfits -o $@ -x 4800 4800 $< 3000 3400
@@ -94,5 +94,5 @@ makefile2dot.py:
 vis.png: Makefile makefile2dot.py
 	python makefile2dot.py < $< | dot -Tpng > $@
 
-GLEAM_SUB.fits: k2.mim
+gleam: k2.mim
 	MIMAS --maskcat k2.mim ~/alpha/DATA/GLEAM_EGC.fits GLEAM_SUB.fits --colnames RAJ2000 DEJ2000 --negate
