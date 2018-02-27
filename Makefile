@@ -30,13 +30,16 @@ medians: median_154MHz.fits median_185MHz.fits
 sfind:
 	./sfind_all.sh
 
-priors: median_154MHz_comp.fits median_185MHz_comp.fits
-	./priorize_all.sh
+#priors: median_154MHz_comp.fits median_185MHz_comp.fits
+#	./priorize_all.sh
 
 stats: 154MHz_flux_table_var.fits 185MHz_flux_table_var.fits
 
 #joined_154MHz.csv joined_185MHz.csv: K2_154MHz.dat K2_185MHz.dat
 #	./join_catalogues.sh
+
+masking:
+	./mask_all.sh
 
 K2_trim_%.fits: K2_final_%.fits
 	getfits -o $@ -x 4800 4800 $< 3000 3400
@@ -101,7 +104,7 @@ gleam: k2.mim
 	MIMAS --maskcat k2.mim ~/alpha/DATA/GLEAM_EGC.fits GLEAM_SUB.fits --colnames RAJ2000 DEJ2000 --negate
 
 K2_trim_%_blanked.fits: K2_trim_%.fits K2_trim_%_warped_comp.fits
-	AeRes -c K2_trim_$*_comp.fits -f K2_trim_$*.fits -r K2_trim_$*_blanked.fits --mask --sigma=0.1
+	AeRes -c K2_trim_$*_warped_comp.fits -f K2_trim_$*_warped.fits -r K2_trim_$*_blanked.fits --mask --sigma=0.1
 
 K2_trim_%_blanked_comp.fits: K2_trim_%_blanked.fits K2_trim_%_rms.fits K2_trim_%_bkg.fits k2.mim
 	aegean K2_trim_$*_blanked.fits --background K2_trim_$*_bkg.fits --noise K2_trim_$*_rms.fits \
