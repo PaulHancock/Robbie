@@ -110,5 +110,5 @@ K2_trim_%_warped_blanked.fits: K2_trim_%_warped.fits K2_trim_%_warped_comp.fits
 	AeRes -c K2_trim_$*_warped_comp.fits -f K2_trim_$*_warped.fits -r K2_trim_$*_warped_blanked.fits --mask --sigma=0.1
 
 K2_trim_%_warped_blanked_comp.fits: K2_trim_%_warped_blanked.fits K2_trim_%_rms.fits K2_trim_%_bkg.fits k2.mim
-	aegean K2_trim_$*_warped_blanked.fits --background K2_trim_$*_bkg.fits --noise K2_trim_$*_rms.fits --table K2_trim_1100437760_warped_blanked.fits --island --region k2.mim
+	aegean K2_trim_$*_warped_blanked.fits --background K2_trim_$*_bkg.fits --noise K2_trim_$*_rms.fits --table K2_trim_$*_warped_blanked.fits --island --region k2.mim
 
