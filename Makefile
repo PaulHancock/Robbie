@@ -30,6 +30,9 @@ medians: median_154MHz.fits median_185MHz.fits
 sfind:
 	./sfind_all.sh
 
+sfind_blanked:
+	./sfind_blanked.sh
+
 #priors: median_154MHz_comp.fits median_185MHz_comp.fits
 #	./priorize_all.sh
 
