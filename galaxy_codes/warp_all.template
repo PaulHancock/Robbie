@@ -21,6 +21,6 @@ xmfile="${imfile%%.fits}_xm.fits"
 
 if [[ ! -e ${imfile%%.fits}_warped.fits ]]
 then
-    fits_warp.py --infits ${imfile} --xm ${xmfile} --suffix warped --ra1 ra_1 --dec1 dec_1 --ra2 ra_2 --dec2 dec_2
+    fits_warp.py --infits ${imfile} --xm ${xmfile} --suffix warped --ra1 ra --dec1 dec --ra2 RAJ2000 --dec2 DEJ2000
     # --plot
 fi
