@@ -108,7 +108,7 @@ def correct_tab2(ref, tab, ref_cat=None, radius=2/60.):
     orig = tab.copy()
     # Allow for this to be precalculated
     if ref_cat is None:
-        ref_cat = SkyCoord(ref['ra'], ref['dec'], unit=(u.degree, u.degree))
+        ref_cat = SkyCoord(ref['RAJ2000'], ref['DEJ2000'], unit=(u.degree, u.degree))
     
     # filter the catalog to use only high snr point sources
     # mask = np.where((tab['int_flux']/tab['peak_flux'] < 1.2) & (tab['peak_flux']/tab['local_rms']>10))
@@ -163,8 +163,8 @@ def correct_tab2(ref, tab, ref_cat=None, radius=2/60.):
     ## cartesian!!
     separation = Table({'Separation':np.hypot(dra,ddec)}, names=('Separation',), dtype=(np.float32,))
     xmatch = hstack([orig[mask][distance_mask], ref[match_mask], separation])
-    xmatch['peak_flux'] = xmatch['peak_flux_1']
-    xmatch['local_rms'] = xmatch['local_rms_1']
+    #xmatch['peak_flux'] = xmatch['peak_flux_1']
+    #xmatch['local_rms'] = xmatch['local_rms_1']
     
     return tab, xmatch
 
@@ -330,9 +330,9 @@ def make_plots():
 
 
 def xmatch_freq(freq):
-    refname = 'GLEAM_SUB.fits'.format(freq)
+    refname = 'GLEAM_SUB.fits'
     ref_table = Table.read(refname)
-    ref_cat = SkyCoord(ref_table['ra'], ref_table['dec'], unit=(u.degree, u.degree))
+    ref_cat = SkyCoord(ref_table['RAJ2000'], ref_table['DEJ2000'], unit=(u.degree, u.degree))
     flist = 'K2_{0}MHz.dat'.format(freq)
     for line in open(flist).readlines():
         f_base = line.split()[0].split('.')[0]
