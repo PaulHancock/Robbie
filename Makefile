@@ -88,6 +88,9 @@ pull_warp:
 galaxy_warp:
 	./run_warp_jobs.sh
 
+galaxy_sfind:
+	./run_sfind_jobs.sh
+
 makefile2dot.py:
 	wget https://github.com/vak/makefile2dot/raw/master/makefile2dot.py
 
