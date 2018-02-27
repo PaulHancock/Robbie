@@ -38,7 +38,7 @@ stats: 154MHz_flux_table_var.fits 185MHz_flux_table_var.fits
 #joined_154MHz.csv joined_185MHz.csv: K2_154MHz.dat K2_185MHz.dat
 #	./join_catalogues.sh
 
-masking:
+blanking:
 	./blank_all.sh
 
 K2_trim_%.fits: K2_final_%.fits
@@ -103,7 +103,7 @@ vis.png: Makefile makefile2dot.py
 gleam: k2.mim
 	MIMAS --maskcat k2.mim ~/alpha/DATA/GLEAM_EGC.fits GLEAM_SUB.fits --colnames RAJ2000 DEJ2000 --negate
 
-K2_trim_%_blanked.fits: K2_trim_%.fits K2_trim_%_warped_comp.fits
+K2_trim_%_warped_blanked.fits: K2_trim_%_warped.fits K2_trim_%_warped_comp.fits
 	AeRes -c K2_trim_$*_warped_comp.fits -f K2_trim_$*_warped.fits -r K2_trim_$*_blanked.fits --mask --sigma=0.1
 
 K2_trim_%_warped_blanked_comp.fits: K2_trim_%_blanked.fits K2_trim_%_rms.fits K2_trim_%_bkg.fits k2.mim
