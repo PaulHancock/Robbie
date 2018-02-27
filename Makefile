@@ -53,8 +53,8 @@ K2_trim_%_bkg.fits: K2_trim_%.fits
 K2_trim_%_warped_comp.fits: K2_trim_%_warped.fits K2_trim_%_bkg.fits K2_trim_%_rms.fits k2.mim
 	aegean $< --background K2_trim_$*_bkg.fits --noise K2_trim_$*_rms.fits --table $< --island --region k2.mim
 
-K2_trim_%_comp.fits: K2_trim_%.fits K2_trim_%_bkg.fits k2.mim
-	aegean $< --autoload --table $< --island --region k2.mim
+#K2_trim_%_comp.fits: K2_trim_%.fits K2_trim_%_bkg.fits k2.mim
+#	aegean $< --autoload --table $< --island --region k2.mim
 
 k2.mim k2.reg: 
 	MIMAS +c 337.5 -14.5 18 -o k2.mim
@@ -107,8 +107,8 @@ gleam: k2.mim
 	MIMAS --maskcat k2.mim ~/alpha/DATA/GLEAM_EGC.fits GLEAM_SUB.fits --colnames RAJ2000 DEJ2000 --negate
 
 K2_trim_%_warped_blanked.fits: K2_trim_%_warped.fits K2_trim_%_warped_comp.fits
-	AeRes -c K2_trim_$*_warped_comp.fits -f K2_trim_$*_warped.fits -r K2_trim_$*_blanked.fits --mask --sigma=0.1
+	AeRes -c K2_trim_$*_warped_comp.fits -f K2_trim_$*_warped.fits -r K2_trim_$*_warped_blanked.fits --mask --sigma=0.1
 
-K2_trim_%_warped_blanked_comp.fits: K2_trim_%_blanked.fits K2_trim_%_rms.fits K2_trim_%_bkg.fits k2.mim
-	aegean K2_trim_$*_warped_blanked.fits --background K2_trim_$*_bkg.fits --noise K2_trim_$*_rms.fits \
-	                               --table K2_trim_1100437760_warped_blanked.fits --island --region k2.mim
+K2_trim_%_warped_blanked_comp.fits: K2_trim_%_warped_blanked.fits K2_trim_%_rms.fits K2_trim_%_bkg.fits k2.mim
+	aegean K2_trim_$*_warped_blanked.fits --background K2_trim_$*_bkg.fits --noise K2_trim_$*_rms.fits --table K2_trim_1100437760_warped_blanked.fits --island --region k2.mim
+
