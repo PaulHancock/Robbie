@@ -99,3 +99,10 @@ vis.png: Makefile makefile2dot.py
 
 gleam: k2.mim
 	MIMAS --maskcat k2.mim ~/alpha/DATA/GLEAM_EGC.fits GLEAM_SUB.fits --colnames RAJ2000 DEJ2000 --negate
+
+K2_trim_%_blanked.fits: K2_trim_%.fits K2_trim_%_warped_comp.fits
+	AeRes -c K2_trim_$*_comp.fits -f K2_trim_$*.fits -r K2_trim_$*_blanked.fits --mask --sigma=0.1
+
+K2_trim_%_blanked_comp.fits: K2_trim_%_blanked.fits K2_trim_%_rms.fits K2_trim_%_bkg.fits k2.mim
+	aegean K2_trim_$*_blanked.fits --background K2_trim_$*_bkg.fits --noise K2_trim_$*_rms.fits \
+	                               --table K2_trim_1100437760_blanked.fits --island --region k2.mim
