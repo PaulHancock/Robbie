@@ -5,6 +5,6 @@ do
     files=($( cat K2_${freq}MHz.dat | awk '{print $1}' ))
 	for f in ${files[@]}
 	do
-	    make ${f%%.fits}_blanked.fits
+	    make ${f%%.fits}_warped_blanked_comp.fits
 	done
 done

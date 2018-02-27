@@ -39,7 +39,7 @@ stats: 154MHz_flux_table_var.fits 185MHz_flux_table_var.fits
 #	./join_catalogues.sh
 
 masking:
-	./mask_all.sh
+	./blank_all.sh
 
 K2_trim_%.fits: K2_final_%.fits
 	getfits -o $@ -x 4800 4800 $< 3000 3400
@@ -106,6 +106,6 @@ gleam: k2.mim
 K2_trim_%_blanked.fits: K2_trim_%.fits K2_trim_%_warped_comp.fits
 	AeRes -c K2_trim_$*_warped_comp.fits -f K2_trim_$*_warped.fits -r K2_trim_$*_blanked.fits --mask --sigma=0.1
 
-K2_trim_%_blanked_comp.fits: K2_trim_%_blanked.fits K2_trim_%_rms.fits K2_trim_%_bkg.fits k2.mim
-	aegean K2_trim_$*_blanked.fits --background K2_trim_$*_bkg.fits --noise K2_trim_$*_rms.fits \
-	                               --table K2_trim_1100437760_blanked.fits --island --region k2.mim
+K2_trim_%_warped_blanked_comp.fits: K2_trim_%_blanked.fits K2_trim_%_rms.fits K2_trim_%_bkg.fits k2.mim
+	aegean K2_trim_$*_warped_blanked.fits --background K2_trim_$*_bkg.fits --noise K2_trim_$*_rms.fits \
+	                               --table K2_trim_1100437760_warped_blanked.fits --island --region k2.mim
