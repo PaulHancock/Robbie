@@ -73,7 +73,7 @@ median_%MHz_bkg.fits: median_%MHz.fits
 	BANE $<
 
 median_%MHz_comp.fits: median_%MHz.fits median_%MHz_bkg.fits k2.mim
-	aegean $< --autoload --table $< --island --region k2.mim
+	aegean $< --autoload --table median_$*MHz.fits,median_$*MHz.reg --island --region k2.mim
 
 154MHz_flux_table.fits 185MHz_flux_table.fits:
 	./construct_flux_table.sh
@@ -112,3 +112,5 @@ K2_trim_%_warped_blanked.fits: K2_trim_%_warped.fits K2_trim_%_warped_comp.fits
 K2_trim_%_warped_blanked_comp.fits: K2_trim_%_warped_blanked.fits K2_trim_%_rms.fits K2_trim_%_bkg.fits k2.mim
 	aegean K2_trim_$*_warped_blanked.fits --background K2_trim_$*_bkg.fits --noise K2_trim_$*_rms.fits --table K2_trim_$*_warped_blanked.fits --island --region k2.mim
 
+K2_trim_%_warped_blanked_comp_filtered.fits: K2_trim_%_warped_blanked_comp.fits K2_trim_%_warped_blanked.fits
+	python filter_transients.py $^ $@
