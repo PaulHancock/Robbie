@@ -21,24 +21,24 @@ def stack(files, out):
     """
 
     ref = fits.open(files[0])
-    data = np.empty((len(files),ref[0].data.shape[0],ref[0].data.shape[1]),
-                    dtype = np.float32)
+    data = np.empty((len(files), ref[0].data.shape[0], ref[0].data.shape[1]),
+                    dtype=np.float32)
 
     for i, f in enumerate(files):
         print('add {0}'.format(f))
         hdu = fits.open(f)
-        data[i,:,:] = hdu[0].data
+        data[i, :, :] = hdu[0].data
     
     ref[0].data = data
     ref.writeto(out)
     print("wrote {0}".format(out))
 
 if __name__ == "__main__":
-    #files = sorted(glob('K2_trim_[0-9]*[0-9].fits'))
-    #stack(files=files, out='cube.fits')
     for f in [154, 185]:
         fname = 'K2_{0}MHz.dat'.format(f)
         files = [a.split()[0] for a in open(fname).readlines()]
+        # use the warped files to make the cube!
+        files = [a[:-5]+'_warped.fits' for a in files]
         outname='cube_{0}MHz.fits'.format(f)
         if not os.path.exists(outname):
             stack(files=files, out=outname) 
