@@ -54,8 +54,8 @@ K2_trim_%_warped_comp.fits: K2_trim_%_warped.fits K2_trim_%_bkg.fits K2_trim_%_r
 	aegean $< --background K2_trim_$*_bkg.fits --noise K2_trim_$*_rms.fits \
 	--table K2_trim_$*_warped.fits,K2_trim_$*_warped.reg --island --region k2.mim
 
-#K2_trim_%_comp.fits: K2_trim_%.fits K2_trim_%_bkg.fits k2.mim
-#	aegean $< --autoload --table $< --island --region k2.mim
+K2_trim_%_comp.fits: K2_trim_%.fits K2_trim_%_bkg.fits k2.mim
+	aegean $< --autoload --table K2_trim_$*.fits,K2_trim_$*.reg --island --region k2.mim
 
 k2.mim k2.reg: 
 	MIMAS +c 337.5 -14.5 18 -o k2.mim
@@ -69,6 +69,9 @@ cube_154MHz.fits cube_185MHz.fits: K2_154MHz.dat K2_185MHz.dat
 
 median_154MHz.fits median_185MHz.fits: cube_154MHz.fits cube_185MHz.fits
 	python make_median.py
+
+mean_154MHz.fits mean_185MHz.fits: cube_154MHz.fits cube_185MHz.fits
+	python make_mean.py
 
 median_%MHz_bkg.fits: median_%MHz.fits
 	BANE $<
