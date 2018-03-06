@@ -5,7 +5,7 @@ from astropy.io import fits
 import numpy as np
 import os
 
-def median(cube, out):
+def mean(cube, out):
     """
     Flatten an image cube into a median image.
     Write an output file
@@ -36,4 +36,4 @@ if __name__ == "__main__":
     for c in cubes:
         out = 'mean'+c[4:]
         if not os.path.exists(out):
-            median(c, out=out)
+            mean(c, out=out)

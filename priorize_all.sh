@@ -19,7 +19,7 @@ do
 	then
 	    aegean ${image} --background ${bkg} --noise ${rms}\
                    --table ${image} --priorized 1 \
-		   --input median_${freq}MHz_comp.fits --noregroup
+		   --input mean_${freq}MHz_comp.fits --noregroup
 	fi
     done
 done
