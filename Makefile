@@ -27,6 +27,8 @@ cubes: cube_154MHz.fits cube_185MHz.fits
 
 medians: median_154MHz.fits median_185MHz.fits
 
+means: mean_154MHz.fits mean_185MHz.fits
+
 sfind:
 	./sfind_all.sh
 
@@ -67,17 +69,17 @@ K2_154MHz.dat K2_185MHz.dat:
 cube_154MHz.fits cube_185MHz.fits: K2_154MHz.dat K2_185MHz.dat
 	python make_cube.py
 
-median_154MHz.fits median_185MHz.fits: cube_154MHz.fits cube_185MHz.fits
-	python make_median.py
+#median_154MHz.fits median_185MHz.fits: cube_154MHz.fits cube_185MHz.fits
+#	python make_median.py
 
 mean_154MHz.fits mean_185MHz.fits: cube_154MHz.fits cube_185MHz.fits
 	python make_mean.py
 
-median_%MHz_bkg.fits: median_%MHz.fits
+mean_%MHz_bkg.fits: mean_%MHz.fits
 	BANE $<
 
-median_%MHz_comp.fits: median_%MHz.fits median_%MHz_bkg.fits k2.mim
-	aegean $< --autoload --table median_$*MHz.fits,median_$*MHz.reg --island --region k2.mim
+mean_%MHz_comp.fits: mean_%MHz.fits mean_%MHz_bkg.fits k2.mim
+	aegean $< --autoload --table mean_$*MHz.fits,mean_$*MHz.reg --island --region k2.mim
 
 154MHz_flux_table.fits 185MHz_flux_table.fits:
 	./construct_flux_table.sh
