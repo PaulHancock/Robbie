@@ -124,3 +124,9 @@ K2_trim_%_warped_blanked_comp.fits: K2_trim_%_warped_blanked.fits K2_trim_%_rms.
 
 K2_trim_%_warped_blanked_comp_filtered.fits: K2_trim_%_warped_blanked_comp.fits K2_trim_%_warped_blanked.fits
 	python filter_transients.py $^ $@
+
+%MHz_transients.fits: 
+	./collect_transients.sh
+
+%MHz_transients.png: %MHz_transients.fits
+	./transients_plot.sh
