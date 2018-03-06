@@ -46,6 +46,9 @@ stats: 154MHz_flux_table_var.fits 185MHz_flux_table_var.fits
 blanking:
 	./blank_all.sh
 
+transients:
+	./filter_transents.sh
+
 K2_trim_%.fits: K2_final_%.fits
 	getfits -o $@ -x 4800 4800 $< 3000 3400
 
