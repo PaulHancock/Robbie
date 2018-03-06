@@ -39,6 +39,6 @@ then
     bkg=${base}_bkg.fits
     rms=${base}_rms.fits
     aegean ${image} --background ${bkg} --noise ${rms}\
-                    --table ${image} --priorized 2 \
+                    --table ${image},${image%%.fits}.reg --priorized 2 \
 		            --input ${master} --noregroup
 fi
