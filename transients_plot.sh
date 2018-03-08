@@ -13,7 +13,7 @@ java -jar ~/Software/topcat/topcat-full.jar -stilts plot2plane \
    auxvisible=true auxlabel=peak_flux/local_rms \
    legend=false \
    layer=Size \
-      in=/data/alpha/hancock/MWASkyMapper/Paper2/${freq}MHz_transients.fits \
+      in=${freq}MHz_transients.fits \
       x=ra y=dec size=epoch+2 aux=peak_flux/local_rms \
       shading=aux shape=open_circle scale=1.5 autoscale=false \
     out=${freq}MHz_transients.png
