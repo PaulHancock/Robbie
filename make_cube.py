@@ -30,7 +30,7 @@ def stack(files, out):
         data[i, :, :] = hdu[0].data
     
     ref[0].data = data
-    ref.writeto(out)
+    ref.writeto(out, overwrite=True)
     print("wrote {0}".format(out))
 
 if __name__ == "__main__":
@@ -46,5 +46,4 @@ if __name__ == "__main__":
         print("not enough files, need at least 2 to make a cube")
         print("given {0}".format(files))
         sys.exit(1)
-    if not os.path.exists(outname):
-        stack(files=files, out=outname)
+    stack(files=files, out=outname)
