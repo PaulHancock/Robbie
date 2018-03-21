@@ -1,9 +1,11 @@
-#! /usr/bin/env python
+#!/usr/bin/env python
 from __future__ import print_function
 
 from astropy.io import fits
 import numpy as np
+import sys
 import os
+
 
 def mean(cube, out):
     """
@@ -32,8 +34,11 @@ def mean(cube, out):
 
 
 if __name__ == "__main__":
-    cubes = ['cube_154MHz.fits', 'cube_185MHz.fits']
-    for c in cubes:
-        out = 'mean'+c[4:]
-        if not os.path.exists(out):
-            mean(c, out=out)
+    if len(sys.argv) <= 1:
+        print("make_mean.py cube outfile")
+        sys.exit(1)
+
+    infile = sys.argv[1]
+    outfile = sys.argv[2]
+
+    mean(infile, out=outfile)
