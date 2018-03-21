@@ -1,9 +1,9 @@
-#! /usr/bin/env python
+#!/usr/bin/env python
 from __future__ import print_function
 
-from glob import glob
 from astropy.io import fits
 import numpy as np
+import sys
 import os
 
 def stack(files, out):
@@ -34,11 +34,17 @@ def stack(files, out):
     print("wrote {0}".format(out))
 
 if __name__ == "__main__":
-    for f in [154, 185]:
-        fname = 'K2_{0}MHz.dat'.format(f)
-        files = [a.split()[0] for a in open(fname).readlines()]
-        # use the warped files to make the cube!
-        files = [a[:-5]+'_warped.fits' for a in files]
-        outname='cube_{0}MHz.fits'.format(f)
-        if not os.path.exists(outname):
-            stack(files=files, out=outname) 
+
+    if len(sys.argv) <= 2:
+        print("make_cube.py outfile.fits file1.fits file2.fits ...")
+        sys.exit(1)
+
+    outname = sys.argv[1]
+    files = sys.argv[2:]
+
+    if len(files) < 2:
+        print("not enough files, need at least 2 to make a cube")
+        print("given {0}".format(files))
+        sys.exit(1)
+    if not os.path.exists(outname):
+        stack(files=files, out=outname)
