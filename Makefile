@@ -1,88 +1,76 @@
 .PHONY: help all clean input trimmed split bkg cubes medians priors stats xmatch push_warp pull_warp submit_jobs
 .SECONDARY:
 
-help:
-	echo "Use clean, input,.... "
+IMFILE:=all_images.txt
+IMAGES:=$( shell cat $(IMFILE))
 
-all: input rmbad trimmed split bkg cubes medians sfind xmatch push_warp
+help:
+	echo "help!"
 
 clean:
 	rm *.fits *.dat k2.mim k2.reg
 
-input:
-	rsync --ignore-existing --progress hancock@mwa-process02.ivec.org:'~stingay/MWA-SkyMapper/*.fits' .
+# dummy rules to indicate that these files are pre-existing
+$(IMAGES):
 
-rmbad: bad_files.dat
-	./kill_bad.sh
+# Background and noise maps for the sub images
+$(IMAGES:.fits=_bkg.fits): %_bkg.fits : %.fits
+	 BANE $<
+# This duplication is required since I can't mash it into the above rule whislt also using target:pattern:prereq
+# However it causes BANE to run twice so we first check to see if the file is already built. arg!
+$(IMAGES:.fits=_rms.fits): %_rms.fits : %.fits
+	test -f $@ || echo BANE again $<
 
-trimmed:
-	./trim_all.sh
+# Blind source finding
+$(IMAGES:.fits=_comp.fits): %_comp.fits : %.fits %_bkg.fits %_rms.fits
+	aegean $< --autoload --island --table $<,$*.reg
 
-split: K2_154MHz.dat K2_185MHz.dat
 
-bkg:
-	./bkg_all.sh
+# cross matching
+$(IMAGES:.fits=_xm.fits): %_xm.fits : %_comp.fits GLEAM_SUB.fits
+	./correct_astrometry.py GLEAM_SUB.fits $< $@
 
-cubes: cube_154MHz.fits cube_185MHz.fits
+# warping
+$(IMAGES:.fits=_warped.fits): %_warped.fits : %.fits %_xm.fits
+	./fits_warp.py --infits $< --xm $*_xm.fits --suffix warped --ra1 ra --dec1 dec --ra2 RAJ2000 --dec2 DEJ2000
 
-medians: median_154MHz.fits median_185MHz.fits
+# Create cube
+cube.fits: $(IMAGES:.fits=_warped.fits)
+	./make_cube.py $@ $^
 
-means: mean_154MHz.fits mean_185MHz.fits
+# create mean image
+mean.fits: cube.fits
+	./make_mean.py $^ $@
 
-sfind:
-	./sfind_all.sh
+mean_bkg.fits mean_rms.fits: mean.fits
+	BANE $<
 
-sfind_blanked:
-	./sfind_blanked.sh
+# create master (mean) catalogue
+mean_comp.fits: mean.fits mean_bkg.fits mean_rms.fits
+	aegean $< --autoload --island --table $<,$*.reg
 
-#priors: median_154MHz_comp.fits median_185MHz_comp.fits
-#	./priorize_all.sh
+# priorize to make light curves from warped images
+$(IMAGES:.fits=_warped_prior_comp.fits): %_warped_prior_comp.fits : %_warped.fits %_bkg.fits %_rms.fits mean_comp.fits
+	aegean ${image} --background $*_bkg.fits --noise $*_rms.fits \
+                    --table $*_warped_prior.fits,$*_warped_prior.reg --priorized 2 \
+		            --input mean_comp.fits --noregroup
+
+# blank the warped images
+$(IMAGES:.fits=_warped_blanked.fits): %_blanked.fits : %.fits %_comp.fits
+	AeRes -c $*_comp.fits -f $< -r $@ --mask --sigma=0.1
+
+# source find warped/blanked images
+$(IMAGES:.fits=_warped_blanked_comp.fits): %_warped_blanked_comp.fits : %_warped_blanked.fits $_rms.fits $_bkg.fits
+	aegean $< --background $*_bkg.fits --noise $*_rms.fits \
+	--table $*_warped_blanked.fits,$*_warped_blanked.reg --island
+
+
 
 stats: 154MHz_flux_table_var.fits 185MHz_flux_table_var.fits
-
-#joined_154MHz.csv joined_185MHz.csv: K2_154MHz.dat K2_185MHz.dat
-#	./join_catalogues.sh
-
-blanking:
-	./blank_all.sh
 
 transients:
 	./filter_transents.sh
 
-K2_trim_%.fits: K2_final_%.fits
-	getfits -o $@ -x 4800 4800 $< 3000 3400
-
-K2_trim_%_bkg.fits: K2_trim_%.fits
-	BANE $<
-
-K2_trim_%_warped_comp.fits: K2_trim_%_warped.fits K2_trim_%_bkg.fits K2_trim_%_rms.fits k2.mim
-	aegean $< --background K2_trim_$*_bkg.fits --noise K2_trim_$*_rms.fits \
-	--table K2_trim_$*_warped.fits,K2_trim_$*_warped.reg --island --region k2.mim
-
-K2_trim_%_comp.fits: K2_trim_%.fits K2_trim_%_bkg.fits k2.mim
-	aegean $< --autoload --table K2_trim_$*.fits,K2_trim_$*.reg --island --region k2.mim
-
-k2.mim k2.reg: 
-	MIMAS +c 337.5 -14.5 18 -o k2.mim
-	MIMAS --mim2reg k2.mim k2.reg
-
-K2_154MHz.dat K2_185MHz.dat:
-	./split_freqs.sh
-
-cube_154MHz.fits cube_185MHz.fits: K2_154MHz.dat K2_185MHz.dat
-	python make_cube.py
-
-#median_154MHz.fits median_185MHz.fits: cube_154MHz.fits cube_185MHz.fits
-#	python make_median.py
-
-mean_154MHz.fits mean_185MHz.fits: cube_154MHz.fits cube_185MHz.fits
-	python make_mean.py
-
-mean_%MHz_bkg.fits: mean_%MHz.fits
-	BANE $<
-
-mean_%MHz_comp.fits: mean_%MHz.fits mean_%MHz_bkg.fits k2.mim
-	aegean $< --autoload --table mean_$*MHz.fits,mean_$*MHz.reg --island --region k2.mim
 
 154MHz_flux_table.fits 185MHz_flux_table.fits:
 	./construct_flux_table.sh
@@ -90,21 +78,6 @@ mean_%MHz_comp.fits: mean_%MHz.fits mean_%MHz_bkg.fits k2.mim
 154MHz_flux_table_var.fits 185MHz_flux_table_var.fits: 154MHz_flux_table.fits 185MHz_flux_table.fits
 	python calc_var.py
 
-xmatch:
-	python correct_astrometry.py xmatch 154
-	python correct_astrometry.py xmatch 185
-
-push_warp:
-	./push2galaxy.sh
-
-pull_warp:
-	./pullFromGalaxy.sh
-
-galaxy_warp:
-	./run_warp_jobs.sh
-
-galaxy_sfind:
-	./run_sfind_jobs.sh
 
 makefile2dot.py:
 	wget https://github.com/vak/makefile2dot/raw/master/makefile2dot.py
@@ -115,17 +88,7 @@ vis.png: Makefile makefile2dot.py
 gleam: k2.mim
 	MIMAS --maskcat k2.mim ~/alpha/DATA/GLEAM_EGC.fits GLEAM_SUB.fits --colnames RAJ2000 DEJ2000 --negate
 
-K2_trim_%_warped_blanked.fits: K2_trim_%_warped.fits K2_trim_%_warped_comp.fits
-	AeRes -c K2_trim_$*_warped_comp.fits -f K2_trim_$*_warped.fits -r K2_trim_$*_warped_blanked.fits --mask --sigma=0.1
-
-K2_trim_%_warped_blanked_comp.fits: K2_trim_%_warped_blanked.fits K2_trim_%_rms.fits K2_trim_%_bkg.fits k2.mim
-	aegean K2_trim_$*_warped_blanked.fits --background K2_trim_$*_bkg.fits --noise K2_trim_$*_rms.fits \
-	--table K2_trim_$*_warped_blanked.fits,K2_trim_$*_warped_blanked.reg --island --region k2.mim
-
-K2_trim_%_warped_blanked_comp_filtered.fits: K2_trim_%_warped_blanked_comp.fits K2_trim_%_warped_blanked.fits
-	python filter_transients.py $^ $@
-
-%MHz_transients.fits: 
+%MHz_transients.fits:
 	./collect_transients.sh
 
 %MHz_transients.png: %MHz_transients.fits
