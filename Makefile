@@ -1,4 +1,3 @@
-.PHONY: help all clean input trimmed split bkg cubes medians priors stats xmatch push_warp pull_warp submit_jobs
 .SECONDARY:
 .ONESHELL:
 SHELL:=/bin/bash
@@ -13,7 +12,11 @@ clean:
 	rm *.fits *.dat k2.mim k2.reg
 
 test:
-	echo $(IMAGES)
+	f=(${IMAGES}) ;\
+	for a in $${f[@]};\
+	do \
+	echo "$${a}" ;\
+	done
 
 # dummy rules to indicate that these files are pre-existing
 $(IMAGES) region.mim:
@@ -64,15 +67,15 @@ $(IMAGES:.fits=_warped_prior_comp.fits): %_warped_prior_comp.fits : %_warped.fit
 		            --input mean_comp.fits --noregroup
 
 # joine all priorized sources into a single table
-flux_table.fits: $(IMAGES:.fits=_warped_proir_comp.fits)
-	files=($^)
-    cmd="java -jar /home/hancock/Software/stilts.jar tmatchn nin=${#files[@]} matcher=exact out=$@ " ;\
-    for n in ${!files[@]} ;\
-    do ;\
-    m=$( echo "${n}+1" | bc ) ;\
-	cmd="${cmd} in${m}=${files[${n}]} values${m}='uuid' suffix${m}=_${n}" ;\
-    done ;\
-    $(${cmd})
+flux_table.fits: $(IMAGES:.fits=_warped_prior_comp.fits)
+	files=($^) ;\
+	cmd="java -jar /home/hancock/Software/stilts.jar tmatchn nin=$${#files[@]} matcher=exact out=$@ " ;\
+	for n in $${!files[@]} ;\
+	do ;\
+	m=$$( echo "$${n}+1" | bc ) ;\
+	cmd="$${cmd} in$${m}=$${files[${n}]} values$${m}='uuid' suffix$${m}=_$${n}" ;\
+	done ;\
+	echo $${cmd} | bash
 
 # add variability stats to the flux table
 flux_table_var.fits: flux_table.fits
@@ -95,15 +98,15 @@ $(IMAGE:.fits=_warped_blanked_comp_filtered.fits): %_warped_blanked_comp_filtere
 
 # join all transients into one catalogue
 transients.fits: $(IMAGE:.fits=_warped_blanked_comp_filtered.fits)
-	files=($^)
-    cmd="java -jar /home/hancock/Software/stilts.jar tcatn nin=${#files[@]}" ;\
-    for i in $( seq 1 1 ${#files[@]} ) ;\
-    do ;\
-    j=$( echo "${i} -1" | bc ) ;\
-    cmd="${cmd} in${i}=${files[${j}]} icmd${i}='addcol epoch ${i}'" ;\
-    done ;\
-    cmd="${cmd} out=$@ ofmt=fits" ;\
-    $(${cmd})
+	files=($^) ;\
+	cmd="java -jar /home/hancock/Software/stilts.jar tcatn nin=$${#files[@]}" ;\
+	for i in $$( seq 1 1 $${#files[@]} ) ;\
+	do ;\
+	j=$$( echo "$${i} -1" | bc ) ;\
+	cmd="$${cmd} in$${i}=$${files[$${j}]} icmd$${i}='addcol epoch $${i}'" ;\
+	done ;\
+	cmd="$${cmd} out=$@ ofmt=fits" ;\
+	$$($${cmd})
 
 # plot the transients into a single image
 transients.png: transients.fits
