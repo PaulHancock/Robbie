@@ -6,7 +6,7 @@ from astropy.table import Table
 import pandas as pd
 import numpy as np
 from scipy import stats
-
+import sys
 
 def chisq(series, fluxes=[], errs=[]):
     f = series[fluxes].values
@@ -109,8 +109,13 @@ def add_stats(df, outfile):
 
 
 if __name__ == '__main__':
-    for infile in ['154MHz_flux_table.fits', '185MHz_flux_table.fits']:
-        df = load_corrected_table(infile)
-        outfile = infile.split('.')[0]+'_var.fits'
-        add_stats(df, outfile)
+    if len(sys.argv) < 2:
+        print("calc_var.py infile outfile")
+        sys.exit(1)
+
+    infile = sys.argv[1]
+    outfile = sys.argv[2]
+
+    df = load_corrected_table(infile)
+    add_stats(df, outfile)
 
