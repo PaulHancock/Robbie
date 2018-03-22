@@ -1,4 +1,4 @@
-#! python
+#!/usr/bin/env python
 from astropy.table import Table
 from astropy.io import fits
 from astropy.wcs import WCS
