@@ -30,7 +30,7 @@ $(IMAGES:.fits=_bkg.fits): %_bkg.fits : %.fits
 # This duplication is required since I can't mash it into the above rule whislt also using target:pattern:prereq
 # However it causes BANE to run twice so we first check to see if the file is already built. arg!
 $(IMAGES:.fits=_rms.fits): %_rms.fits : %.fits
-	test -f $@ || echo BANE again $<
+	test -f $@ || BANE $<
 
 # Blind source finding
 $(IMAGES:.fits=_comp.fits): %_comp.fits : %.fits %_bkg.fits %_rms.fits region.mim
@@ -83,22 +83,22 @@ flux_table_var.fits: flux_table.fits
 
 
 # blank the warped images
-$(IMAGES:.fits=_warped_blanked.fits): %_blanked.fits : %.fits %_comp.fits
-	AeRes -c $*_comp.fits -f $< -r $@ --mask --sigma=0.1
+$(IMAGES:.fits=_warped_blanked.fits): %_warped_blanked.fits : %_warped.fits mean_comp.fits
+	AeRes -c mean_comp.fits -f $< -r $@ --mask --sigma=0.1
 
 # blind source find warped/blanked images
-$(IMAGES:.fits=_warped_blanked_comp.fits): %_warped_blanked_comp.fits : %_warped_blanked.fits $_rms.fits $_bkg.fits region.mim
+$(IMAGES:.fits=_warped_blanked_comp.fits): %_warped_blanked_comp.fits : %_warped_blanked.fits %_rms.fits %_bkg.fits region.mim
 	aegean $< --background $*_bkg.fits --noise $*_rms.fits \
 	--table $*_warped_blanked.fits,$*_warped_blanked.reg --island --region region.mim
 
 
 # remove the bad transients
-$(IMAGE:.fits=_warped_blanked_comp_filtered.fits): %_warped_blanked_comp_filtered.fits: %_warped_blanked_comp.fits
+$(IMAGES:.fits=_warped_blanked_comp_filtered.fits): %_warped_blanked_comp_filtered.fits : %_warped_blanked_comp.fits
 	./filter_transients.py $^ $@
 
 # join all transients into one catalogue
-transients.fits: $(IMAGE:.fits=_warped_blanked_comp_filtered.fits)
-	files=($^) ;\
+transients.fits: $(IMAGES:.fits=_warped_blanked_comp_filtered.fits)
+	files=(${^}) ;\
 	cmd="java -jar /home/hancock/Software/stilts.jar tcatn nin=$${#files[@]}" ;\
 	for i in $$( seq 1 1 $${#files[@]} ) ;\
 	do ;\
@@ -110,18 +110,18 @@ transients.fits: $(IMAGE:.fits=_warped_blanked_comp_filtered.fits)
 
 # plot the transients into a single image
 transients.png: transients.fits
- 	java -jar ~/Software/topcat/topcat-full.jar -stilts plot2plane \
-   xpix=645 ypix=563 \
-   xflip=true xlabel=RAJ2000 ylabel=DEJ2000 grid=true texttype=antialias \
-    fontsize=14 fontstyle=serif fontweight=bold \
-   auxmap=sron auxquant=12 auxmin=3 auxmax=15 \
-   auxvisible=true auxlabel=peak_flux/local_rms \
-   legend=false \
-   layer=Size \
-      in=$< \
-      x=ra y=dec size=epoch+2 aux=peak_flux/local_rms \
-      shading=aux shape=open_circle scale=1.5 autoscale=false \
-    out=$@
+	java -jar ~/Software/topcat/topcat-full.jar -stilts plot2plane \
+	xpix=645 ypix=563 \
+	xflip=true xlabel=RAJ2000 ylabel=DEJ2000 grid=true texttype=antialias \
+	fontsize=14 fontstyle=serif fontweight=bold \
+	auxmap=sron auxquant=12 auxmin=3 auxmax=15 \
+	auxvisible=true auxlabel=peak_flux/local_rms \
+	legend=false \
+	layer=Size \
+	in=$< \
+	x=ra y=dec size=epoch+2 aux=peak_flux/local_rms \
+	shading=aux shape=open_circle scale=1.5 autoscale=false \
+	out=$@
 
 makefile2dot.py:
 	wget https://github.com/vak/makefile2dot/raw/master/makefile2dot.py
