@@ -8,8 +8,7 @@ IMAGES:=$(shell cat $(IMFILE))
 help:
 	echo "help!"
 
-clean:
-	rm *.fits *.dat k2.mim k2.reg
+science: transients.png
 
 test:
 	f=(${IMAGES}) ;\
