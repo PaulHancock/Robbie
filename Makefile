@@ -1,5 +1,6 @@
 .PHONY: help all clean input trimmed split bkg cubes medians priors stats xmatch push_warp pull_warp submit_jobs
 .SECONDARY:
+.ONESHELL:
 
 IMFILE:=all_images.txt
 IMAGES:=$( shell cat $(IMFILE))
@@ -55,29 +56,65 @@ $(IMAGES:.fits=_warped_prior_comp.fits): %_warped_prior_comp.fits : %_warped.fit
                     --table $*_warped_prior.fits,$*_warped_prior.reg --priorized 2 \
 		            --input mean_comp.fits --noregroup
 
+# joine all priorized sources into a single table
+flux_table.fits: SHELL:=/bin/bash
+flux_table.fits: $(IMAGES:.fits=_warped_proir_comp.fits)
+	files=($^)
+    cmd="java -jar /home/hancock/Software/stilts.jar tmatchn nin=${#files[@]} matcher=exact out=$@"
+    for n in ${!files[@]}
+    do
+    m=$( echo "${n}+1" | bc )
+	cmd="${cmd} in${m}=${files[${n}]} values${m}='uuid' suffix${m}=_${n}"
+    done
+    $(${cmd})
+
+# add variability stats to the flux table
+flux_table_var.fits: flux_table.fits
+	./calc_var.py $< $@
+
+
 # blank the warped images
 $(IMAGES:.fits=_warped_blanked.fits): %_blanked.fits : %.fits %_comp.fits
 	AeRes -c $*_comp.fits -f $< -r $@ --mask --sigma=0.1
 
-# source find warped/blanked images
+# blind source find warped/blanked images
 $(IMAGES:.fits=_warped_blanked_comp.fits): %_warped_blanked_comp.fits : %_warped_blanked.fits $_rms.fits $_bkg.fits
 	aegean $< --background $*_bkg.fits --noise $*_rms.fits \
 	--table $*_warped_blanked.fits,$*_warped_blanked.reg --island
 
 
+# remove the bad transients
+$(IMAGE:.fits=_warped_blanked_comp_filtered.fits): %_warped_blanked_comp_filtered.fits: %_warped_blanked_comp.fits
+	./filter_transients.py $^ $@
 
-stats: 154MHz_flux_table_var.fits 185MHz_flux_table_var.fits
+# join all transients into one catalogue
+transients.fits: SHELL:=/bin/bash
+transients.fits: $(IMAGE:.fits=_warped_blanked_comp_filtered.fits)
+	files=($^)
+    cmd="java -jar /home/hancock/Software/stilts.jar tcatn nin=${#files[@]}"
+    for i in $( seq 1 1 ${#files[@]} )
+    do
+    j=$( echo "${i} -1" | bc )
+    cmd="${cmd} in${i}=${files[${j}]} icmd${i}='addcol epoch ${i}'"
+    done
+    cmd="${cmd} out=$@ ofmt=fits"
+    $(${cmd})
 
-transients:
-	./filter_transents.sh
-
-
-154MHz_flux_table.fits 185MHz_flux_table.fits:
-	./construct_flux_table.sh
-
-154MHz_flux_table_var.fits 185MHz_flux_table_var.fits: 154MHz_flux_table.fits 185MHz_flux_table.fits
-	python calc_var.py
-
+# plot the transients into a single image
+transients.png: SHELL:=/bin/bash
+transients.png: transients.fits
+ 	java -jar ~/Software/topcat/topcat-full.jar -stilts plot2plane \
+   xpix=645 ypix=563 \
+   xflip=true xlabel=RAJ2000 ylabel=DEJ2000 grid=true texttype=antialias \
+    fontsize=14 fontstyle=serif fontweight=bold \
+   auxmap=sron auxquant=12 auxmin=3 auxmax=15 \
+   auxvisible=true auxlabel=peak_flux/local_rms \
+   legend=false \
+   layer=Size \
+      in=$< \
+      x=ra y=dec size=epoch+2 aux=peak_flux/local_rms \
+      shading=aux shape=open_circle scale=1.5 autoscale=false \
+    out=$@
 
 makefile2dot.py:
 	wget https://github.com/vak/makefile2dot/raw/master/makefile2dot.py
@@ -85,11 +122,6 @@ makefile2dot.py:
 vis.png: Makefile makefile2dot.py
 	python makefile2dot.py < $< | dot -Tpng > $@
 
+### TODO: convert the below rules
 gleam: k2.mim
 	MIMAS --maskcat k2.mim ~/alpha/DATA/GLEAM_EGC.fits GLEAM_SUB.fits --colnames RAJ2000 DEJ2000 --negate
-
-%MHz_transients.fits:
-	./collect_transients.sh
-
-%MHz_transients.png: %MHz_transients.fits
-	./transients_plot.sh
