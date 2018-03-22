@@ -1,8 +1,8 @@
 *.fits
 *.reg
-*.dat
 .idea
 vis.png
 makefile2dot.py
-k2.mim
+*.mim
 *.png
+all_images.txt
