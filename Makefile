@@ -16,7 +16,10 @@ test:
 	echo $(IMAGES)
 
 # dummy rules to indicate that these files are pre-existing
-$(IMAGES):
+$(IMAGES) region.mim:
+
+GLEAM_SUB.fits: region.mim
+	MIMAS --maskcat $< ~/alpha/DATA/GLEAM_EGC.fits $@ --colnames RAJ2000 DEJ2000 --negate
 
 # Background and noise maps for the sub images
 $(IMAGES:.fits=_bkg.fits): %_bkg.fits : %.fits
@@ -27,8 +30,8 @@ $(IMAGES:.fits=_rms.fits): %_rms.fits : %.fits
 	test -f $@ || echo BANE again $<
 
 # Blind source finding
-$(IMAGES:.fits=_comp.fits): %_comp.fits : %.fits %_bkg.fits %_rms.fits
-	aegean $< --autoload --island --table $<,$*.reg
+$(IMAGES:.fits=_comp.fits): %_comp.fits : %.fits %_bkg.fits %_rms.fits region.mim
+	aegean $< --autoload --island --table $<,$*.reg --region=region.mim
 
 
 # cross matching
@@ -81,9 +84,9 @@ $(IMAGES:.fits=_warped_blanked.fits): %_blanked.fits : %.fits %_comp.fits
 	AeRes -c $*_comp.fits -f $< -r $@ --mask --sigma=0.1
 
 # blind source find warped/blanked images
-$(IMAGES:.fits=_warped_blanked_comp.fits): %_warped_blanked_comp.fits : %_warped_blanked.fits $_rms.fits $_bkg.fits
+$(IMAGES:.fits=_warped_blanked_comp.fits): %_warped_blanked_comp.fits : %_warped_blanked.fits $_rms.fits $_bkg.fits region.mim
 	aegean $< --background $*_bkg.fits --noise $*_rms.fits \
-	--table $*_warped_blanked.fits,$*_warped_blanked.reg --island
+	--table $*_warped_blanked.fits,$*_warped_blanked.reg --island --region region.mim
 
 
 # remove the bad transients
@@ -122,7 +125,3 @@ makefile2dot.py:
 
 vis.png: Makefile makefile2dot.py
 	python makefile2dot.py < $< | dot -Tpng > $@
-
-### TODO: convert the below rules
-gleam: k2.mim
-	MIMAS --maskcat k2.mim ~/alpha/DATA/GLEAM_EGC.fits GLEAM_SUB.fits --colnames RAJ2000 DEJ2000 --negate
