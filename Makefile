@@ -57,7 +57,7 @@ mean_bkg.fits mean_rms.fits: mean.fits
 
 # create master (mean) catalogue
 mean_comp.fits: mean.fits mean_bkg.fits mean_rms.fits
-	aegean $< --autoload --island --table $<,$*.reg
+	aegean $< --autoload --island --table mean.fits,mean.reg
 
 # priorize to make light curves from warped images
 $(IMAGES:.fits=_warped_prior_comp.fits): %_warped_prior_comp.fits : %_warped.fits %_bkg.fits %_rms.fits mean_comp.fits
@@ -65,7 +65,7 @@ $(IMAGES:.fits=_warped_prior_comp.fits): %_warped_prior_comp.fits : %_warped.fit
                     --table $*_warped_prior.fits,$*_warped_prior.reg --priorized 2 \
 		            --input mean_comp.fits --noregroup
 
-# joine all priorized sources into a single table
+# join all priorized sources into a single table
 flux_table.fits: $(IMAGES:.fits=_warped_prior_comp.fits)
 	files=($^) ;\
 	cmd="java -jar /home/hancock/Software/stilts.jar tmatchn nin=$${#files[@]} matcher=exact out=$@ " ;\
