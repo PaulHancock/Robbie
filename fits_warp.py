@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 __author__ = "Paul Hancock and Natasha Hurley-Walker"
-__date__ = "05/09/2016"
+__date__ = "03/23/2018"
 
 import numpy as np
 import os
@@ -13,6 +13,7 @@ from astropy.io.votable import parse_single_table
 import sys
 import glob
 import argparse
+import psutil
 
 def which(program):
     import os
@@ -249,7 +250,8 @@ def correct_image(fname, dxmodel, dymodel, suffix):
     """
     # Get co-ordinate system from first image
     im = fits.open(fname)
-    data = np.squeeze(im[0].data)
+    im[0].data = np.squeeze(im[0].data)
+    data = im[0].data
     # create a map of (x,y) pixel pairs as a list of tuples
     xy = np.indices(data.shape, dtype=np.float32)
     xy.shape = (2, xy.shape[1]*xy.shape[2])
@@ -257,9 +259,21 @@ def correct_image(fname, dxmodel, dymodel, suffix):
     x = np.array(xy[1, :])
     y = np.array(xy[0, :])
 
+    mem = int(psutil.virtual_memory().available * 0.75)
+    print "Detected memorgy ~{0}GB".format(mem/2**30)
+    print "Data is < {0}MB".format(data.shape[0]*data.shape[1]*50/2**20)
+    stride = min(mem, data.shape[0]*data.shape[1]*50)
+    stride = (stride//data.shape[0])*data.shape[0]
+    stride = min(stride, 100000)
+
+    if stride < len(x):
+        print "Processing {0} rows at a time".format(stride//data.shape[0])
+    else:
+        print "Processing entire image at once"
+
     # calculate the corrections in blocks of 100k since the rbf fails on large blocks
     print 'applying corrections to pixel co-ordinates',
-    if len(x) > 100000:
+    if len(x) > stride:
         print 'in cycles'
         n = 0
         borders = range(0, len(x)+1, 100000)
@@ -280,22 +294,27 @@ def correct_image(fname, dxmodel, dymodel, suffix):
     print "making model"
 
     print 'interpolating', fname
-    if False: #len(x) > 100000:
+    if len(x) > stride:
         print 'in cycles'
         n = 0
-        borders = range(0, len(x)+1, 100000)
+        borders = range(0, len(x)+1, stride)
         if borders[-1] != len(x):
             borders.append(len(x))
-        for a, b in zip(borders[:-1], borders[1:]):
-            idx = np.unravel_index(range(a, b), im[0].data.shape)
-            # have a buffer of data that we use in the model.
-            model = CloughTocher2DInterpolator(np.transpose([x[a:b], y[a:b]]), np.ravel(data[idx]))
+        for a, b in zip(borders, borders[1:]):
+            # indexes into the image based on the index into the raveled data
+            idx = np.unravel_index(range(a, b), data.shape)
 
-            # evaluate the model over a restricted range
+            # model using an extra two lines to avoid edge effects
+            bp = min(b+data.shape[0]*2, len(x))
+            idxp = np.unravel_index(range(a, bp), data.shape)
+            model = CloughTocher2DInterpolator(np.transpose([x[a:bp], y[a:bp]]), np.ravel(data[idxp]))
+
+            # evaluate the model over our initial range
             im[0].data[idx] = model(xy[1, a:b], xy[0, a:b])
             n += 1
             sys.stdout.write("{0:3.0f}%...".format(100*n/len(borders)))
             sys.stdout.flush()
+            # break
         print ""
     else:
         print 'all at once'
