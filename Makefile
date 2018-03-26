@@ -93,7 +93,7 @@ $(IMAGES:.fits=_warped_blanked_comp.fits): %_warped_blanked_comp.fits : %_warped
 
 # remove the bad transients
 $(IMAGES:.fits=_warped_blanked_comp_filtered.fits): %_warped_blanked_comp_filtered.fits : %_warped_blanked_comp.fits
-	./filter_transients.py $^ $@
+	./filter_transients.py $^ $*_warped_blanked.fits $@
 
 # join all transients into one catalogue
 transients.fits: $(IMAGES:.fits=_warped_blanked_comp_filtered.fits)
