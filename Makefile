@@ -100,12 +100,12 @@ transients.fits: $(IMAGES:.fits=_warped_blanked_comp_filtered.fits)
 	files=(${^}) ;\
 	cmd="java -jar /home/hancock/Software/stilts.jar tcatn nin=$${#files[@]}" ;\
 	for i in $$( seq 1 1 $${#files[@]} ) ;\
-	do ;\
+	do \
 	j=$$( echo "$${i} -1" | bc ) ;\
 	cmd="$${cmd} in$${i}=$${files[$${j}]} icmd$${i}='addcol epoch $${i}'" ;\
 	done ;\
 	cmd="$${cmd} out=$@ ofmt=fits" ;\
-	$$($${cmd})
+	echo $${cmd} | bash
 
 # plot the transients into a single image
 transients.png: transients.fits
