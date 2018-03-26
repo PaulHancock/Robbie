@@ -8,7 +8,7 @@ IMAGES:=$(shell cat $(IMFILE))
 help:
 	echo "help!"
 
-science: transients.png
+science: transients.png flux_table_var.fits
 
 test:
 	f=(${IMAGES}) ;\
@@ -61,7 +61,7 @@ mean_comp.fits: mean.fits mean_bkg.fits mean_rms.fits
 
 # priorize to make light curves from warped images
 $(IMAGES:.fits=_warped_prior_comp.fits): %_warped_prior_comp.fits : %_warped.fits %_bkg.fits %_rms.fits mean_comp.fits
-	aegean ${image} --background $*_bkg.fits --noise $*_rms.fits \
+	aegean $< --background $*_bkg.fits --noise $*_rms.fits \
                     --table $*_warped_prior.fits,$*_warped_prior.reg --priorized 2 \
 		            --input mean_comp.fits --noregroup
 
@@ -70,7 +70,7 @@ flux_table.fits: $(IMAGES:.fits=_warped_prior_comp.fits)
 	files=($^) ;\
 	cmd="java -jar /home/hancock/Software/stilts.jar tmatchn nin=$${#files[@]} matcher=exact out=$@ " ;\
 	for n in $${!files[@]} ;\
-	do ;\
+	do \
 	m=$$( echo "$${n}+1" | bc ) ;\
 	cmd="$${cmd} in$${m}=$${files[${n}]} values$${m}='uuid' suffix$${m}=_$${n}" ;\
 	done ;\
