@@ -327,7 +327,6 @@ def correct_image(fname, dxmodel, dymodel, suffix):
             n += 1
             sys.stdout.write("{0:3.0f}%...".format(100*n/len(borders)))
             sys.stdout.flush()
-            break
         print ""
     else:
         print 'all at once'
