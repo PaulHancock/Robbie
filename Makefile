@@ -72,7 +72,7 @@ flux_table.fits: $(IMAGES:.fits=_warped_prior_comp.fits)
 	for n in $${!files[@]} ;\
 	do \
 	m=$$( echo "$${n}+1" | bc ) ;\
-	cmd="$${cmd} in$${m}=$${files[${n}]} values$${m}='uuid' suffix$${m}=_$${n}" ;\
+	cmd="$${cmd} in$${m}=$${files[$${n}]} values$${m}='uuid' suffix$${m}=_$${n}" ;\
 	done ;\
 	echo $${cmd} | bash
 
