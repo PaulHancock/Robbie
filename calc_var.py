@@ -1,4 +1,4 @@
-#! python
+#!/usr/bin/env python
 __author__ = 'Paul Hancock'
 __date__ = ''
 
