@@ -1,9 +1,8 @@
-#!/usr/bin/bash python
+#!/usr/bin/env python
 __author__ = 'Paul Hancock'
 __date__ = '27-03-2018'
 
 
-import numpy as np
 import matplotlib.pyplot as plt
 from astropy.table import Table
 import sys
@@ -32,6 +31,7 @@ def plot(n):
 
 
 fname = sys.argv[-1]
+print "loading ",fname
 cat = Table.read(fname).to_pandas()
 flux_cols = [a for a in cat.columns if a.startswith('peak_flux')]
 err_flux_cols = [a for a in cat.columns if a.startswith('err_peak_flux')]
