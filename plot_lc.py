@@ -11,8 +11,10 @@ import os
 
 def plot(n):
     row = cat.iloc[n]
-    fname = 'plots/{0}'.format(row['uuid_0'])
+    fname = 'plots/{0}.png'.format(row['uuid_0'])
+    print fname,
     if os.path.exists(fname):
+        print ".. skip"
         return
     fluxes = row[flux_cols]
     err_fluxes = row[err_flux_cols]
@@ -27,6 +29,7 @@ def plot(n):
     plt.text(x=xlims[1]*0.8, y=y, s=s)
     plt.title('{0},{1}: {2}'.format(row['island_0'], row['source_0'], row['uuid_0']))
     plt.savefig(fname)
+    print ".. done"
     return
 
 
