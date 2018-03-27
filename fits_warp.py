@@ -199,6 +199,7 @@ def correct_images(fnames, dxmodel, dymodel, suffix):
         print 'in cycles'
         n = 0
         borders = range(0, len(x)+1, 100000)
+
         if borders[-1] != len(x):
             borders.append(len(x))
         for s1 in [slice(a, b) for a, b in zip(borders[:-1], borders[1:])]:
@@ -235,6 +236,8 @@ def correct_images(fnames, dxmodel, dymodel, suffix):
         print "saving..."
         im.writeto(fout, overwrite=True, output_verify='fix+warn')
         print "wrote", fout
+        # Explicitly delete potential memory hogs
+        del im, data
     return
 
 def correct_image(fname, dxmodel, dymodel, suffix):
@@ -273,6 +276,8 @@ def correct_image(fname, dxmodel, dymodel, suffix):
 
     # calculate the corrections in blocks of 100k since the rbf fails on large blocks
     print 'applying corrections to pixel co-ordinates',
+    # remember the largest offset
+    maxx = maxy = 0
     if len(x) > stride:
         print 'in cycles'
         n = 0
@@ -280,9 +285,13 @@ def correct_image(fname, dxmodel, dymodel, suffix):
         if borders[-1] != len(x):
             borders.append(len(x))
         for s1 in [slice(a, b) for a, b in zip(borders[:-1], borders[1:])]:
-            x[s1] += dxmodel(x[s1], y[s1])
+            off = dxmodel(x[s1], y[s1])
+            maxx = max(np.max(np.abs(off)), maxx)
+            x[s1] += off
             # the x coords were just changed so we need to refer back to the original coords
-            y[s1] += dymodel(xy[1, :][s1], y[s1])
+            off = dymodel(xy[1, :][s1], y[s1])
+            maxy = max(np.max(np.abs(off)), maxy)
+            y[s1] += off
             n += 1
             sys.stdout.write("{0:3.0f}%...".format(100*n/len(borders)))
             sys.stdout.flush()
@@ -293,28 +302,32 @@ def correct_image(fname, dxmodel, dymodel, suffix):
         y += dymodel(xy[1, :], y)
     print "making model"
 
+    extra_lines = int(max(maxx, maxy)) + 1
     print 'interpolating', fname
+
     if len(x) > stride:
         print 'in cycles'
         n = 0
         borders = range(0, len(x)+1, stride)
         if borders[-1] != len(x):
             borders.append(len(x))
+        print borders
         for a, b in zip(borders, borders[1:]):
             # indexes into the image based on the index into the raveled data
             idx = np.unravel_index(range(a, b), data.shape)
-
-            # model using an extra two lines to avoid edge effects
-            bp = min(b+data.shape[0]*2, len(x))
-            idxp = np.unravel_index(range(a, bp), data.shape)
-            model = CloughTocher2DInterpolator(np.transpose([x[a:bp], y[a:bp]]), np.ravel(data[idxp]))
+            # model using an extra few lines to avoid edge effects
+            bp = min(b + data.shape[0]*extra_lines, len(x))
+            # also go backwards by a few lines
+            ap = max(0, a - data.shape[0]*extra_lines)
+            idxp = np.unravel_index(range(ap, bp), data.shape)
+            model = CloughTocher2DInterpolator(np.transpose([x[ap:bp], y[ap:bp]]), np.ravel(data[idxp]))
 
             # evaluate the model over our initial range
             im[0].data[idx] = model(xy[1, a:b], xy[0, a:b])
             n += 1
             sys.stdout.write("{0:3.0f}%...".format(100*n/len(borders)))
             sys.stdout.flush()
-            # break
+            break
         print ""
     else:
         print 'all at once'
