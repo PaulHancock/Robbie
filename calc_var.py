@@ -15,7 +15,7 @@ def chisq(series, fluxes=[], errs=[]):
     f = f[m]
     e = e[m]
     mean = np.mean(f)
-    val = np.sum((f - mean) ** 2) / np.sum(e)
+    val = np.sum((f - mean) ** 2 / e**2)
     return val
 
 
