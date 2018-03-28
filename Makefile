@@ -57,7 +57,7 @@ mean_bkg.fits mean_rms.fits: mean.fits
 
 # create master (mean) catalogue
 mean_comp.fits: mean.fits mean_bkg.fits mean_rms.fits
-	aegean $< --autoload --island --table mean.fits,mean.reg
+	aegean $< --autoload --island --table mean.fits,mean.reg --region=region.mim
 
 # priorize to make light curves from warped images
 $(IMAGES:.fits=_warped_prior_comp.fits): %_warped_prior_comp.fits : %_warped.fits %_bkg.fits %_rms.fits mean_comp.fits
@@ -79,7 +79,7 @@ flux_table.fits: $(IMAGES:.fits=_warped_prior_comp.fits)
 # add variability stats to the flux table
 flux_table_var.fits: flux_table.fits
 	./calc_var.py $< $@
-	./plot_lc.py $<
+	./plot_lc.py $@
 
 
 # blank the warped images
