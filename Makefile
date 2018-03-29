@@ -4,6 +4,8 @@ SHELL:=/bin/bash
 
 IMFILE:=all_images.txt
 IMAGES:=$(shell cat $(IMFILE))
+REFCAT:=/home/hancockc/alpha/DATA/GLEAM_EGC.fits
+STILTS:=java -jar /home/hancock/Software/topcat/topcat-full.jar -stilts
 
 help:
 	echo "help!"
@@ -21,7 +23,7 @@ test:
 $(IMAGES) region.mim:
 
 GLEAM_SUB.fits: region.mim
-	MIMAS --maskcat $< ~/alpha/DATA/GLEAM_EGC.fits $@ --colnames RAJ2000 DEJ2000 --negate
+	MIMAS --maskcat $< $(REFCAT) $@ --colnames RAJ2000 DEJ2000 --negate
 
 # Background and noise maps for the sub images
 $(IMAGES:.fits=_bkg.fits): %_bkg.fits : %.fits
@@ -99,7 +101,7 @@ $(IMAGES:.fits=_warped_blanked_comp_filtered.fits): %_warped_blanked_comp_filter
 # join all transients into one catalogue
 transients.fits: $(IMAGES:.fits=_warped_blanked_comp_filtered.fits)
 	files=(${^}) ;\
-	cmd="java -jar /home/hancock/Software/stilts.jar tcatn nin=$${#files[@]}" ;\
+	cmd="${STILTS} tcatn nin=$${#files[@]}" ;\
 	for i in $$( seq 1 1 $${#files[@]} ) ;\
 	do \
 	j=$$( echo "$${i} -1" | bc ) ;\
@@ -110,7 +112,7 @@ transients.fits: $(IMAGES:.fits=_warped_blanked_comp_filtered.fits)
 
 # plot the transients into a single image
 transients.png: transients.fits
-	java -jar ~/Software/topcat/topcat-full.jar -stilts plot2plane \
+	$(STILTS) plot2plane \
 	xpix=645 ypix=563 \
 	xflip=true xlabel=RAJ2000 ylabel=DEJ2000 grid=true texttype=antialias \
 	fontsize=14 fontstyle=serif fontweight=bold \
