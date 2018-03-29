@@ -1,21 +1,30 @@
 .SECONDARY:
 .ONESHELL:
 SHELL:=/bin/bash
-
+# input images
 IMFILE:=all_images.txt
 IMAGES:=$(shell cat $(IMFILE))
+# reference catalogue
 REFCAT:=/home/hancockc/alpha/DATA/GLEAM_EGC.fits
+# invocation of stilts
 STILTS:=java -jar /home/hancock/Software/topcat/topcat-full.jar -stilts
+# prefix for outputfiles
+PREFIX:=
+CUBE:=$(PREFIX)cube.fits
+MEAN:=$(PREFIX)mean.fits
+# region file to use
+REGION:=region.mim
+
 
 help:
 	echo "help!"
 
-science: transients.png flux_table_var.fits
+science: $(PREFIX)transients.png $(PREFIX)flux_table_var.fits
 
 # dummy rules to indicate that these files are pre-existing
-$(IMAGES) region.mim:
+$(IMAGES) $(REGION):
 
-GLEAM_SUB.fits: region.mim
+GLEAM_SUB.fits: $(REGION)
 	MIMAS --maskcat $< $(REFCAT) $@ --colnames RAJ2000 DEJ2000 --negate
 
 # Background and noise maps for the sub images
@@ -27,8 +36,8 @@ $(IMAGES:.fits=_rms.fits): %_rms.fits : %.fits
 	test -f $@ || BANE $<
 
 # Blind source finding
-$(IMAGES:.fits=_comp.fits): %_comp.fits : %.fits %_bkg.fits %_rms.fits region.mim
-	aegean $< --autoload --island --table $<,$*.reg --region=region.mim
+$(IMAGES:.fits=_comp.fits): %_comp.fits : %.fits %_bkg.fits %_rms.fits $(REGION)
+	aegean $< --autoload --island --table $<,$*.reg --region=$(REGION)
 
 
 # cross matching
@@ -40,28 +49,28 @@ $(IMAGES:.fits=_warped.fits): %_warped.fits : %.fits %_xm.fits
 	./fits_warp.py --infits $< --xm $*_xm.fits --suffix warped --ra1 ra --dec1 dec --ra2 RAJ2000 --dec2 DEJ2000
 
 # Create cube
-cube.fits: $(IMAGES:.fits=_warped.fits)
+$(CUBE): $(IMAGES:.fits=_warped.fits)
 	./make_cube.py $@ $^
 
 # create mean image
-mean.fits: cube.fits
+$(MEAN): $(CUBE)
 	./make_mean.py $^ $@
 
-mean_bkg.fits mean_rms.fits: mean.fits
+$(MEAN:.fits=_bkg.fits) $(MEAN:.fits=_rms.fits): $(MEAN)
 	BANE $<
 
 # create master (mean) catalogue
-mean_comp.fits: mean.fits mean_bkg.fits mean_rms.fits
-	aegean $< --autoload --island --table mean.fits,mean.reg --region=region.mim
+$(MEAN:.fits=_comp.fits): %_comp.fits : %.fits %_bkg.fits %_rms.fits
+	aegean $< --autoload --island --table $*.fits,$*.reg --region=$(REGION)
 
 # priorize to make light curves from warped images
-$(IMAGES:.fits=_warped_prior_comp.fits): %_warped_prior_comp.fits : %_warped.fits %_bkg.fits %_rms.fits mean_comp.fits
+$(IMAGES:.fits=_warped_prior_comp.fits): %_warped_prior_comp.fits : %_warped.fits %_bkg.fits %_rms.fits $(PREFIX)mean_comp.fits
 	aegean $< --background $*_bkg.fits --noise $*_rms.fits \
                     --table $*_warped_prior.fits,$*_warped_prior.reg --priorized 2 \
-		            --input mean_comp.fits --noregroup
+		            --input $(PREFIX)mean_comp.fits --noregroup
 
 # join all priorized sources into a single table
-flux_table.fits: $(IMAGES:.fits=_warped_prior_comp.fits)
+$(PREFIX)flux_table.fits: $(IMAGES:.fits=_warped_prior_comp.fits)
 	files=($^) ;\
 	cmd="java -jar /home/hancock/Software/stilts.jar tmatchn nin=$${#files[@]} matcher=exact out=$@ " ;\
 	for n in $${!files[@]} ;\
@@ -72,19 +81,19 @@ flux_table.fits: $(IMAGES:.fits=_warped_prior_comp.fits)
 	echo $${cmd} | bash
 
 # add variability stats to the flux table
-flux_table_var.fits: flux_table.fits
+$(PREFIX)flux_table_var.fits: $(PREFIX)flux_table.fits
 	./calc_var.py $< $@
 	./plot_lc.py $@
 
 
 # blank the warped images
-$(IMAGES:.fits=_warped_blanked.fits): %_warped_blanked.fits : %_warped.fits mean_comp.fits
-	AeRes -c mean_comp.fits -f $< -r $@ --mask --sigma=0.1
+$(IMAGES:.fits=_warped_blanked.fits): %_warped_blanked.fits : %_warped.fits $(PREFIX)mean_comp.fits
+	AeRes -c $(PREFIX)mean_comp.fits -f $< -r $@ --mask --sigma=0.1
 
 # blind source find warped/blanked images
-$(IMAGES:.fits=_warped_blanked_comp.fits): %_warped_blanked_comp.fits : %_warped_blanked.fits %_rms.fits %_bkg.fits region.mim
+$(IMAGES:.fits=_warped_blanked_comp.fits): %_warped_blanked_comp.fits : %_warped_blanked.fits %_rms.fits %_bkg.fits $(REGION)
 	aegean $< --background $*_bkg.fits --noise $*_rms.fits \
-	--table $*_warped_blanked.fits,$*_warped_blanked.reg --island --region region.mim
+	--table $*_warped_blanked.fits,$*_warped_blanked.reg --island --region $(REGION)
 
 
 # remove the bad transients
@@ -92,7 +101,7 @@ $(IMAGES:.fits=_warped_blanked_comp_filtered.fits): %_warped_blanked_comp_filter
 	./filter_transients.py $^ $*_warped_blanked.fits $@
 
 # join all transients into one catalogue
-transients.fits: $(IMAGES:.fits=_warped_blanked_comp_filtered.fits)
+$(PREFIX)transients.fits: $(IMAGES:.fits=_warped_blanked_comp_filtered.fits)
 	files=(${^}) ;\
 	cmd="${STILTS} tcatn nin=$${#files[@]}" ;\
 	for i in $$( seq 1 1 $${#files[@]} ) ;\
@@ -104,7 +113,7 @@ transients.fits: $(IMAGES:.fits=_warped_blanked_comp_filtered.fits)
 	echo $${cmd} | bash
 
 # plot the transients into a single image
-transients.png: transients.fits
+$(PREFIX)transients.png: $(PREFIX)transients.fits
 	$(STILTS) plot2plane \
 	xpix=645 ypix=563 \
 	xflip=true xlabel=RAJ2000 ylabel=DEJ2000 grid=true texttype=antialias \
