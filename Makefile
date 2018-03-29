@@ -5,7 +5,7 @@ SHELL:=/bin/bash
 IMFILE:=all_images.txt
 IMAGES:=$(shell cat $(IMFILE))
 # reference catalogue
-REFCAT:=/home/hancockc/alpha/DATA/GLEAM_EGC.fits
+REFCAT:=/home/hancock/alpha/DATA/GLEAM_EGC.fits
 # invocation of stilts
 STILTS:=java -jar /home/hancock/Software/topcat/topcat-full.jar -stilts
 # prefix for outputfiles
