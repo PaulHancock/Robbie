@@ -12,13 +12,6 @@ help:
 
 science: transients.png flux_table_var.fits
 
-test:
-	f=(${IMAGES}) ;\
-	for a in $${f[@]};\
-	do \
-	echo "$${a}" ;\
-	done
-
 # dummy rules to indicate that these files are pre-existing
 $(IMAGES) region.mim:
 
