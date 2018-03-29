@@ -167,7 +167,7 @@ def make_pix_models(fname, ra1='ra', dec1='dec', ra2='RAJ2000', dec2='DEJ2000', 
         cbar3.ax.yaxis.set_ticks_position('right')
 
         outname = os.path.splitext(fname)[0] +'.png'
-        pyplot.show()
+#        pyplot.show()
         pyplot.savefig(outname, dpi=200)
 
     return dxmodel, dymodel
@@ -193,81 +193,16 @@ def correct_images(fnames, dxmodel, dymodel, suffix):
     x = np.array(xy[1, :])
     y = np.array(xy[0, :])
 
-    # calculate the corrections in blocks of 100k since the rbf fails on large blocks
-    print 'applying corrections to pixel co-ordinates',
-    if len(x) > 100000:
-        print 'in cycles'
-        n = 0
-        borders = range(0, len(x)+1, 100000)
-
-        if borders[-1] != len(x):
-            borders.append(len(x))
-        for s1 in [slice(a, b) for a, b in zip(borders[:-1], borders[1:])]:
-            x[s1] += dxmodel(x[s1], y[s1])
-            # the x coords were just changed so we need to refer back to the original coords
-            y[s1] += dymodel(xy[1, :][s1], y[s1])
-            n += 1
-            sys.stdout.write("{0:3.0f}%...".format(100*n/len(borders)))
-            sys.stdout.flush()
-    else:
-        print 'all at once'
-        x += dxmodel(x, y)
-        y += dymodel(xy[1, :], y)
-
-    for fname in fnames:
-        fout = fname.replace(".fits","_"+suffix+".fits")
-        im = fits.open(fname)
-        im.writeto(fout, overwrite=True, output_verify='fix+warn')
-        data = np.squeeze(im[0].data)
-        print 'interpolating', fname
-        ifunc = CloughTocher2DInterpolator(np.transpose([x,y]), np.ravel(data))
-        interpolated_map = ifunc(xy[1, :], xy[0, :])
-        print "reshaping {0} -> {1}".format(interpolated_map.shape, data.shape)
-        interpolated_map.shape = data.shape
-        # Float32 instead of Float64 since the precision is meaningless
-        print "int32 -> int64"
-        im[0].data = np.array(interpolated_map,dtype=np.float32)
-        # NaN the edges by 10 pixels to avoid weird edge effects
-        print "blanking edges"
-        im[0].data[0:10, :] = np.nan
-        im[0].data[:, 0:10] = np.nan
-        im[0].data[:, -10:im[0].data.shape[0]] = np.nan
-        im[0].data[-10:im[0].data.shape[1], :] = np.nan
-        print "saving..."
-        im.writeto(fout, overwrite=True, output_verify='fix+warn')
-        print "wrote", fout
-        # Explicitly delete potential memory hogs
-        del im, data
-    return
-
-def correct_image(fname, dxmodel, dymodel, suffix):
-    """
-    Read a list of fits image, and apply pixel-by-pixel corrections based on the
-    given x/y models. Interpolate back to a regular grid, and then write an
-    output file
-    :param fname: input fits file
-    :param dxodel: x model
-    :param dymodel: x model
-    :param fout: output fits file
-    :return: None
-    """
-    # Get co-ordinate system from first image
-    im = fits.open(fname)
-    im[0].data = np.squeeze(im[0].data)
-    data = im[0].data
-    # create a map of (x,y) pixel pairs as a list of tuples
-    xy = np.indices(data.shape, dtype=np.float32)
-    xy.shape = (2, xy.shape[1]*xy.shape[2])
-
-    x = np.array(xy[1, :])
-    y = np.array(xy[0, :])
-
     mem = int(psutil.virtual_memory().available * 0.75)
-    print "Detected memorgy ~{0}GB".format(mem/2**30)
-    print "Data is < {0}MB".format(data.shape[0]*data.shape[1]*50/2**20)
-    stride = min(mem, data.shape[0]*data.shape[1]*50)
+    print "Detected memory ~{0}GB".format(mem/2**30)
+# 32-bit floats, bit to byte conversion, MB conversion
+    print "Image is {0}MB".format(data.shape[0]*data.shape[1]*32/(8*2**20))
+    pixmem = 40000
+    print "Allowing {0}kB per pixel".format(pixmem/2**10)
+    stride = mem / pixmem
+# Make sure it is row-divisible
     stride = (stride//data.shape[0])*data.shape[0]
-    stride = min(stride, 100000)
+    print stride, len(x)
 
     if stride < len(x):
         print "Processing {0} rows at a time".format(stride//data.shape[0])
@@ -281,7 +216,7 @@ def correct_image(fname, dxmodel, dymodel, suffix):
     if len(x) > stride:
         print 'in cycles'
         n = 0
-        borders = range(0, len(x)+1, 100000)
+        borders = range(0, len(x)+1, stride)
         if borders[-1] != len(x):
             borders.append(len(x))
         for s1 in [slice(a, b) for a, b in zip(borders[:-1], borders[1:])]:
@@ -300,53 +235,78 @@ def correct_image(fname, dxmodel, dymodel, suffix):
         print 'all at once'
         x += dxmodel(x, y)
         y += dymodel(xy[1, :], y)
-    print "making model"
 
-    extra_lines = int(max(maxx, maxy)) + 1
-    print 'interpolating', fname
+# Note that a potential speed-up would be to nest the file loop inside the
+# model calculation loop, so you don't have to calculate the model so many times
+# However this would require either:
+# 1) holding all the files in memory; but the model calculation is done in a loop
+#    in order to reduce memory use, so this would be counter-productive; or:
+# 2) writing out partly-complete FITS files and then reading them back in again,
+#    which is a bit messy and so has not yet been implemented.
+# Fancy splines need about this amount of buffer in order to interpolate the data
+# if = 5, differences ~ 10^-6 Jy/beam ; if = 15, differences ~ 10^-9; if = 25, 0
+    extra_lines = 25
+#    extra_lines = int(max(maxx, maxy)) + 1
+# Testing shows that this stage is much less memory intensive, and we can do more
+# rows per cycle. However there is very little speed-up from processing with fewer
+# rows, so if needed this number can be decreased by factors of 1-10 with no ill
+# effect on processing time.
+    stride *= 40
+    for fname in fnames:
+        fout = fname.replace(".fits","_"+suffix+".fits")
+        im = fits.open(fname)
+        im.writeto(fout, overwrite=True, output_verify='fix+warn')
+        oldshape = im[0].data.shape
+        data = np.squeeze(im[0].data)
+        squeezedshape = data.shape
+        print 'interpolating', fname
+# Note that we need a fresh copy of the data because otherwise we will be trying to
+# interpolate over the results of our interpolation
+        newdata = np.copy(data)
 
-    if len(x) > stride:
-        print 'in cycles'
-        n = 0
-        borders = range(0, len(x)+1, stride)
-        if borders[-1] != len(x):
-            borders.append(len(x))
-        print borders
-        for a, b in zip(borders, borders[1:]):
-            # indexes into the image based on the index into the raveled data
-            idx = np.unravel_index(range(a, b), data.shape)
-            # model using an extra few lines to avoid edge effects
-            bp = min(b + data.shape[0]*extra_lines, len(x))
-            # also go backwards by a few lines
-            ap = max(0, a - data.shape[0]*extra_lines)
-            idxp = np.unravel_index(range(ap, bp), data.shape)
-            model = CloughTocher2DInterpolator(np.transpose([x[ap:bp], y[ap:bp]]), np.ravel(data[idxp]))
-
-            # evaluate the model over our initial range
-            im[0].data[idx] = model(xy[1, a:b], xy[0, a:b])
-            n += 1
-            sys.stdout.write("{0:3.0f}%...".format(100*n/len(borders)))
-            sys.stdout.flush()
-        print ""
-    else:
-        print 'all at once'
-        im[0].data = CloughTocher2DInterpolator(np.transpose([x, y]), np.ravel(data))(xy[1, :], xy[0, :]).reshape(im[0].data.shape)
-
-    # Float32 instead of Float64 since the precision is meaningless
-    print "int32 -> int64"
-    im[0].data = np.float32(im[0].data)
-    # NaN the edges by 10 pixels to avoid weird edge effects
-    print "blanking edges"
-    im[0].data[0:10, :] = np.nan
-    im[0].data[:, 0:10] = np.nan
-    im[0].data[:, -10:im[0].data.shape[0]] = np.nan
-    im[0].data[-10:im[0].data.shape[1], :] = np.nan
-    print "saving..."
-    fout = fname.replace(".fits","_"+suffix+".fits")
-    im.writeto(fout, overwrite=True, output_verify='fix+warn')
-    print "wrote", fout
+        if len(x) > stride:
+            print "Processing {0} rows at a time".format(stride//data.shape[0])
+            n = 0
+            borders = range(0, len(x)+1, stride)
+            if borders[-1] != len(x):
+                borders.append(len(x))
+            for a, b in zip(borders, borders[1:]):
+                # indexes into the image based on the index into the raveled data
+                idx = np.unravel_index(range(a, b), data.shape)
+                # model using an extra few lines to avoid edge effects
+                bp = min(b + data.shape[0]*extra_lines, len(x))
+                # also go backwards by a few lines
+                ap = max(0, a - data.shape[0]*extra_lines)
+                idxp = np.unravel_index(range(ap, bp), data.shape)
+                model = CloughTocher2DInterpolator(np.transpose([x[ap:bp], y[ap:bp]]), np.ravel(data[idxp]),fill_value=-1)
+                # evaluate the model over this range
+                newdata[idx] = model(xy[1, a:b], xy[0, a:b])
+                n += 1
+                sys.stdout.write("{0:3.0f}%...".format(100*n/len(borders)))
+                sys.stdout.flush()
+#                break
+            print ""
+        else:
+            print 'all at once'
+            model = CloughTocher2DInterpolator(np.transpose([x, y]), np.ravel(data))
+            data = model(xy[1, :], xy[0, :])
+            print data.shape
+        # Float32 instead of Float64 since the precision is meaningless
+        print "int64 -> int32"
+        data = np.float32(newdata.reshape(squeezedshape))
+        # NaN the edges by 10 pixels to avoid weird edge effects
+        print "blanking edges"
+        data[0:10, :] = np.nan
+        data[:, 0:10] = np.nan
+        data[:, -10:data.shape[0]] = np.nan
+        data[-10:data.shape[1], :] = np.nan
+        im[0].data = data.reshape(oldshape)
+        print "saving..."
+        im.writeto(fout, overwrite=True, output_verify='fix+warn')
+        print "wrote", fout
+        # Explicitly delete potential memory hogs
+        del im, data
     return
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -385,7 +345,7 @@ if __name__ == "__main__":
                                  fnames[0], results.plot, results.smooth)
         if results.suffix is not None:
             # Correct all the images
-            for f in fnames:
-                correct_image(f, dx, dy, results.suffix)
+#            for f in fnames:
+            correct_images(fnames, dx, dy, results.suffix)
     else:
         print "No output fits file specified; not doing warping"
