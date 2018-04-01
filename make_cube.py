@@ -21,7 +21,7 @@ def stack(files, out):
     """
 
     ref = fits.open(files[0])
-    data = np.empty((len(files), ref[0].data.shape[0], ref[0].data.shape[1]),
+    data = np.empty((len(files), ref[0].data.shape[-2], ref[0].data.shape[-1]),
                     dtype=np.float32)
 
     for i, f in enumerate(files):
