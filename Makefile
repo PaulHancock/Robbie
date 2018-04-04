@@ -19,7 +19,9 @@ REGION:=region.mim
 help:
 	echo "help!"
 
-science: $(PREFIX)transients.png $(PREFIX)flux_table_var.fits
+variables: $(PREFIX)flux_table_var.fits
+transients: $(PREFIX)transients.png
+science: variables transients
 
 # dummy rules to indicate that these files are pre-existing
 $(IMAGES) $(REGION):
