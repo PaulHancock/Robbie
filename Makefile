@@ -26,7 +26,7 @@ science: variables transients
 # dummy rules to indicate that these files are pre-existing
 $(IMAGES) $(REGION):
 
-GLEAM_SUB.fits: $(REGION)
+$(PREFIX)GLEAM_SUB.fits: $(REGION)
 	MIMAS --maskcat $< $(REFCAT) $@ --colnames RAJ2000 DEJ2000 --negate
 
 # Background and noise maps for the sub images
@@ -43,8 +43,8 @@ $(IMAGES:.fits=_comp.fits): %_comp.fits : %.fits %_bkg.fits %_rms.fits $(REGION)
 
 
 # cross matching
-$(IMAGES:.fits=_xm.fits): %_xm.fits : %_comp.fits GLEAM_SUB.fits
-	./correct_astrometry.py GLEAM_SUB.fits $< $@
+$(IMAGES:.fits=_xm.fits): %_xm.fits : %_comp.fits $(PREFIX)GLEAM_SUB.fits
+	./correct_astrometry.py $(PREFIX)GLEAM_SUB.fits $< $@
 
 # warping
 $(IMAGES:.fits=_warped.fits): %_warped.fits : %.fits %_xm.fits
