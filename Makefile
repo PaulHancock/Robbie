@@ -48,7 +48,7 @@ $(IMAGES:.fits=_xm.fits): %_xm.fits : %_comp.fits $(PREFIX)GLEAM_SUB.fits
 
 # warping
 $(IMAGES:.fits=_warped.fits): %_warped.fits : %.fits %_xm.fits
-	./fits_warp.py --infits $< --xm $*_xm.fits --suffix warped --ra1 ra --dec1 dec --ra2 RAJ2000 --dec2 DEJ2000
+	./fits_warp.py --infits $< --xm $*_xm.fits --suffix warped --ra1 ra --dec1 dec --ra2 RAJ2000 --dec2 DEJ2000 --plot
 
 # Create cube
 $(CUBE): $(IMAGES:.fits=_warped.fits)
