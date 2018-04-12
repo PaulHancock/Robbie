@@ -19,3 +19,6 @@ make IMFILE=HGL_6_images.txt PREFIX=HGL_6_ REGION=HGL_6.mim science
 
 MIMAS +c 65 -13 14 -o HGL_7.mim
 make IMFILE=HGL_7_images.txt PREFIX=HGL_7_ REGION=HGL_7.mim science
+
+MIMAS +c 84 -3 14 -o HGL_8.mim
+make IMFILE=HGL_8_images.txt PREFIX=HGL_8_ REGION=HGL_8.mim science
