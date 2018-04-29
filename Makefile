@@ -1,19 +1,20 @@
 .SECONDARY:
 .ONESHELL:
 SHELL:=/bin/bash
+
+PREFIX:=
 # input images
-IMFILE:=all_images.txt
+IMFILE:=$(PREFIX)images.txt
 IMAGES:=$(shell cat $(IMFILE))
 # reference catalogue
 REFCAT:=/home/hancock/alpha/DATA/GLEAM_EGC.fits
 # invocation of stilts
 STILTS:=java -jar /home/hancock/Software/topcat/topcat-full.jar -stilts
 # prefix for outputfiles
-PREFIX:=
 CUBE:=$(PREFIX)cube.fits
 MEAN:=$(PREFIX)mean.fits
 # region file to use
-REGION:=region.mim
+REGION:=$(PREFIX)region.mim
 
 
 help:
@@ -74,7 +75,7 @@ $(IMAGES:.fits=_warped_prior_comp.fits): %_warped_prior_comp.fits : %_warped.fit
 # join all priorized sources into a single table
 $(PREFIX)flux_table.fits: $(IMAGES:.fits=_warped_prior_comp.fits)
 	files=($^) ;\
-	cmd="java -jar /home/hancock/Software/stilts.jar tmatchn nin=$${#files[@]} matcher=exact out=$@ " ;\
+	cmd="${STILTS} tmatchn nin=$${#files[@]} matcher=exact out=$@ " ;\
 	for n in $${!files[@]} ;\
 	do \
 	m=$$( echo "$${n}+1" | bc ) ;\
@@ -129,8 +130,3 @@ $(PREFIX)transients.png: $(PREFIX)transients.fits
 	shading=aux shape=open_circle scale=1.5 autoscale=false \
 	out=$@
 
-makefile2dot.py:
-	wget https://github.com/vak/makefile2dot/raw/master/makefile2dot.py
-
-vis.png: Makefile makefile2dot.py
-	python makefile2dot.py < $< | dot -Tpng > $@
