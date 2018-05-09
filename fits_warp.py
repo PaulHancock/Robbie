@@ -1,7 +1,4 @@
-#!/usr/bin/env python
-
-__author__ = "Paul Hancock and Natasha Hurley-Walker"
-__date__ = "03/23/2018"
+#! /usr/bin/env python
 
 import numpy as np
 import os
@@ -10,10 +7,17 @@ from scipy.interpolate import CloughTocher2DInterpolator
 from astropy import wcs
 from astropy.io import fits
 from astropy.io.votable import parse_single_table
+from astropy.coordinates import SkyCoord, Angle, Latitude, Longitude
+from astropy.table import Table, hstack
+import astropy.units as u
 import sys
 import glob
 import argparse
 import psutil
+
+__author__ = "Paul Hancock and Natasha Hurley-Walker"
+__date__ = "03/23/2018"
+
 
 def which(program):
     import os
@@ -33,17 +37,19 @@ def which(program):
 
     return None
 
+
 def make_pix_models(fname, ra1='ra', dec1='dec', ra2='RAJ2000', dec2='DEJ2000', fitsname=None, plots=False, smooth=300.):
     """
     Read a fits file which contains the crossmatching results for two catalogues.
     Catalogue 1 is the source catalogue (positions that need to be corrected)
     Catalogue 2 is the reference catalogue (correct positions)
     return rbf models for the ra/dec corrections
-    :param fname: Filename
+    :param fname: filename for the crossmatched catalogue
     :param ra1: column name for the ra degrees in catalogue 1 (source)
     :param dec1: column name for the dec degrees in catalogue 1 (source)
     :param ra2: column name for the ra degrees in catalogue 2 (reference)
     :param dec2: column name for the dec degrees in catalogue 2 (reference)
+    :param fitsname: fitsimage upon which the pixel models will be based
     :param plots: True = Make plots
     :param smooth: smoothing radius (in pixels) for the RBF function
     :return: (dxmodel, dymodel)
@@ -103,7 +109,6 @@ def make_pix_models(fname, ra1='ra', dec1='dec', ra2='RAJ2000', dec2='DEJ2000', 
         gx, gy = np.mgrid[xmin:xmax:(xmax-xmin)/50., ymin:ymax:(ymax-ymin)/50.]
         mdx = dxmodel(np.ravel(gx), np.ravel(gy))
         mdy = dymodel(np.ravel(gx), np.ravel(gy))
-
         x = cat_xy[:, 0]
         y = cat_xy[:, 1]
 
@@ -138,12 +143,12 @@ def make_pix_models(fname, ra1='ra', dec1='dec', ra2='RAJ2000', dec2='DEJ2000', 
         dx = diff_xy[:, 0]
         dy = diff_xy[:, 1]
 
-        fig = pyplot.figure(figsize=(12, 6))
+        fig = pyplot.figure(figsize=(18, 6))
         gs = gridspec.GridSpec(100,100)
         gs.update(hspace=0,wspace=0)
         kwargs = {'angles':'xy', 'scale_units':'xy', 'scale':scale, 'cmap':cmap, 'clim':[-180,180]}
         angles = np.degrees(np.arctan2(dy, dx))
-        ax = fig.add_subplot(gs[0:100,0:48])
+        ax = fig.add_subplot(gs[0:100,0:30])
         cax = ax.quiver(x, y, dx, dy, angles, **kwargs)
         ax.set_xlim((xmin, xmax))
         ax.set_ylim((ymin, ymax))
@@ -152,7 +157,7 @@ def make_pix_models(fname, ra1='ra', dec1='dec', ra2='RAJ2000', dec2='DEJ2000', 
         ax.set_title("Source position offsets / arcsec")
 #        cbar = fig.colorbar(cax, orientation='horizontal')
 
-        ax = fig.add_subplot(gs[0:100,49:97])
+        ax = fig.add_subplot(gs[0:100,33:66])
         cax = ax.quiver(gx, gy, mdx, mdy, np.degrees(np.arctan2(mdy, mdx)), **kwargs)
         ax.set_xlim((xmin, xmax))
         ax.set_ylim((ymin, ymax))
@@ -161,9 +166,25 @@ def make_pix_models(fname, ra1='ra', dec1='dec', ra2='RAJ2000', dec2='DEJ2000', 
         ax.set_title("Model position offsets / arcsec")
 #        cbar = fig.colorbar(cax, orientation='vertical')
 # Color bar
-        ax2 = fig.add_subplot(gs[0:100,98:100])
-        cbar3 = pyplot.colorbar(cax,cax=ax2,use_gridspec=True)
-        cbar3.set_label('Angle CCW from West / degrees')#,labelpad=-75)
+#         ax2 = fig.add_subplot(gs[0:100,98:100])
+#         cbar3 = pyplot.colorbar(cax,cax=ax2,use_gridspec=True)
+#         cbar3.set_label('Angle CCW from West / degrees')#,labelpad=-75)
+#         cbar3.ax.yaxis.set_ticks_position('right')
+
+        ax = fig.add_subplot(gs[0:100, 66:100])
+        div = np.gradient(mdx.reshape(gx.shape))[0] + np.gradient(mdy.reshape(gy.shape))[1]
+        cax = ax.imshow(div.T, extent=[xmin,xmax,ymin,ymax], origin='lower', clim=[-0.5,0.5])
+        ax.quiver(gx, gy, mdx, mdy, **kwargs)
+        # ax.set_xlim((xmin, xmax))
+        # ax.set_ylim((ymin, ymax))
+        # ax.set_xlabel("Divergence")
+        ax.tick_params(axis='y', labelleft='off')
+        ax.set_title("Divergence")
+        #        cbar = fig.colorbar(cax, orientation='vertical')
+        # Color bar
+        ax2 = fig.add_subplot(gs[0:100, 98:100])
+        cbar3 = pyplot.colorbar(cax, cax=ax2, use_gridspec=True)
+        #cbar3.set_label('Angle CCW from West / degrees')  # ,labelpad=-75)
         cbar3.ax.yaxis.set_ticks_position('right')
 
         outname = os.path.splitext(fname)[0] +'.png'
@@ -171,6 +192,7 @@ def make_pix_models(fname, ra1='ra', dec1='dec', ra2='RAJ2000', dec2='DEJ2000', 
         pyplot.savefig(outname, dpi=200)
 
     return dxmodel, dymodel
+
 
 def correct_images(fnames, dxmodel, dymodel, suffix):
     """
@@ -202,19 +224,15 @@ def correct_images(fnames, dxmodel, dymodel, suffix):
     stride = mem / pixmem
 # Make sure it is row-divisible
     stride = (stride//data.shape[0])*data.shape[0]
-    print stride, len(x)
-
-    if stride < len(x):
-        print "Processing {0} rows at a time".format(stride//data.shape[0])
-    else:
-        print "Processing entire image at once"
+    # print stride, len(x)
 
     # calculate the corrections in blocks of 100k since the rbf fails on large blocks
-    print 'applying corrections to pixel co-ordinates',
+    print 'Applying corrections to pixel co-ordinates',
     # remember the largest offset
     maxx = maxy = 0
     if len(x) > stride:
-        print 'in cycles'
+        #print 'in cycles'
+        print " {0} rows at a time".format(stride//data.shape[0])
         n = 0
         borders = range(0, len(x)+1, stride)
         if borders[-1] != len(x):
@@ -251,7 +269,7 @@ def correct_images(fnames, dxmodel, dymodel, suffix):
 # rows per cycle. However there is very little speed-up from processing with fewer
 # rows, so if needed this number can be decreased by factors of 1-10 with no ill
 # effect on processing time.
-    stride *= 40
+    stride *= 10
     for fname in fnames:
         fout = fname.replace(".fits","_"+suffix+".fits")
         im = fits.open(fname)
@@ -263,9 +281,9 @@ def correct_images(fnames, dxmodel, dymodel, suffix):
 # Note that we need a fresh copy of the data because otherwise we will be trying to
 # interpolate over the results of our interpolation
         newdata = np.copy(data)
-
+        print "Remapping data",
         if len(x) > stride:
-            print "Processing {0} rows at a time".format(stride//data.shape[0])
+            print "{0} rows at a time".format(stride//data.shape[0])
             n = 0
             borders = range(0, len(x)+1, stride)
             if borders[-1] != len(x):
@@ -308,6 +326,77 @@ def correct_images(fnames, dxmodel, dymodel, suffix):
         del im, data
     return
 
+
+def correct_tab(ref, tab, ref_cat=None, radius=2 / 60.):
+    """
+    Given a reference catalogue, and target catalogue:
+    crossmatch the two catalogues
+    calculate and remove the bulk offset
+    crossmatch, model and remove smaller scale offsets (three times)
+    return the corrected catalogue, and a map of crossmatches and separations
+    """
+    orig = tab.copy()
+    # Allow for this to be precalculated
+    if ref_cat is None:
+        ref_cat = SkyCoord(ref['RAJ2000'], ref['DEJ2000'], unit=(u.degree, u.degree))
+
+    # filter the catalog to use only high snr point sources
+    # mask = np.where((tab['int_flux']/tab['peak_flux'] < 1.2) & (tab['peak_flux']/tab['local_rms']>10))
+    mask = np.where(tab['peak_flux']/tab['local_rms'] > 10)
+    # crossmatch the two catalogs
+    cat = SkyCoord(tab['ra'][mask], tab['dec'][mask], unit=(u.degree, u.degree))
+    idx, dist, _ = cat.match_to_catalog_sky(ref_cat)
+    # accept only matches within radius
+    distance_mask = np.where(dist.degree < radius) # this mask is into cat
+    match_mask = idx[distance_mask] # this mask is into ref_cat
+    # calculate the ra/dec offsets
+    dra = ref_cat.ra.degree[match_mask] - cat.ra.degree[distance_mask]
+    ddec = ref_cat.dec.degree[match_mask] - cat.dec.degree[distance_mask]
+
+    # make a bulk correction as the first pass
+    tab['ra'] += np.mean(dra)
+    tab['dec'] += np.mean(ddec)
+
+    # now do this again 3 more times but using the Rbf
+    for i in range(3):
+        # crossmatch the two catalogs
+        cat = SkyCoord(tab['ra'][mask], tab['dec'][mask], unit=(u.degree, u.degree))
+        idx, dist, _ = cat.match_to_catalog_sky(ref_cat)
+        # accept only matches within radius
+        distance_mask = np.where(dist.degree < radius) # this mask is into cat
+        match_mask = idx[distance_mask] # this mask is into ref_cat
+        if len(match_mask)<1:
+            break
+        # calculate the ra/dec offsets
+        dra = ref_cat.ra.degree[match_mask] - cat.ra.degree[distance_mask]
+        ddec = ref_cat.dec.degree[match_mask] - cat.dec.degree[distance_mask]
+
+        # use the following to make some models of the offsets
+        dramodel  = interpolate.Rbf(cat.ra.degree[distance_mask], cat.dec.degree[distance_mask], dra, function='linear', smooth=3)
+        ddecmodel = interpolate.Rbf(cat.ra.degree[distance_mask], cat.dec.degree[distance_mask], ddec, function='linear', smooth=3)
+
+        # now adjust the origional source positions based on these models
+        tab['ra'] += dramodel(tab['ra'], tab['dec'])
+        tab['dec'] += ddecmodel(tab['ra'], tab['dec'])
+
+    # final crossmatch to make the xmatch file
+    cat = SkyCoord(tab['ra'][mask], tab['dec'][mask], unit=(u.degree, u.degree))
+    idx, dist, _ = cat.match_to_catalog_sky(ref_cat)
+    # accept only matches within radius
+    distance_mask = np.where(dist.degree < radius) # this mask is into cat
+    match_mask = idx[distance_mask] # this mask is into ref_cat
+    # calculate the ra/dec offsets
+    dra = ref_cat.ra.degree[match_mask] - cat.ra.degree[distance_mask]
+    ddec = ref_cat.dec.degree[match_mask] - cat.dec.degree[distance_mask]
+    ## cartesian!!
+    separation = Table({'Separation':np.hypot(dra, ddec)}, names=('Separation',), dtype=(np.float32,))
+    xmatch = hstack([orig[mask][distance_mask], ref[match_mask], separation])
+    #xmatch['peak_flux'] = xmatch['peak_flux_1']
+    #xmatch['local_rms'] = xmatch['local_rms_1']
+
+    return tab, xmatch
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     group1 = parser.add_argument_group("input/output files")
@@ -344,8 +433,6 @@ if __name__ == "__main__":
         dx, dy = make_pix_models(results.xm, results.ra1, results.dec1, results.ra2, results.dec2,
                                  fnames[0], results.plot, results.smooth)
         if results.suffix is not None:
-            # Correct all the images
-#            for f in fnames:
             correct_images(fnames, dx, dy, results.suffix)
-    else:
-        print "No output fits file specified; not doing warping"
+        else:
+            print "No output fits file specified; not doing warping"
