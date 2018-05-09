@@ -4,10 +4,11 @@ import numpy as np
 import os
 from scipy import interpolate
 from scipy.interpolate import CloughTocher2DInterpolator
+import astropy
 from astropy import wcs
 from astropy.io import fits
 from astropy.io.votable import parse_single_table
-from astropy.coordinates import SkyCoord, Angle, Latitude, Longitude
+from astropy.coordinates import SkyCoord, Angle, Latitude, Longitude, SkyOffsetFrame
 from astropy.table import Table, hstack
 import astropy.units as u
 import os
@@ -327,7 +328,7 @@ def correct_images(fnames, dxmodel, dymodel, suffix):
     return
 
 
-def warped_xmatch(image=None, incat=None, refcat=None, ra1='ra', dec1='dec', ra2='RAJ2000', dec2='DEJ2000',
+def warped_xmatch(incat=None, refcat=None, ra1='ra', dec1='dec', ra2='RAJ2000', dec2='DEJ2000',
                   radius=2/60.):
     """
     Create a cross match solution between two catalogues that accounts for bulk shifts and image warping.
@@ -343,74 +344,88 @@ def warped_xmatch(image=None, incat=None, refcat=None, ra1='ra', dec1='dec', ra2
     :return:
     """
     # check for incat/refcat as as strings, and load the file if it is
-    if isinstance(str, incat):
-        pass
+    incat = Table.read(incat)
+    refcat = Table.read(refcat)
 
-    in_cat = SkyCoord(incat[ra1], incat[dec1],  unit=(u.degree, u.degree))
-    ref_cat = SkyCoord(refcat[ra2], refcat[dec2], unit=(u.degree, u.degree))
-    orig = in_cat.copy()
+    target_cat = SkyCoord(incat[ra1], incat[dec1],  unit=(u.degree, u.degree), frame='icrs')
+    ref_cat = SkyCoord(refcat[ra2], refcat[dec2], unit=(u.degree, u.degree), frame='icrs')
+
+    center = SkyOffsetFrame(origin=SkyCoord(np.mean(target_cat.ra), np.mean(target_cat.dec), frame='icrs'))
+
+    tcat_offset = target_cat.transform_to(center)
+    rcat_offset = ref_cat.transform_to(center)
+
 
     # filter the catalog to use only high snr point sources
     # mask = np.where((tab['int_flux']/tab['peak_flux'] < 1.2) & (tab['peak_flux']/tab['local_rms']>10))
     # mask = np.where(tab['peak_flux']/tab['local_rms'] > snr)
 
     # crossmatch the two catalogs
-    idx, dist, _ = in_cat.match_to_catalog_sky(ref_cat)
+    idx, dist, _ = tcat_offset.match_to_catalog_sky(rcat_offset)
 
     # accept only matches within radius
-    distance_mask = np.where(dist.degree < radius)  # this mask is into in_cat
-    match_mask = idx[distance_mask]  # this mask is into ref_cat
-    # calculate the ra/dec offsets
-    dra = ref_cat.ra.degree[match_mask] - in_cat.ra.degree[distance_mask]
-    ddec = ref_cat.dec.degree[match_mask] - in_cat.dec.degree[distance_mask]
+    distance_mask = np.where(dist.degree < radius)  # this mask is into tcat_offset
+    match_mask = idx[distance_mask]  # this mask is into rcat_offset
+    print(len(match_mask))
 
-    # make a bulk correction as the first pass
-    in_cat[ra1] += np.mean(dra)
-    in_cat[dec1] += np.mean(ddec)
+    # calculate the ra/dec shifts
+    dlon = rcat_offset.lon[match_mask] - tcat_offset.lon[distance_mask]
+    dlat = rcat_offset.lat[match_mask] - tcat_offset.lat[distance_mask]
+
+    # print("mean dlon {0}, mean dlat {1}".format(np.mean(dlon), np.mean(dlat)))
+    # remake the offset catalogue with the bulk shift included
+    tcat_offset = SkyCoord(tcat_offset.lon + np.mean(dlon),
+                           tcat_offset.lat + np.mean(dlat), frame=center)
+
 
     # now do this again 3 more times but using the Rbf
     for i in range(3):
         # crossmatch the two catalogs
-        idx, dist, _ = in_cat.match_to_catalog_sky(ref_cat)
+        idx, dist, _ = tcat_offset.match_to_catalog_sky(rcat_offset)
         # accept only matches within radius
         distance_mask = np.where(dist.degree < radius)  # this mask is into cat
-        match_mask = idx[distance_mask]  # this mask is into ref_cat
+        match_mask = idx[distance_mask]  # this mask is into tcat_offset
+        # print("{0} matches {1}".format(i, len(match_mask)))
         if len(match_mask) < 1:
             break
 
-        # calculate the ra/dec offsets
-        dra = ref_cat.ra.degree[match_mask] - in_cat.ra.degree[distance_mask]
-        ddec = ref_cat.dec.degree[match_mask] - in_cat.dec.degree[distance_mask]
+        # calculate the ra/dec shifts
+        dlon = rcat_offset.lon.degree[match_mask] - tcat_offset.lon.degree[distance_mask]
+        dlat = rcat_offset.lat.degree[match_mask] - tcat_offset.lat.degree[distance_mask]
+
+        # # calculate the ra/dec offsets
+        # dra = ref_cat.ra.degree[match_mask] - in_cat.ra.degree[distance_mask]
+        # ddec = ref_cat.dec.degree[match_mask] - in_cat.dec.degree[distance_mask]
 
         # use the following to make some models of the offsets
-        dramodel  = interpolate.Rbf(in_cat.ra.degree[distance_mask], in_cat.dec.degree[distance_mask], dra, function='linear', smooth=3)
-        ddecmodel = interpolate.Rbf(in_cat.ra.degree[distance_mask], in_cat.dec.degree[distance_mask], ddec, function='linear', smooth=3)
+        dlonmodel = interpolate.Rbf(tcat_offset.lon.degree[distance_mask], tcat_offset.lat.degree[distance_mask], dlon, function='linear', smooth=3)
+        dlatmodel = interpolate.Rbf(tcat_offset.lon.degree[distance_mask], tcat_offset.lat.degree[distance_mask], dlat, function='linear', smooth=3)
 
-        # now adjust the origional source positions based on these models
-        in_cat[ra1] += dramodel(in_cat[ra1], in_cat[dec1])
-        in_cat[dec1] += ddecmodel(in_cat[ra1], in_cat[dec1])
+        # remake/update the tcat_offset with this new model.
+        tcat_offset = SkyCoord(tcat_offset.lon + dlonmodel(tcat_offset.lon.degree, tcat_offset.lat.degree)*u.degree,
+                               tcat_offset.lat + dlatmodel(tcat_offset.lon.degree, tcat_offset.lat.degree)*u.degree,
+                               frame=center)
+
+        # tcat_offset = SkyOffsetFrame(tcat_offset.lon + dlonmodel(tcat_offset.lon.degree, tcat_offset.lat.degree),
+        #                              tcat_offset.lat + dlatmodel(tcat_offset.lon.degree, tcat_offset.lat.degree),
+        #                              origin=center)
+
 
     # final crossmatch to make the xmatch file
-    idx, dist, _ = in_cat.match_to_catalog_sky(ref_cat)
+    idx, dist, _ = tcat_offset.match_to_catalog_sky(rcat_offset)
     # accept only matches within radius
     distance_mask = np.where(dist.degree < radius)  # this mask is into cat
-    match_mask = idx[distance_mask]  # this mask is into ref_cat
+    match_mask = idx[distance_mask]  # this mask is into tcat_offset
+    # print("Final mask {0}".format(len(match_mask)))
+    xmatch = hstack([incat[distance_mask], refcat[match_mask]])
 
-    # calculate the ra/dec offsets
-    dra = ref_cat.ra.degree[match_mask] - in_cat.ra.degree[distance_mask]
-    ddec = ref_cat.dec.degree[match_mask] - in_cat.dec.degree[distance_mask]
-
-    ## cartesian!!
-    separation = Table({'Separation':np.hypot(dra, ddec)}, names=('Separation',), dtype=(np.float32,))
-    xmatch = hstack([orig[distance_mask], ref_cat[match_mask], separation])
-
-    # Return the wapred catalogue, and the crossmatch of the two original catalogues
-    return in_cat, xmatch
+    # return a warped version of the target catalogue and the final cross matched table
+    return tcat_offset.transform_to(target_cat), xmatch
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    group1 = parser.add_argument_group("input/output files")
+    group1 = parser.add_argument_group("Wapring input/output files")
     group1.add_argument("--xm", dest='xm', type=str, default=None,
                         help='A .fits binary or VO table. The crossmatch between the reference and source catalogue.')
     group1.add_argument("--infits", dest='infits', type=str, default=None,
@@ -431,12 +446,31 @@ if __name__ == "__main__":
                         help="Plot the offsets and models (default = False)")
     group3.add_argument('--smooth', dest='smooth', default=300.0, type=float,
                         help="Smoothness parameter to give to the radial basis function (default = 300 pix)")
+    group4 = parser.add_argument_group("Crossmatching input/output files")
+    group4.add_argument("--incat", dest='incat', type=str, default=None,
+                        help='Input catalogue to be warped.')
+    group4.add_argument("--refcat", dest='refcat', type=str, default=None,
+                        help='Input catalogue to be warped.')
+    group4.add_argument("--xmcat", dest='xm', type=str, default=None,
+                        help='Output cross match catalogue')
 
     results = parser.parse_args()
 
     if len(sys.argv) <= 1:
         parser.print_help()
         sys.exit()
+
+    if results.incat is not None:
+        if results.refcat is not None:
+            _, xmcat = warped_xmatch(incat=results.incat,
+                                     refcat=results.refcat,
+                                     ra1=results.ra1,
+                                     dec1=results.dec1,
+                                     ra2=results.ra2,
+                                     dec2=results.dec2)
+            xmcat.write(results.xm, overwrite=True)
+            print("Wrote {0}".format(results.xm))
+            sys.exit(0)
 
     if results.infits is not None:
         fnames = glob.glob(results.infits) 
