@@ -10,6 +10,7 @@ from astropy.io.votable import parse_single_table
 from astropy.coordinates import SkyCoord, Angle, Latitude, Longitude
 from astropy.table import Table, hstack
 import astropy.units as u
+import os
 import sys
 import glob
 import argparse
@@ -19,11 +20,11 @@ __author__ = "Paul Hancock and Natasha Hurley-Walker"
 __date__ = "03/23/2018"
 
 
-def which(program):
-    import os
-    def is_exe(fpath):
-        return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
+def is_exe(fpath):
+    return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
 
+
+def which(program):
     fpath, fname = os.path.split(program)
     if fpath:
         if is_exe(program):
@@ -34,7 +35,6 @@ def which(program):
             exe_file = os.path.join(path, program)
             if is_exe(exe_file):
                 return exe_file
-
     return None
 
 
@@ -327,74 +327,85 @@ def correct_images(fnames, dxmodel, dymodel, suffix):
     return
 
 
-def correct_tab(ref, tab, ref_cat=None, radius=2 / 60.):
+def warped_xmatch(image=None, incat=None, refcat=None, ra1='ra', dec1='dec', ra2='RAJ2000', dec2='DEJ2000',
+                  radius=2/60.):
     """
-    Given a reference catalogue, and target catalogue:
-    crossmatch the two catalogues
-    calculate and remove the bulk offset
-    crossmatch, model and remove smaller scale offsets (three times)
-    return the corrected catalogue, and a map of crossmatches and separations
+    Create a cross match solution between two catalogues that accounts for bulk shifts and image warping.
+    The warping is done in pixel coordinates, not sky coordinates.
+
+    :param image: Fits image containing the WCS info for sky->pix conversion (Ideally the image which was used
+                  to create incat.
+    :param incat: The input catalogue which is to be warped during the cross matching process.
+    :param ref_cat: The reference image which will remain unwarped during the cross matching process
+    :param ra1, dec1: column names for ra/dec in the input catalogue
+    :param ra2, dec2: column names for ra/dec in the reference catalogue
+    :param radius: initial matching radius in degrees
+    :return:
     """
-    orig = tab.copy()
-    # Allow for this to be precalculated
-    if ref_cat is None:
-        ref_cat = SkyCoord(ref['RAJ2000'], ref['DEJ2000'], unit=(u.degree, u.degree))
+    # check for incat/refcat as as strings, and load the file if it is
+    if isinstance(str, incat):
+        pass
+
+    in_cat = SkyCoord(incat[ra1], incat[dec1],  unit=(u.degree, u.degree))
+    ref_cat = SkyCoord(refcat[ra2], refcat[dec2], unit=(u.degree, u.degree))
+    orig = in_cat.copy()
 
     # filter the catalog to use only high snr point sources
     # mask = np.where((tab['int_flux']/tab['peak_flux'] < 1.2) & (tab['peak_flux']/tab['local_rms']>10))
-    mask = np.where(tab['peak_flux']/tab['local_rms'] > 10)
+    # mask = np.where(tab['peak_flux']/tab['local_rms'] > snr)
+
     # crossmatch the two catalogs
-    cat = SkyCoord(tab['ra'][mask], tab['dec'][mask], unit=(u.degree, u.degree))
-    idx, dist, _ = cat.match_to_catalog_sky(ref_cat)
+    idx, dist, _ = in_cat.match_to_catalog_sky(ref_cat)
+
     # accept only matches within radius
-    distance_mask = np.where(dist.degree < radius) # this mask is into cat
-    match_mask = idx[distance_mask] # this mask is into ref_cat
+    distance_mask = np.where(dist.degree < radius)  # this mask is into in_cat
+    match_mask = idx[distance_mask]  # this mask is into ref_cat
     # calculate the ra/dec offsets
-    dra = ref_cat.ra.degree[match_mask] - cat.ra.degree[distance_mask]
-    ddec = ref_cat.dec.degree[match_mask] - cat.dec.degree[distance_mask]
+    dra = ref_cat.ra.degree[match_mask] - in_cat.ra.degree[distance_mask]
+    ddec = ref_cat.dec.degree[match_mask] - in_cat.dec.degree[distance_mask]
 
     # make a bulk correction as the first pass
-    tab['ra'] += np.mean(dra)
-    tab['dec'] += np.mean(ddec)
+    in_cat[ra1] += np.mean(dra)
+    in_cat[dec1] += np.mean(ddec)
 
     # now do this again 3 more times but using the Rbf
     for i in range(3):
         # crossmatch the two catalogs
-        cat = SkyCoord(tab['ra'][mask], tab['dec'][mask], unit=(u.degree, u.degree))
-        idx, dist, _ = cat.match_to_catalog_sky(ref_cat)
+        idx, dist, _ = in_cat.match_to_catalog_sky(ref_cat)
         # accept only matches within radius
-        distance_mask = np.where(dist.degree < radius) # this mask is into cat
-        match_mask = idx[distance_mask] # this mask is into ref_cat
-        if len(match_mask)<1:
+        distance_mask = np.where(dist.degree < radius)  # this mask is into cat
+        match_mask = idx[distance_mask]  # this mask is into ref_cat
+        if len(match_mask) < 1:
             break
+
         # calculate the ra/dec offsets
-        dra = ref_cat.ra.degree[match_mask] - cat.ra.degree[distance_mask]
-        ddec = ref_cat.dec.degree[match_mask] - cat.dec.degree[distance_mask]
+        dra = ref_cat.ra.degree[match_mask] - in_cat.ra.degree[distance_mask]
+        ddec = ref_cat.dec.degree[match_mask] - in_cat.dec.degree[distance_mask]
 
         # use the following to make some models of the offsets
-        dramodel  = interpolate.Rbf(cat.ra.degree[distance_mask], cat.dec.degree[distance_mask], dra, function='linear', smooth=3)
-        ddecmodel = interpolate.Rbf(cat.ra.degree[distance_mask], cat.dec.degree[distance_mask], ddec, function='linear', smooth=3)
+        dramodel  = interpolate.Rbf(in_cat.ra.degree[distance_mask], in_cat.dec.degree[distance_mask], dra, function='linear', smooth=3)
+        ddecmodel = interpolate.Rbf(in_cat.ra.degree[distance_mask], in_cat.dec.degree[distance_mask], ddec, function='linear', smooth=3)
 
         # now adjust the origional source positions based on these models
-        tab['ra'] += dramodel(tab['ra'], tab['dec'])
-        tab['dec'] += ddecmodel(tab['ra'], tab['dec'])
+        in_cat[ra1] += dramodel(in_cat[ra1], in_cat[dec1])
+        in_cat[dec1] += ddecmodel(in_cat[ra1], in_cat[dec1])
 
     # final crossmatch to make the xmatch file
-    cat = SkyCoord(tab['ra'][mask], tab['dec'][mask], unit=(u.degree, u.degree))
-    idx, dist, _ = cat.match_to_catalog_sky(ref_cat)
+    idx, dist, _ = in_cat.match_to_catalog_sky(ref_cat)
     # accept only matches within radius
-    distance_mask = np.where(dist.degree < radius) # this mask is into cat
-    match_mask = idx[distance_mask] # this mask is into ref_cat
+    distance_mask = np.where(dist.degree < radius)  # this mask is into cat
+    match_mask = idx[distance_mask]  # this mask is into ref_cat
+
     # calculate the ra/dec offsets
-    dra = ref_cat.ra.degree[match_mask] - cat.ra.degree[distance_mask]
-    ddec = ref_cat.dec.degree[match_mask] - cat.dec.degree[distance_mask]
+    dra = ref_cat.ra.degree[match_mask] - in_cat.ra.degree[distance_mask]
+    ddec = ref_cat.dec.degree[match_mask] - in_cat.dec.degree[distance_mask]
+
     ## cartesian!!
     separation = Table({'Separation':np.hypot(dra, ddec)}, names=('Separation',), dtype=(np.float32,))
-    xmatch = hstack([orig[mask][distance_mask], ref[match_mask], separation])
-    #xmatch['peak_flux'] = xmatch['peak_flux_1']
-    #xmatch['local_rms'] = xmatch['local_rms_1']
+    xmatch = hstack([orig[distance_mask], ref_cat[match_mask], separation])
 
-    return tab, xmatch
+    # Return the wapred catalogue, and the crossmatch of the two original catalogues
+    return in_cat, xmatch
 
 
 if __name__ == "__main__":
