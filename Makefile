@@ -44,7 +44,7 @@ $(IMAGES:.fits=_comp.fits): %_comp.fits : %.fits %_bkg.fits %_rms.fits $(REGION)
 
 # cross matching
 $(IMAGES:.fits=_xm.fits): %_xm.fits : %_comp.fits $(PREFIX)GLEAM_SUB.fits
-	./correct_astrometry.py $(PREFIX)GLEAM_SUB.fits $< $@
+	./fits_warp.py --refcat $(PREFIX)GLEAM_SUB.fits --incat $< --xm $@
 
 # warping
 $(IMAGES:.fits=_warped.fits): %_warped.fits : %.fits %_xm.fits
