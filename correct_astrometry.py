@@ -102,7 +102,7 @@ if __name__ == '__main__':
     group1.add_argument("--incat", dest='incat', type=str, default=None,
                         help="The catalogue to be corrected")
     group1.add_argument("--refcat", dest='refcat', type=str, default=None,
-                        help="The referebce catalogue")
+                        help="The reference catalogue")
     group1.add_argument("--xm", dest='xm', type=str, default=None,
                         help='Output file for the crossmatch between the reference and source catalogue.')
     group2 = parser.add_argument_group("catalog column names")
