@@ -116,17 +116,18 @@ $(PREFIX)transients.fits: $(IMAGES:.fits=_warped_blanked_comp_filtered.fits)
 
 # plot the transients into a single image
 $(PREFIX)transients.png: $(PREFIX)transients.fits
-	$(STILTS) plot2plane \
+	$(STILTS) plot2sky \
 	xpix=645 ypix=563 \
-	xflip=true xlabel=RAJ2000 ylabel=DEJ2000 grid=true texttype=antialias \
+	gridaa=True \
+	grid=true texttype=antialias \
 	fontsize=14 fontstyle=serif fontweight=bold \
-	auxmap=sron auxquant=12 auxmin=3 auxmax=15 \
-	auxvisible=true auxlabel=peak_flux/local_rms \
+	auxmap=sron auxflip=true auxquant=12 auxmin=3 auxmax=15 \
+	auxvisible=true auxlabel=SNR \
 	legend=false \
-	layer=Size \
-	in=$< \
-	x=ra y=dec size=epoch+2 aux=peak_flux/local_rms \
-	shading=aux shape=open_circle scale=1.5 autoscale=false \
+	layer=SkyEllipse \
+    in=$< \
+    lon=ra lat=dec ra=1 rb=0.2 posang='360.*epoch/25' aux=peak_flux/local_rms \
+    shading=aux ellipse=filled_ellipse scale=1.2 opaque=1.66 \
 	out=$@
 
 makefile2dot.py:
