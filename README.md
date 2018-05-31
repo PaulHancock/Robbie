@@ -1,8 +1,8 @@
-# Processing pipeline for K2 transients and variables
+# Robbie: A batch processing work-flow for the detection of radio transients and variables
 
-This pipeline automates the process of cataloguing sources, finding variables, and identifying transients.
+Robbie automates the process of cataloguing sources, finding variables, and identifying transients.
 
-The flow is somethig like:
+The workflow is described in Hancock et al. 2018 (in prep):
 - Find sources in images
 - Compare these catalogues to a reference catalogue
 - Use the offsets to model image based distortions
