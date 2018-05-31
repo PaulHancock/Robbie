@@ -32,12 +32,16 @@ def plot(n):
     print ".. done"
     return
 
+if __name__ == "__main__":
+    if len(sys.argv) <= 1:
+        print("plot_lc.py catalogue.fits")
+        sys.exit()
 
-fname = sys.argv[-1]
-print "loading ",fname
-cat = Table.read(fname).to_pandas()
-flux_cols = [a for a in cat.columns if a.startswith('peak_flux')]
-err_flux_cols = [a for a in cat.columns if a.startswith('err_peak_flux')]
+    fname = sys.argv[-1]
+    print "loading ",fname
+    cat = Table.read(fname).to_pandas()
+    flux_cols = [a for a in cat.columns if a.startswith('peak_flux')]
+    err_flux_cols = [a for a in cat.columns if a.startswith('err_peak_flux')]
 
-for i in range(len(cat)):
-    plot(i)
+    for i in range(len(cat)):
+        plot(i)
