@@ -2,6 +2,7 @@
 __author__ = 'Paul Hancock'
 __date__ = ''
 
+import argparse
 from astropy.table import Table
 import pandas as pd
 import numpy as np
@@ -19,14 +20,16 @@ def chisq(series, fluxes=[], errs=[]):
     return val
 
 
-def pval(series, fluxes=[], errs=[]):
+def pval(series, fluxes=[], errs=[], ndof=None):
     chi = chisq(series, fluxes, errs)
     e = series[errs].values
     m = e == e
     npts = len(m)
     if npts < 2:
         return 0
-    p = stats.chi2.sf(chi, npts - 1)
+    if ndof is None:
+        ndof = npts - 1
+    p = stats.chi2.sf(chi, ndof)
     return max(p, 1e-10)
 
 
@@ -68,7 +71,7 @@ def load_corrected_table(filename):
     return df
 
 
-def add_stats(df, outfile):
+def add_stats(df, outfile=None, ndof=None):
     """
 
     Parameters
@@ -76,6 +79,8 @@ def add_stats(df, outfile):
     tab : pandas.Dataframe
 
     outfile: string
+
+    ndof: float
 
     Returns
     -------
@@ -94,7 +99,7 @@ def add_stats(df, outfile):
     chi_flux = df.apply(chisq, axis=1, fluxes=flux_cols, errs=err_flux_cols)
     df['chisq_peak_flux'] = pd.Series(chi_flux, index=df.index)
 
-    pval_flux = df.apply(pval, axis=1, fluxes=flux_cols, errs=err_flux_cols)
+    pval_flux = df.apply(pval, axis=1, fluxes=flux_cols, errs=err_flux_cols, ndof=ndof)
     df['pval_peak_flux'] = pd.Series(pval_flux, index=df.index)
 
     m = df.apply(modulation_index, axis=1, fluxes=flux_cols, errs=err_flux_cols)
@@ -109,13 +114,21 @@ def add_stats(df, outfile):
 
 
 if __name__ == '__main__':
-    if len(sys.argv) < 2:
-        print("calc_var.py infile outfile")
-        sys.exit(1)
+    parser = argparse.ArgumentParser()
+    group1 = parser.add_argument_group("Calculate variability stats")
+    group1.add_argument("--infile", dest='infile', type=str, default=None,
+                        help="The input catalogue.")
+    group1.add_argument("--outfile", dest='outfile', type=str, default=None,
+                        help="Output catalogue")
+    group1.add_argument("--ndof", dest='ndof', type=float, default=None,
+                        help="Effective number of degrees of freedom. Defualt: N=epochs-1")
 
-    infile = sys.argv[1]
-    outfile = sys.argv[2]
+    results = parser.parse_args()
 
-    df = load_corrected_table(infile)
-    add_stats(df, outfile)
+    if len(sys.argv) <= 1:
+        parser.print_help()
+        sys.exit()
+
+    df = load_corrected_table(results.infile)
+    add_stats(df, results.outfile, ndof=results.ndof)
 
