@@ -44,7 +44,15 @@ def get_effective_ndof(cube):
 
 
 if __name__ == "__main__":
-    cube = fits.open(sys.argv[-1])[0].data
+    if len(sys.argv) < 2:
+        print("Usage: {0} image_cube.fits".format(__file__))
+        sys.exit(1)
+    fname = sys.argv[-1]
+    print("Reading cube from {0}".format(fname))
+    cube = fits.open(fname)[0].data
+    if len(cube.shape) != 3:
+        print("{0} needs to have 3 axes, but it has {1}".format(fname,len(cube.shape)))
+        sys.exit(1)
     print("Cube has shape {0}".format(cube.shape))
     print("Cube has {0} effective degrees of freedom".format(get_effective_ndof(cube)))
 
