@@ -1,24 +1,46 @@
 .SECONDARY:
 .ONESHELL:
 SHELL:=/bin/bash
-# input images
+
+###
+# Setup and configuration parameters
+###
+
+# input images should be listed in epoch order in this file
 IMFILE:=all_images.txt
 IMAGES:=$(shell cat $(IMFILE))
-# reference catalogue
+# (external) reference catalogue used for astrometry correction via fits_warp
 REFCAT:=/home/hancock/alpha/DATA/GLEAM_EGC.fits
-# invocation of stilts
+# This variable is used to invoke stilts
 STILTS:=java -jar /home/hancock/Software/topcat/topcat-full.jar -stilts
 # prefix for outputfiles
 PREFIX:=
-CUBE:=$(PREFIX)cube.fits
+# The name of the mean image and image cube
 MEAN:=$(PREFIX)mean.fits
-# region file to use
+CUBE:=$(PREFIX)cube.fits
+# region file to use for masking the source finding and reference catalogue.
 REGION:=region.mim
 
-
+# HELP!
 help:
-	echo "help!"
+	@echo "Hello this is Robbie."
+	@echo "Usage is: make [command | file]"
+	@echo " files:"
+	@echo "  refcat.fits - a masked version of the external reference catalogue"
+	@echo "  cube.fits - a stack of astrometry corrected images"
+	@echo "  mean.fits - a mean image from the above stack"
+	@echo "  flux_table_var.fits - light curves and variability stats for all persistent sources"
+	@echo "  transients.fits - a catalogue of all candidate transient events"
+	@echo "  transients.png - a visualisation of transients.fits"
+	@echo ""
+	@echo " commands:"
+	@echo "  transients = transients.png"
+	@echo "  variables = flux_table_var.fits"
+	@echo "  sceince = variables + transients"
+	@echo ""
+	@echo 'I recommend that you `make science`'
 
+# Shorcuts for easy processing
 variables: $(PREFIX)flux_table_var.fits
 transients: $(PREFIX)transients.png
 science: variables transients
@@ -26,8 +48,14 @@ science: variables transients
 # dummy rules to indicate that these files are pre-existing
 $(IMAGES) $(REGION):
 
-$(PREFIX)GLEAM_SUB.fits: $(REGION)
+# Create a masked version of the reference catalogue
+$(PREFIX)refcat.fits: $(REGION)
+    # modify the column names as required
 	MIMAS --maskcat $< $(REFCAT) $@ --colnames RAJ2000 DEJ2000 --negate
+
+###
+# Apply astrometric correction to all the input images
+###
 
 # Background and noise maps for the sub images
 $(IMAGES:.fits=_bkg.fits): %_bkg.fits : %.fits
@@ -37,41 +65,50 @@ $(IMAGES:.fits=_bkg.fits): %_bkg.fits : %.fits
 $(IMAGES:.fits=_rms.fits): %_rms.fits : %.fits
 	test -f $@ || BANE $<
 
-# Blind source finding
+# Blind source finding on the input images
 $(IMAGES:.fits=_comp.fits): %_comp.fits : %.fits %_bkg.fits %_rms.fits $(REGION)
 	aegean $< --autoload --island --table $<,$*.reg --region=$(REGION)
 
 
-# cross matching
-$(IMAGES:.fits=_xm.fits): %_xm.fits : %_comp.fits $(PREFIX)GLEAM_SUB.fits
-	./fits_warp.py --refcat $(PREFIX)GLEAM_SUB.fits --incat $< --xm $@
+# cross matching of blind catalogues with the reference catalogue, in order to create astrometry solutions
+$(IMAGES:.fits=_xm.fits): %_xm.fits : %_comp.fits $(PREFIX)refcat.fits
+	./fits_warp.py --refcat $(PREFIX)refcat.fits --incat $< --xm $@
 
-# warping
+# warp the input images using the astrometry solutions, and create warped versions of the files
 $(IMAGES:.fits=_warped.fits): %_warped.fits : %.fits %_xm.fits
 	./fits_warp.py --infits $< --xm $*_xm.fits --suffix warped --ra1 ra --dec1 dec --ra2 RAJ2000 --dec2 DEJ2000 --plot
 
-# Create cube
+###
+# Create a master catalogue of persistent sources from a mean of the warped images
+###
+
+# create an image cube from all the warped images
 $(CUBE): $(IMAGES:.fits=_warped.fits)
 	./make_cube.py $@ $^
 
-# create mean image
+# create mean image from the image cube
 $(MEAN): $(CUBE)
 	./make_mean.py $^ $@
 
+# create background and noise mapse for the mean image
 $(MEAN:.fits=_bkg.fits) $(MEAN:.fits=_rms.fits): $(MEAN)
 	BANE $<
 
-# create master (mean) catalogue
+# create a catalogue from the mean image which will be used as a master catalogue
 $(MEAN:.fits=_comp.fits): %_comp.fits : %.fits %_bkg.fits %_rms.fits
 	aegean $< --autoload --island --table $*.fits,$*.reg --region=$(REGION)
 
-# priorize to make light curves from warped images
+###
+# Persistent sources
+###
+
+# priorize source finding to make light curves from warped images based on the master catalogue
 $(IMAGES:.fits=_warped_prior_comp.fits): %_warped_prior_comp.fits : %_warped.fits %_bkg.fits %_rms.fits $(PREFIX)mean_comp.fits
 	aegean $< --background $*_bkg.fits --noise $*_rms.fits \
                     --table $*_warped_prior.fits,$*_warped_prior.reg --priorized 2 \
 		            --input $(PREFIX)mean_comp.fits --noregroup
 
-# join all priorized sources into a single table
+# join all priorized sources into a single table based on the UUID column
 $(PREFIX)flux_table.fits: $(IMAGES:.fits=_warped_prior_comp.fits)
 	files=($^) ;\
 	cmd="java -jar /home/hancock/Software/stilts.jar tmatchn nin=$${#files[@]} matcher=exact out=$@ " ;\
@@ -87,6 +124,10 @@ $(PREFIX)flux_table_var.fits: $(PREFIX)flux_table.fits
 	./calc_var.py --infile $< --outfile $@
 	./plot_lc.py $@
 
+
+###
+# Transient candidates
+###
 
 # blank the warped images
 $(IMAGES:.fits=_warped_blanked.fits): %_warped_blanked.fits : %_warped.fits $(PREFIX)mean_comp.fits
@@ -129,9 +170,3 @@ $(PREFIX)transients.png: $(PREFIX)transients.fits
     lon=ra lat=dec ra=1 rb=0.2 posang='360.*epoch/25' aux=peak_flux/local_rms \
     shading=aux ellipse=filled_ellipse scale=1.2 opaque=1.66 \
 	out=$@
-
-makefile2dot.py:
-	wget https://github.com/vak/makefile2dot/raw/master/makefile2dot.py
-
-vis.png: Makefile makefile2dot.py
-	python makefile2dot.py < $< | dot -Tpng > $@
