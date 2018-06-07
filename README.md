@@ -25,12 +25,13 @@ You need to have the following software installed in order to use Robbie:
 
 The included `Makefile` should be edited to set up some custom parameters.
 In particular you need to set:
-- `STILTS` = <however you would run stilts from the command line>
+- `STILTS` = `<however you would run stilts from the command line>`
 - `IMAGEFILE` = a file that contains a list of all the images in epoch order (default=all_images.txt)
 - `REFCAT` = /path/to/your/external/reference/catalogue.fits
 - `REGION` = a [MIMAS](https://github.com/PaulHancock/Aegean/wiki/MIMAS) region file describing the region of interest.
 
 ## Usage
+```
 Usage is: make [command | file]
  files:
   refcat.fits - a masked version of the external reference catalogue
@@ -46,6 +47,7 @@ Usage is: make [command | file]
   sceince = variables + transients
 
 I recommend that you `make science`
+```
 
 ## Credit
 If you make use of Robbie as part of your work please cite Hancock et al. 2018 (submitted), and link to this repository.
