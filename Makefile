@@ -9,11 +9,15 @@ SHELL:=/bin/bash
 # input images should be listed in epoch order in this file
 IMFILE:=all_images.txt
 IMAGES:=$(shell cat $(IMFILE))
+# set warp to be empty to avoid running astrometry corrections
+WARP:=
 # (external) reference catalogue used for astrometry correction via fits_warp
 REFCAT:=/home/hancock/alpha/DATA/GLEAM_EGC.fits
+REFCAT_RA:=RAJ2000
+REFCAT_DEC:=DEJ2000
 # This variable is used to invoke stilts
 STILTS:=java -jar /home/hancock/Software/topcat/topcat-full.jar -stilts
-# prefix for outputfiles
+# prefix for output files
 PREFIX:=
 # The name of the mean image and image cube
 MEAN:=$(PREFIX)mean.fits
@@ -50,8 +54,11 @@ $(IMAGES) $(REGION):
 
 # Create a masked version of the reference catalogue
 $(PREFIX)refcat.fits: $(REGION)
-    # modify the column names as required
-	MIMAS --maskcat $< $(REFCAT) $@ --colnames RAJ2000 DEJ2000 --negate
+	if [[ -z $${WARP} ]] ;\
+	then touch $@ ;\
+	else \
+	MIMAS --maskcat $< $(REFCAT) $@ --colnames $${REFCAT_RA} $${REFCAT_DEC} --negate ;\
+	fi
 
 ###
 # Apply astrometric correction to all the input images
@@ -67,16 +74,27 @@ $(IMAGES:.fits=_rms.fits): %_rms.fits : %.fits
 
 # Blind source finding on the input images
 $(IMAGES:.fits=_comp.fits): %_comp.fits : %.fits %_bkg.fits %_rms.fits $(REGION)
-	aegean $< --autoload --island --table $<,$*.reg --region=$(REGION)
+	if [[ -z $${WARP} ]] ;\
+	then touch $@ ;\
+	else \
+	aegean $< --autoload --island --table $<,$*.reg --region=$(REGION);\
+	fi
 
 
 # cross matching of blind catalogues with the reference catalogue, in order to create astrometry solutions
 $(IMAGES:.fits=_xm.fits): %_xm.fits : %_comp.fits $(PREFIX)refcat.fits
-	./fits_warp.py --refcat $(PREFIX)refcat.fits --incat $< --xm $@
+	if [[ -z $${WARP} ]] ;\
+	then touch $@ ;\
+	else ./fits_warp.py --refcat $(PREFIX)refcat.fits --incat $< --xm $@ ;\
+	fi
 
 # warp the input images using the astrometry solutions, and create warped versions of the files
 $(IMAGES:.fits=_warped.fits): %_warped.fits : %.fits %_xm.fits
-	./fits_warp.py --infits $< --xm $*_xm.fits --suffix warped --ra1 ra --dec1 dec --ra2 RAJ2000 --dec2 DEJ2000 --plot
+	if [[ -z $${WARP} ]] ;\
+	then rm $@; ln -s $< $@ ;\
+	else \
+	./fits_warp.py --infits $< --xm $*_xm.fits --suffix warped --ra1 ra --dec1 dec --ra2 ${{REFCAT_RA} --dec2 ${{REFCAT_DEC} --plot ;\
+	fi
 
 ###
 # Create a master catalogue of persistent sources from a mean of the warped images
