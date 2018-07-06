@@ -1,12 +1,14 @@
-#!/usr/bin/env python
-__author__ = 'Paul Hancock'
-__date__ = '27-03-2018'
-
-
+#! /usr/bin/env python
+"""
+Plot light curves for all sources within a catalogue.
+"""
 import matplotlib.pyplot as plt
 from astropy.table import Table
 import sys
 import os
+
+__author__ = 'Paul Hancock'
+__date__ = '2018-07-06'
 
 
 def plot(n):
