@@ -159,11 +159,17 @@ $(IMAGES:.fits=_warped_blanked_comp.fits): %_warped_blanked_comp.fits : %_warped
 
 # remove the bad transients
 $(IMAGES:.fits=_warped_blanked_comp_filtered.fits): %_warped_blanked_comp_filtered.fits : %_warped_blanked_comp.fits
-	./filter_transients.py $^ $*_warped_blanked.fits $@
+	files=$$( ls $^ ) ;\
+	if [[ ! -z $${files} ]];\
+	then ./filter_transients.py $${files} $*_warped_blanked.fits $@ ;\
+	fi
 
 # join all transients into one catalogue
 $(PREFIX)transients.fits: $(IMAGES:.fits=_warped_blanked_comp_filtered.fits)
-	files=(${^}) ;\
+	files=($$( ls $^ )) ;\
+	if [[ -z $${files} ]];\
+	then touch $@;\
+	else \
 	cmd="${STILTS} tcatn nin=$${#files[@]}" ;\
 	for i in $$( seq 1 1 $${#files[@]} ) ;\
 	do \
@@ -171,7 +177,8 @@ $(PREFIX)transients.fits: $(IMAGES:.fits=_warped_blanked_comp_filtered.fits)
 	cmd="$${cmd} in$${i}=$${files[$${j}]} icmd$${i}='addcol epoch $${i}'" ;\
 	done ;\
 	cmd="$${cmd} out=$@ ofmt=fits" ;\
-	echo $${cmd} | bash
+	echo $${cmd} | bash ;\
+	fi
 
 # plot the transients into a single image
 $(PREFIX)transients.png: $(PREFIX)transients.fits
