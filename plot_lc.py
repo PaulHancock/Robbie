@@ -23,7 +23,7 @@ def plot(n):
     plt.xlabel('Epoch')
     plt.ylabel('Flux Density (Jy/Beam)')
     s = 'm={0:5.3f}\nmd={1:4.2f}\nchisq={2:4.1f}'.format(row['m'], row['md'],row['chisq_peak_flux'])
-    xlims = plt.xlim((0, len(fluxes)+5))
+    xlims = plt.xlim((-0.5, len(fluxes)+5))
     ylims = plt.ylim()
     y = ylims[0] + (ylims[1]-ylims[0])*0.8
     plt.text(x=xlims[1]*0.8, y=y, s=s)
