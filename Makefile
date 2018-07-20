@@ -54,10 +54,10 @@ $(IMAGES) $(REGION):
 
 # Create a masked version of the reference catalogue
 $(PREFIX)refcat.fits: $(REGION)
-	if [[ -z $${WARP} ]] ;\
+	if [[ -n "$(WARP)" ]] ;\
 	then touch $@ ;\
 	else \
-	MIMAS --maskcat $< $(REFCAT) $@ --colnames $${REFCAT_RA} $${REFCAT_DEC} --negate ;\
+	MIMAS --maskcat $< $(REFCAT) $@ --colnames $(REFCAT_RA) $(REFCAT_DEC) --negate ;\
 	fi
 
 ###
@@ -74,7 +74,7 @@ $(IMAGES:.fits=_rms.fits): %_rms.fits : %.fits
 
 # Blind source finding on the input images
 $(IMAGES:.fits=_comp.fits): %_comp.fits : %.fits %_bkg.fits %_rms.fits $(REGION)
-	if [[ -z $${WARP} ]] ;\
+	if [[ -n "$(WARP)" ]] ;\
 	then touch $@ ;\
 	else \
 	aegean $< --autoload --island --table $<,$*.reg --region=$(REGION);\
@@ -90,7 +90,7 @@ $(IMAGES:.fits=_xm.fits): %_xm.fits : %_comp.fits $(PREFIX)refcat.fits
 
 # warp the input images using the astrometry solutions, and create warped versions of the files
 $(IMAGES:.fits=_warped.fits): %_warped.fits : %.fits %_xm.fits
-	if [[ -z $${WARP} ]] ;\
+	if [[ -n "$(WARP)" ]] ;\
 	then rm $@; ln -s $< $@ ;\
 	else \
 	./fits_warp.py --infits $< --xm $*_xm.fits --suffix warped --ra1 ra --dec1 dec --ra2 ${{REFCAT_RA} --dec2 ${{REFCAT_DEC} --plot ;\
