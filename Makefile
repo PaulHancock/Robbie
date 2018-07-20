@@ -9,6 +9,7 @@ SHELL:=/bin/bash
 # input images should be listed in epoch order in this file
 IMFILE:=all_images.txt
 IMAGES:=$(shell cat $(IMFILE))
+NEPOCH:=$(shell wc -l $(IMFILE))
 # set warp to be empty to avoid running astrometry corrections
 WARP:=
 # (external) reference catalogue used for astrometry correction via fits_warp
@@ -192,6 +193,6 @@ $(PREFIX)transients.png: $(PREFIX)transients.fits
 	legend=false \
 	layer=SkyEllipse \
     in=$< \
-    lon=ra lat=dec ra=1 rb=0.2 posang='360.*epoch/25' aux=peak_flux/local_rms \
+    lon=ra lat=dec ra=1 rb=0.2 posang='360.*epoch/$(NEPOCH)' aux=peak_flux/local_rms \
     shading=aux ellipse=filled_ellipse scale=1.2 opaque=1.66 \
 	out=$@
