@@ -9,7 +9,7 @@ SHELL:=/bin/bash
 # input images should be listed in epoch order in this file
 IMFILE:=all_images.txt
 IMAGES:=$(shell cat $(IMFILE))
-NEPOCH:=$(shell wc -l $(IMFILE))
+NEPOCH:=$(shell cat $(IMFILE) | wc -l)
 # set warp to be empty to avoid running astrometry corrections
 WARP:=
 # (external) reference catalogue used for astrometry correction via fits_warp
@@ -84,7 +84,7 @@ $(IMAGES:.fits=_comp.fits): %_comp.fits : %.fits %_bkg.fits %_rms.fits $(REGION)
 
 # cross matching of blind catalogues with the reference catalogue, in order to create astrometry solutions
 $(IMAGES:.fits=_xm.fits): %_xm.fits : %_comp.fits $(PREFIX)refcat.fits
-	if [[ -z $${WARP} ]] ;\
+	if [[ -n "$(WARP)" ]] ;\
 	then touch $@ ;\
 	else ./fits_warp.py --refcat $(PREFIX)refcat.fits --incat $< --xm $@ ;\
 	fi
@@ -94,7 +94,7 @@ $(IMAGES:.fits=_warped.fits): %_warped.fits : %.fits %_xm.fits
 	if [[ -n "$(WARP)" ]] ;\
 	then rm $@; ln -s $< $@ ;\
 	else \
-	./fits_warp.py --infits $< --xm $*_xm.fits --suffix warped --ra1 ra --dec1 dec --ra2 ${{REFCAT_RA} --dec2 ${{REFCAT_DEC} --plot ;\
+	./fits_warp.py --infits $< --xm $*_xm.fits --suffix warped --ra1 ra --dec1 dec --ra2 $(REFCAT_RA) --dec2 $(REFCAT_DEC) --plot ;\
 	fi
 
 ###
@@ -130,7 +130,7 @@ $(IMAGES:.fits=_warped_prior_comp.fits): %_warped_prior_comp.fits : %_warped.fit
 # join all priorized sources into a single table based on the UUID column
 $(PREFIX)flux_table.fits: $(IMAGES:.fits=_warped_prior_comp.fits)
 	files=($^) ;\
-	cmd="java -jar /home/hancock/Software/stilts.jar tmatchn nin=$${#files[@]} matcher=exact out=$@ " ;\
+	cmd="$(STILTS) tmatchn nin=$${#files[@]} matcher=exact out=$@ " ;\
 	for n in $${!files[@]} ;\
 	do \
 	m=$$( echo "$${n}+1" | bc ) ;\
@@ -171,7 +171,7 @@ $(PREFIX)transients.fits: $(IMAGES:.fits=_warped_blanked_comp_filtered.fits)
 	if [[ -z $${files} ]];\
 	then touch $@;\
 	else \
-	cmd="${STILTS} tcatn nin=$${#files[@]}" ;\
+	cmd="$(STILTS) tcatn nin=$${#files[@]}" ;\
 	for i in $$( seq 1 1 $${#files[@]} ) ;\
 	do \
 	j=$$( echo "$${i} -1" | bc ) ;\
