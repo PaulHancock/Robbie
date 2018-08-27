@@ -140,9 +140,11 @@ $(PREFIX)flux_table.fits: $(IMAGES:.fits=_warped_prior_comp.fits)
 
 # add variability stats to the flux table
 $(PREFIX)flux_table_var.fits: $(PREFIX)flux_table.fits
-	./calc_var.py --infile $< --outfile $@ --plot $(PREFIX)flux_table_plot.png
+	./calc_var.py --infile $< --outfile $@
 	./plot_lc.py $@
 
+$(PREFIX)variables.png: $(PREFIX)flux_table_var.fits
+	./plot_variables.py --in $< --plot $@
 
 ###
 # Transient candidates
@@ -183,16 +185,4 @@ $(PREFIX)transients.fits: $(IMAGES:.fits=_warped_blanked_comp_filtered.fits)
 
 # plot the transients into a single image
 $(PREFIX)transients.png: $(PREFIX)transients.fits
-	$(STILTS) plot2sky \
-	xpix=645 ypix=563 \
-	gridaa=True \
-	grid=true texttype=antialias \
-	fontsize=14 fontstyle=serif fontweight=bold \
-	auxmap=sron auxflip=true auxquant=12 auxmin=3 auxmax=15 \
-	auxvisible=true auxlabel=SNR \
-	legend=false \
-	layer=SkyEllipse \
-    in=$< \
-    lon=ra lat=dec ra=1 rb=0.2 posang='360.*epoch/$(NEPOCH)' aux=peak_flux/local_rms \
-    shading=aux ellipse=filled_ellipse scale=1.2 opaque=1.66 \
-	out=$@
+	./plot_transients.py --in $< --plot $@
