@@ -21,7 +21,7 @@ def grain_plot(fitsfile, plotfile):
 
     kwargs={'fontsize':14}
 
-    cmap = pyplot.cm.jet
+    cmap = pyplot.cm.plasma_r
     # define the bins and normalize
     bounds = np.linspace(3,15,13)
     norm = matplotlib.colors.BoundaryNorm(bounds, cmap.N)
