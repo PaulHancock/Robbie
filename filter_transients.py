@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from AegeanTools.regions import Region
 from astropy.table import Table
 from astropy.io import fits
 from astropy.wcs import WCS
@@ -10,10 +11,10 @@ import os
 import sys
 
 __author__ = 'Paul Hancock'
-__date__ = ''
+__date__ = '2018-08-29'
 
 
-def filter_cat(catalogue, image, outcat):
+def filter_cat(catalogue, image, outcat, region=None):
     im = fits.open(image)
     cat = Table.read(catalogue).to_pandas()
     wcs = WCS(im[0].header, naxis=2)
@@ -25,14 +26,36 @@ def filter_cat(catalogue, image, outcat):
                                               structure=struct1))
     # image mask is where we *havent* masked the image (note [y,x])
     mask = np.where(dl[pix[1], pix[0]])[0]
-    Table.from_pandas(cat.iloc[mask]).write(outcat,  overwrite=True)
+    tab = Table.from_pandas(cat.iloc[mask])
+    if region is not None:
+        # exclude regions of sky that are outside of the mask.
+        reg = Region.load(region)
+        ra = tab['ra']
+        dec = tab['dec']
+        mask = reg.sky_within(ra, dec, degin=True)
+        tab = tab[mask]
+    tab.write(outcat,  overwrite=True)
 
 
 if __name__ == '__main__':
-    if len(sys.argv) < 3:
-        print "usage ${0} incat.fits image.fits outcat.fits".format(__file__)
+    parser = argparse.ArgumentParser()
+    group1 = parser.add_argument_group("Filter a transients catalogue")
+    group1.add_argument("--incat", dest='incat', type=str, default=None,
+                        help="The input catalogue.")
+    group1.add_argument("--image", dest='image', type=str, default=None,
+                        help='The input image')
+    group1.add_argument('--region',dest='region', type=str, default=None,
+                         help='A region file to provide additional filtering')
+    group1.add_argument("--outcat", dest='outcat', type=str, default=None,
+                        help="The output catalogue")
+
+    results = parser.parse_args()
+
+    if None in [results.incat, results.image, results.outcat]:
+        parser.print_help()
         sys.exit(1)
-    catalogue, image, outcat = sys.argv[-3:]
-    if os.path.exists(outcat):
-        os.remove(outcat)
-    filter_cat(catalogue, image, outcat)
+
+    filter_cat(catalogue=results.incat,
+               image=results.image,
+               outcat=results.outcat,
+               region=results.region)
