@@ -2,6 +2,7 @@
 from astropy.table import Table
 from astropy.io import fits
 from astropy.wcs import WCS
+import argparse
 import scipy.ndimage.morphology as morph
 from scipy import ndimage
 import numpy as np
