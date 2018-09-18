@@ -140,7 +140,8 @@ $(PREFIX)flux_table.fits: $(IMAGES:.fits=_warped_prior_comp.fits)
 
 # add variability stats to the flux table
 $(PREFIX)flux_table_var.fits: $(PREFIX)flux_table.fits
-	./calc_var.py --infile $< --outfile $@
+	ndof=($$(./auto_corr.py $(PREFIX)cube.fits)) ;\
+	./calc_var.py --infile $< --outfile $@ --ndof $(ndof[-1])
 	./plot_lc.py $@
 
 $(PREFIX)variables.png: $(PREFIX)flux_table_var.fits
