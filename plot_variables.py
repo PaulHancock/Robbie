@@ -20,7 +20,7 @@ def plot(fitsfile, plotfile):
     fig = pyplot.figure(figsize=(5,8))
 
     ax = fig.add_subplot(1,1,1)
-    cax = ax.scatter(tab['md'], np.log10(tab['pval_peak_flux']), c = np.log10(tab['peak_flux_1']))
+    cax = ax.scatter(tab['md'], np.log10(tab['pval_peak_flux']), c = np.log10(tab['peak_flux_1']), cmap=matplotlib.cm.viridis_r)
     cb = fig.colorbar(cax,ax=ax)
     cb.set_label("log10(Peak flux in epoch 1) (Jy)", **kwargs)
 
