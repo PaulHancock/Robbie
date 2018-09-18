@@ -34,11 +34,11 @@ def get_effective_ndof(cube):
     nsamples = cube.shape[0]
     mean, std = make_acorr_stats(NPIX,cube)
     # detect the first element that has correlation consistent with zero
-    print(mean)
-    print(std)
-    print(mean-std)
+    # print(mean)
+    # print(std)
+    # print(mean-std)
     fzero = np.min(np.where(mean-std < 0))
-    print(fzero)
+    # print(fzero)
     ndof = nsamples - 1 - fzero
     return ndof
 
@@ -54,5 +54,5 @@ if __name__ == "__main__":
         print("{0} needs to have 3 axes, but it has {1}".format(fname,len(cube.shape)))
         sys.exit(1)
     print("Cube has shape {0}".format(cube.shape))
-    print("Cube has {0} effective degrees of freedom".format(get_effective_ndof(cube)))
+    print("Effective degrees of freedom: {0}".format(get_effective_ndof(cube)))
 
