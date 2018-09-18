@@ -10,7 +10,7 @@ SHELL:=/bin/bash
 IMFILE:=all_images.txt
 IMAGES:=$(shell cat $(IMFILE))
 NEPOCH:=$(shell cat $(IMFILE) | wc -l)
-# set warp to be empty to avoid running astrometry corrections
+# set warp to be empty to run astrometry corrections
 WARP:=
 # (external) reference catalogue used for astrometry correction via fits_warp
 REFCAT:=/home/hancock/alpha/DATA/GLEAM_EGC.fits
@@ -165,7 +165,7 @@ $(IMAGES:.fits=_warped_blanked_comp.fits): %_warped_blanked_comp.fits : %_warped
 $(IMAGES:.fits=_warped_blanked_comp_filtered.fits): %_warped_blanked_comp_filtered.fits : %_warped_blanked_comp.fits
 	files=$$( ls $^ ) ;\
 	if [[ ! -z $${files} ]];\
-	then ./filter_transients.py $${files} $*_warped_blanked.fits $@ ;\
+	then ./filter_transients.py --incat $${files} --image $*_warped_blanked.fits --outcat $@ ;\
 	fi
 
 # join all transients into one catalogue
