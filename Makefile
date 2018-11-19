@@ -92,7 +92,7 @@ $(IMAGES:.fits=_xm.fits): %_xm.fits : %_comp.fits $(PREFIX)refcat.fits
 # warp the input images using the astrometry solutions, and create warped versions of the files
 $(IMAGES:.fits=_warped.fits): %_warped.fits : %.fits %_xm.fits
 	if [[ -n "$(WARP)" ]] ;\
-	then rm $@; ln -s $< $@ ;\
+	then rm -f $@; ln -s $$(basename $<) $@ ;\
 	else \
 	./fits_warp.py --infits $< --xm $*_xm.fits --suffix warped --ra1 ra --dec1 dec --ra2 $(REFCAT_RA) --dec2 $(REFCAT_DEC) --plot ;\
 	fi
@@ -141,7 +141,7 @@ $(PREFIX)flux_table.fits: $(IMAGES:.fits=_warped_prior_comp.fits)
 # add variability stats to the flux table
 $(PREFIX)flux_table_var.fits: $(PREFIX)flux_table.fits
 	ndof=($$(./auto_corr.py $(PREFIX)cube.fits)) ;\
-	./calc_var.py --infile $< --outfile $@ --ndof $(ndof[-1])
+	./calc_var.py --infile $< --outfile $@ --ndof $${ndof[-1]}
 	./plot_lc.py $@
 
 $(PREFIX)variables.png: $(PREFIX)flux_table_var.fits
@@ -172,16 +172,16 @@ $(IMAGES:.fits=_warped_blanked_comp_filtered.fits): %_warped_blanked_comp_filter
 $(PREFIX)transients.fits: $(IMAGES:.fits=_warped_blanked_comp_filtered.fits)
 	files=($$( ls $^ )) ;\
 	if [[ -z $${files} ]];\
-	then touch $@;\
+	  then touch $@;\
 	else \
-	cmd="$(STILTS) tcatn nin=$${#files[@]}" ;\
-	for i in $$( seq 1 1 $${#files[@]} ) ;\
-	do \
-	j=$$( echo "$${i} -1" | bc ) ;\
-	cmd="$${cmd} in$${i}=$${files[$${j}]} icmd$${i}='addcol epoch $${i}'" ;\
-	done ;\
-	cmd="$${cmd} out=$@ ofmt=fits" ;\
-	echo $${cmd} | bash ;\
+	  cmd="$(STILTS) tcatn nin=$${#files[@]}" ;\
+	  for i in $$( seq 1 1 $${#files[@]} ) ;\
+	  do \
+	    j=$$( echo "$${i} -1" | bc ) ;\
+	    cmd="$${cmd} in$${i}=$${files[$${j}]} icmd$${i}='addcol epoch $${i}'" ;\
+	  done ;\
+	  cmd="$${cmd} out=$@ ofmt=fits" ;\
+	  echo $${cmd} | bash ;\
 	fi
 
 # plot the transients into a single image
