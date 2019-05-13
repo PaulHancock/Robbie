@@ -131,4 +131,3 @@ if __name__ == '__main__':
 
     df = load_corrected_table(results.infile)
     add_stats(df, results.outfile, ndof=results.ndof)
-
