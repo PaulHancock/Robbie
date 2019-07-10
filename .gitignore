@@ -6,3 +6,6 @@ makefile2dot.py
 *.mim
 *.png
 all_images.txt
+FW.json
+*~
+__*
