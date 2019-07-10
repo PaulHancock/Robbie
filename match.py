@@ -1,16 +1,15 @@
 import fireworks as fw
-from fireworks.core.rocket_launcher import launch_rocket
-
-from AegeanTools import BANE
-
+from fireworks.core.rocket_launcher import launch_rocket, rapidfire
 
 # TODO: set this in some config file that users can update when 'installing' this code
 stilts="java -jar /home/paulhancock/Software/topcat-full.jar -stilts"
 
+@fw.explicit_serialize
 class BackgroundRMSTask(fw.FiretaskBase):
     """
     Compute the background and RMS of the input image.
     """
+
     _fw_name = "BANE Task"
 
     def run_task(self, fw_spec):
@@ -70,13 +69,17 @@ def crossmatch_catalogues(reference, target, output,
 
 if __name__ == "__main__":
     lpad = fw.LaunchPad()
-    # lpad.reset('', require_password=False)
+    lpad.reset('', require_password=False)
 
 
     xm_task = crossmatch_catalogues(reference='1904_comp.fits',
                                  target='1904_comp_copy.fits',
                                  output='matched.fits')
 
-    firework = fw.Firework(xm_task)
-    lpad.add_wf(firework)
-    #launch_rocket(lpad, fw.FWorker())
+    xm_fw = fw.Firework(xm_task)
+    bane_fw = fw.Firework(BackgroundRMSTask(), spec={'image':'ImageFile.fits'})
+    wf = fw.Workflow([bane_fw, xm_fw])
+    lpad.add_wf(wf)
+    # launching two rockets !
+    launch_rocket(lpad, fw.FWorker())
+    launch_rocket(lpad, fw.FWorker())
