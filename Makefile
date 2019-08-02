@@ -169,12 +169,6 @@ $(PREFIX)flux_table.vot: $(IMAGES:.fits=_warped_prior_comp.fits)
 	done ;\
 	echo $${cmd} | bash
 
-# add variability stats to the flux table
-$(PREFIX)flux_table_var.fits: $(PREFIX)flux_table.fits
-	ndof=($$(./auto_corr.py $(PREFIX)cube.fits)) ;\
-	./calc_var.py --infile $< --outfile $@ --ndof $${ndof[-1]}
-	./plot_lc.py $@
-
 $(PREFIX)flux_table_var.vot: $(PREFIX)flux_table.vot
 	ndof=($$(./auto_corr.py $(PREFIX)cube.fits)) ;\
 	./calc_var.py --infile $< --outfile $@ --ndof $${ndof[-1]}
@@ -183,7 +177,7 @@ $(PREFIX)flux_table_var.vot: $(PREFIX)flux_table.vot
 $(PREFIX)variables.png: $(PREFIX)flux_table_var.fits
 	./plot_variables.py --in $< --plot $@
 
-$(PREFIX)variables.png: $(PREFIX)flux_table_var.fits
+$(PREFIX)variables.png: $(PREFIX)flux_table_var.vot
 	./plot_variables.py --in $< --plot $@
 
 ###
