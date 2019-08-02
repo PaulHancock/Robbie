@@ -45,6 +45,27 @@ help:
 	@echo ""
 	@echo 'I recommend that you `make science`'
 
+cite:
+	@echo '% If you make use of Robbie please cite the following work:'
+	@echo '% Hancock et al. 2019:'
+	@echo '@ARTICLE{2019A&C....27...23H,'
+	@echo '   author = {{Hancock}, P.~J. and {Hurley-Walker}, N. and {White}, T.~E.},'
+	@echo '    title = "{ROBBIE: A batch processing work-flow for the detection of radio transients and variables}",'
+	@echo '  journal = {Astronomy and Computing},'
+	@echo 'archivePrefix = "arXiv",'
+	@echo '   eprint = {1902.06956},'
+	@echo ' primaryClass = "astro-ph.IM",'
+	@echo ' keywords = {Methods, Data analysis, Techniques, Radio astronomy, Variability, Transients},'
+	@echo '     year = 2019,'
+	@echo '    month = apr,'
+	@echo '   volume = 27,'
+	@echo '      eid = {23},'
+	@echo '    pages = {23},'
+	@echo '      doi = {10.1016/j.ascom.2019.02.004},'
+	@echo '   adsurl = {http://adsabs.harvard.edu/abs/2019A%26C....27...23H},'
+	@echo '  adsnote = {Provided by the SAO/NASA Astrophysics Data System}'
+	@echo '}'
+
 # Shorcuts for easy processing
 variables: $(PREFIX)flux_table_var.fits
 transients: $(PREFIX)transients.png
