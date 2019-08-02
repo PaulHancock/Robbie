@@ -110,7 +110,10 @@ def add_stats(df, outfile=None, ndof=None):
 
 
     tab2 = Table.from_pandas(df)
-    tab2.write(outfile, overwrite=True)
+    fmt = outfile.split('.')[-1]
+    if 'vot' in fmt:
+        fmt = 'votable'
+    tab2.write(outfile, overwrite=True, format=fmt)
 
 
 if __name__ == '__main__':
