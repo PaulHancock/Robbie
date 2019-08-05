@@ -7,24 +7,24 @@ SHELL:=/bin/bash
 ###
 
 # input images should be listed in epoch order in this file
-IMFILE:=all_images.txt
+IMFILE:=sim_images.txt
 IMAGES:=$(shell cat $(IMFILE))
 NEPOCH:=$(shell cat $(IMFILE) | wc -l)
 # set warp to be empty to run astrometry corrections
-WARP:=
+WARP:=NO
 # (external) reference catalogue used for astrometry correction via fits_warp
-REFCAT:=/home/hancock/alpha/DATA/GLEAM_EGC.fits
-REFCAT_RA:=RAJ2000
-REFCAT_DEC:=DEJ2000
+REFCAT:=Reference_sim.fits
+REFCAT_RA:=ra
+REFCAT_DEC:=dec
 # This variable is used to invoke stilts
 STILTS:=java -jar /home/hancock/Software/topcat/topcat-full.jar -stilts
 # prefix for output files
-PREFIX:=
+PREFIX:=sim_
 # The name of the mean image and image cube
 MEAN:=$(PREFIX)mean.fits
 CUBE:=$(PREFIX)cube.fits
 # region file to use for masking the source finding and reference catalogue.
-REGION:=region.mim
+REGION:=square.mim
 
 # HELP!
 help:
