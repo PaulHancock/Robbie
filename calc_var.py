@@ -58,16 +58,37 @@ def norm(series, fluxes=[]):
     return f/mean
 
 
-def load_corrected_table(filename):
+def load_table(filename, correct=False):
+    """
+    Load the given table, and apply corrections if requested.
+
+    parameters
+    ==========
+    filename : string
+      The name of the file to read
+
+    correct : bool
+      Compute and remove the 'mean light curve' if correct=True, 
+      and there are more than 5 rows in the table.
+
+    return
+    ======
+    df : pandas.df
+      A data frame of the given table.
+    """
     tab = Table.read(filename)
     df = tab.to_pandas()
-    flux_cols = [n for n in df.columns if n.startswith('peak')]
-    err_flux_cols = [n for n in df.columns if n.startswith('err_peak')]
 
-    mean_fluxes = df[flux_cols].apply(norm, axis=1, fluxes=flux_cols)
-    mean_lc = mean_fluxes.median(axis=0)
-    df[flux_cols] = df[flux_cols] / mean_lc
-    df[err_flux_cols] = df[err_flux_cols].divide(mean_lc.values)
+    ## The following corrections are not required unless your data has some
+    ## real problems with instrumental variability.
+    if correct:
+        flux_cols = [n for n in df.columns if n.startswith('peak')]
+        err_flux_cols = [n for n in df.columns if n.startswith('err_peak')]
+        if len(df) > 5:
+            mean_fluxes = df[flux_cols].apply(norm, axis=1, fluxes=flux_cols)
+            mean_lc = mean_fluxes.median(axis=0)
+            df[flux_cols] = df[flux_cols] / mean_lc
+            df[err_flux_cols] = df[err_flux_cols].divide(mean_lc.values)
     return df
 
 
@@ -89,6 +110,8 @@ def add_stats(df, outfile=None, ndof=None):
     flux_cols = [n for n in df.columns if n.startswith('peak')]
     err_flux_cols = [n for n in df.columns if n.startswith('err_peak')]
 
+    if ndof is None:
+        ndof = len(flux_cols) - 1
 
     mean_flux = df[flux_cols].mean(axis=1)
     df['mean_peak_flux'] = pd.Series(mean_flux, index=df.index)
@@ -125,12 +148,13 @@ if __name__ == '__main__':
                         help="Output catalogue")
     group1.add_argument("--ndof", dest='ndof', type=float, default=None,
                         help="Effective number of degrees of freedom. Defualt: N=epochs-1")
-
+    group1.add_argument("--correct", dest="correct", action='store_true', default=False,
+                        help="Compute and remove the mean light curve (if there are more than 5 rows). Default: False.")
     results = parser.parse_args()
 
     if len(sys.argv) <= 1:
         parser.print_help()
         sys.exit()
 
-    df = load_corrected_table(results.infile)
+    df = load_table(results.infile, correct=results.correct)
     add_stats(df, results.outfile, ndof=results.ndof)
