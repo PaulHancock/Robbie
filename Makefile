@@ -7,24 +7,27 @@ SHELL:=/bin/bash
 ###
 
 # input images should be listed in epoch order in this file
-IMFILE:=sim_images.txt
+IMFILE:=all_images_180805a_l1_05s.txt
+#IMFILE:=image_1217495544.txt
 IMAGES:=$(shell cat $(IMFILE))
 NEPOCH:=$(shell cat $(IMFILE) | wc -l)
-# set warp to be empty to run astrometry corrections
-WARP:=NO
+# set warp to be empty to do astrometry corrections
+WARP:=No
 # (external) reference catalogue used for astrometry correction via fits_warp
-REFCAT:=Reference_sim.fits
-REFCAT_RA:=ra
-REFCAT_DEC:=dec
+REFCAT:=/home/gemma/software/GLEAM_EGC.fits
+REFCAT_RA:=RAJ2000
+REFCAT_DEC:=DEJ2000
 # This variable is used to invoke stilts
-STILTS:=java -jar /home/hancock/Software/topcat/topcat-full.jar -stilts
+STILTS:=java -jar /home/gemma/software/stilts.jar
 # prefix for output files
-PREFIX:=sim_
+PREFIX:=GRB180805A_05s_l1_
+#PREFIX:=GRB180805A_1217495544_
 # The name of the mean image and image cube
 MEAN:=$(PREFIX)mean.fits
 CUBE:=$(PREFIX)cube.fits
 # region file to use for masking the source finding and reference catalogue.
-REGION:=square.mim
+REGION:=cutout_big_v4.mim
+#REGION:=GRB180805A/individual_robbie_2m/1217495184.mim
 
 # HELP!
 help:
@@ -67,7 +70,8 @@ cite:
 	@echo '}'
 
 # Shorcuts for easy processing
-variables: $(PREFIX)flux_table_var.fits
+#variables: $(PREFIX)flux_table_var.fits
+variables: $(PREFIX)flux_table_var.vot
 transients: $(PREFIX)transients.png
 science: variables transients
 
@@ -174,8 +178,8 @@ $(PREFIX)flux_table_var.vot: $(PREFIX)flux_table.vot
 	./calc_var.py --infile $< --outfile $@ --ndof $${ndof[-1]}
 	./plot_lc.py $@
 
-$(PREFIX)variables.png: $(PREFIX)flux_table_var.fits
-	./plot_variables.py --in $< --plot $@
+#$(PREFIX)variables.png: $(PREFIX)flux_table_var.fits
+#	./plot_variables.py --in $< --plot $@
 
 $(PREFIX)variables.png: $(PREFIX)flux_table_var.vot
 	./plot_variables.py --in $< --plot $@
