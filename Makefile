@@ -40,7 +40,7 @@ help:
 	@echo ""
 	@echo " commands:"
 	@echo "  transients = transients.png"
-	@echo "  variables = flux_table_var.fits"
+	@echo "  variables = variables.png"
 	@echo "  sceince = variables + transients"
 	@echo ""
 	@echo 'I recommend that you `make science`'
@@ -67,7 +67,7 @@ cite:
 	@echo '}'
 
 # Shorcuts for easy processing
-variables: $(PREFIX)flux_table_var.fits
+variables: $(PREFIX)variables.png
 transients: $(PREFIX)transients.png
 science: variables transients
 
@@ -174,8 +174,8 @@ $(PREFIX)flux_table_var.vot: $(PREFIX)flux_table.vot
 	./calc_var.py --infile $< --outfile $@ --ndof $${ndof[-1]}
 	./plot_lc.py $@
 
-$(PREFIX)variables.png: $(PREFIX)flux_table_var.fits
-	./plot_variables.py --in $< --plot $@
+#$(PREFIX)variables.png: $(PREFIX)flux_table_var.fits
+#	./plot_variables.py --in $< --plot $@
 
 $(PREFIX)variables.png: $(PREFIX)flux_table_var.vot
 	./plot_variables.py --in $< --plot $@
