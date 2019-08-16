@@ -43,7 +43,7 @@ help:
 	@echo ""
 	@echo " commands:"
 	@echo "  transients = transients.png"
-	@echo "  variables = flux_table_var.fits"
+	@echo "  variables = variables.png"
 	@echo "  sceince = variables + transients"
 	@echo ""
 	@echo 'I recommend that you `make science`'
@@ -70,8 +70,12 @@ cite:
 	@echo '}'
 
 # Shorcuts for easy processing
+<<<<<<< HEAD
 #variables: $(PREFIX)flux_table_var.fits
 variables: $(PREFIX)flux_table_var.vot
+=======
+variables: $(PREFIX)variables.png
+>>>>>>> b3d383d75d26054e14ecff60c195c76ecea423d3
 transients: $(PREFIX)transients.png
 science: variables transients
 
@@ -128,7 +132,9 @@ $(IMAGES:.fits=_warped.fits): %_warped.fits : %.fits %_xm.fits
 
 # create an image cube from all the warped images
 $(CUBE): $(IMAGES:.fits=_warped.fits)
-	./make_cube.py $@ $^
+	sed -e 's:.fits:_warped.fits:g' $(IMFILE) > temp_list.txt
+	./make_cube.py --out $@ --infile temp_list.txt
+	rm temp_list.txt
 
 # create mean image from the image cube
 $(MEAN): $(CUBE)
