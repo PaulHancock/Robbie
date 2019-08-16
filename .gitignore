@@ -1,4 +1,5 @@
 *.fits
+*.vot
 *.reg
 .idea
 vis.png
