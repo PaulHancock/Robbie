@@ -124,7 +124,7 @@ $(IMAGES:.fits=_warped.fits): %_warped.fits : %.fits %_xm.fits
 
 # create an image cube from all the warped images
 $(CUBE): $(IMAGES:.fits=_warped.fits)
-	./make_cube.py $@ $^
+	./make_cube.py --out $@ --infile $(IMFILE)
 
 # create mean image from the image cube
 $(MEAN): $(CUBE)
