@@ -129,8 +129,11 @@ $(CUBE): $(IMAGES:.fits=_warped.fits)
 	rm temp_list.txt
 
 # create mean image from the image cube
-$(MEAN): $(CUBE)
-	./make_mean.py $^ $@
+$(MEAN): $(IMAGES:.fits=_warped.fits)
+	sed -e 's:.fits:_warped.fits:g' $(IMFILE) > temp_list.txt
+	./make_mean.py --out $@ --infile temp_list.txt
+	rm temp_list.txt
+
 
 # create background and noise mapse for the mean image
 $(MEAN:.fits=_bkg.fits) $(MEAN:.fits=_rms.fits): $(MEAN)
