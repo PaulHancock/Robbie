@@ -21,23 +21,24 @@ if __name__ == "__main__":
     c = conn.cursor()
     c.execute("""
     CREATE TABLE epochs
-    (date text, epoch int)
+    (date TEXT,
+    epoch INTEGER PRIMARY KEY ASC AUTOINCREMENT)
     """)
     c.execute("""
     CREATE TABLE sources
-    (island int, source int,
-    background float, local_rms float,
-    ra_str text, dec_str text,
-    ra float, err_ra float, dec float, err_dec float,
-    peak_flux float, err_peak_flux float,
-    int_flux float, err_int_flux float,
-    a float, err_a float, b float, err_b float,
-    pa float, err_pa float,
-    flags int,
-    residual_mean float, residual_std float,
-    uuid text,
-    psf_a float, psf_b float, psf_pa float,
-    epoch int REFERENCES epochs(epoch),
+    (island INTEGER, source INTEGER,
+    background NUMERIC, local_rms NUMERIC,
+    ra_str TEXT, dec_str TEXT,
+    ra NUMERIC, err_ra NUMERIC, dec NUMERIC, err_dec NUMERIC,
+    peak_flux NUMERIC, err_peak_flux NUMERIC,
+    INTEGER_flux NUMERIC, err_INTEGER_flux NUMERIC,
+    a NUMERIC, err_a NUMERIC, b NUMERIC, err_b NUMERIC,
+    pa NUMERIC, err_pa NUMERIC,
+    flags INTEGER,
+    residual_mean NUMERIC, residual_std NUMERIC,
+    uuid TEXT,
+    psf_a NUMERIC, psf_b NUMERIC, psf_pa NUMERIC,
+    epoch INTEGER REFERENCES epochs(epoch),
     UNIQUE (uuid, epoch))
     """)
     conn.commit()
