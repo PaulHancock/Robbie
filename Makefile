@@ -153,6 +153,16 @@ $(IMAGES:.fits=_warped_prior_comp.fits): %_warped_prior_comp.fits : %_warped.fit
                     --table $*_warped_prior.fits,$*_warped_prior.reg --priorized 2 \
 		            --input $(PREFIX)mean_comp.fits --noregroup
 
+
+# put all the catalogues into the database
+$(PREFIX)flux_table.db: $(IMAGES:.fits=_warped_prior_comp.fits)
+	files=($^) ;\
+	./remake_db.py --name $@ ;\
+	for f in $${files[@]} ;\
+	do im=$$(echo $${f} | sed -e 's:_prior_comp.fits:.fits:g') ;\
+	./add_cat_to_db.py --name $@ --cat $${f} --image $${im};\
+	done
+
 # join all priorized sources into a single table based on the UUID column
 $(PREFIX)flux_table.fits: $(IMAGES:.fits=_warped_prior_comp.fits)
 	files=($^) ;\
