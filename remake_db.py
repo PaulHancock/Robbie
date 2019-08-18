@@ -14,6 +14,10 @@ if __name__ == "__main__":
                         help="Database name")
     results = parser.parse_args()
 
+    if results.name is None:
+        parser.print_help()
+        sys.exit(1)
+
     if os.path.exists(results.name):
         os.remove(results.name)
 
@@ -31,7 +35,7 @@ if __name__ == "__main__":
     ra_str TEXT, dec_str TEXT,
     ra NUMERIC, err_ra NUMERIC, dec NUMERIC, err_dec NUMERIC,
     peak_flux NUMERIC, err_peak_flux NUMERIC,
-    INTEGER_flux NUMERIC, err_INTEGER_flux NUMERIC,
+    int_flux NUMERIC, err_int_flux NUMERIC,
     a NUMERIC, err_a NUMERIC, b NUMERIC, err_b NUMERIC,
     pa NUMERIC, err_pa NUMERIC,
     flags INTEGER,
