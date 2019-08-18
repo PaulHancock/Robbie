@@ -4,10 +4,78 @@ __date__ = ''
 
 import argparse
 from astropy.table import Table
+import sqlite3
 import pandas as pd
 import numpy as np
 from scipy import stats
 import sys
+
+
+
+def make_table(cur):
+    """
+    Create a table to store the variability stats for each source
+    Clear the table if it already exists
+
+    parameters
+    ----------
+    cur : sqlite3.connection.cursor
+        Cursor for database connection
+    """
+    cur.execute("""CREATE TABLE IF NOT EXISTS stats (
+    uuid TEXT,
+    mean_peak_flux NUMERIC,
+    std_peak_flux NUMERIC,
+    chisq_peak_flux NUMERIC,
+    m NUMERIC,
+    md NUMERIC,
+    pval_peak_flux NUMERIC)""")
+    # clear the table 
+    cur.execute("DELETE FROM stats")
+    return
+
+
+def calc_stats(cur, ndof=None):
+    """
+    Compute the mean and std of each light curve
+
+    parameters
+    ----------
+    cur : sqlite3.connection.cursor
+        Cursor for the database connection
+    """
+    cur.execute("SELECT DISTINCT uuid FROM sources")
+    sources = cur.fetchall()
+    for s in sources:
+        cur.execute("SELECT peak_flux FROM sources WHERE uuid=? ORDER BY epoch", s)
+        fluxes = np.array(cur.fetchall())
+        cur.execute("SELECT err_peak_flux FROM sources WHERE uuid=? ORDER BY epoch", s)
+        err = np.array(cur.fetchall())
+
+        # don't include fit errors in the stats calculation
+        mask = np.where(err>0)
+        mean = np.mean(fluxes[mask])
+        std = np.std(fluxes[mask])
+        m = std/mean
+        chisq = np.sum(( fluxes[mask] - mean)**2 / err[mask]**2)
+        npts = len(mask)
+        if npts <2:
+            pval = 0
+        else:
+            if ndof is None:
+                ndof = npts - 1
+            pval = stats.chi2.sf(chisq, ndof)
+            pval = max(pval, 1e-10)
+        # debiased modulation index
+        desc = np.sum((fluxes[mask] - mean)**2) - np.sum(err[mask]**2)
+        md = 1./mean * np.sqrt(np.abs(desc)/len(mask))
+        md = md*((desc > 0)*2 - 1)
+        # add all to the stats table
+        cur.execute("""INSERT INTO stats(uuid, mean_peak_flux, std_peak_flux, m, md, chisq_peak_flux, pval_peak_flux)
+        VALUES (?,?,?,?,?,?,?)""",
+                    (s[0], mean, std, m,  md, chisq, pval))
+    return
+
 
 def chisq(series, fluxes=[], errs=[]):
     f = series[fluxes].values
@@ -142,19 +210,21 @@ def add_stats(df, outfile=None, ndof=None):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     group1 = parser.add_argument_group("Calculate variability stats")
-    group1.add_argument("--infile", dest='infile', type=str, default=None,
-                        help="The input catalogue.")
-    group1.add_argument("--outfile", dest='outfile', type=str, default=None,
-                        help="Output catalogue")
+    group1.add_argument("--name", dest='name', type=str, default=None,
+                        help="Database filename.")
     group1.add_argument("--ndof", dest='ndof', type=float, default=None,
                         help="Effective number of degrees of freedom. Defualt: N=epochs-1")
     group1.add_argument("--correct", dest="correct", action='store_true', default=False,
                         help="Compute and remove the mean light curve (if there are more than 5 rows). Default: False.")
     results = parser.parse_args()
 
-    if len(sys.argv) <= 1:
+    if results.name is None:
         parser.print_help()
-        sys.exit()
+        sys.exit(1)
 
-    df = load_table(results.infile, correct=results.correct)
-    add_stats(df, results.outfile, ndof=results.ndof)
+    conn = sqlite3.connect(results.name)
+    c = conn.cursor()
+    make_table(c)
+    calc_stats(c, results.ndof)
+    conn.commit()
+    conn.close()
