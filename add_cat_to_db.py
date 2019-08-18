@@ -2,6 +2,7 @@
 from __future__ import print_function
 
 from astropy.table import Table
+from astropy.io import fits
 import sqlite3
 import argparse
 import sys
@@ -22,7 +23,7 @@ def get_date(filename):
     date : str
        String repr of the date (from DATE-OBS or similar)
     """
-    header = fits.gethead(filename)
+    header = fits.getheader(filename)
     date = header.get('DATE-OBS', 'NULL')
     return date
 
@@ -43,14 +44,20 @@ def add_catalogue(cur, date, cat):
         Catalogue file.
     """
     # open the catalogue
-    c = table.read(cat)
     # add the date to the epoch table and get the epoch number
-    cur.execute("INSERT INTO epochs (date) VALUES (?)", date)
-    cur.execute("SELECT epoch FROM epochs WHERE date=?", date)
-    epoch = cur.fetchone()
-    
+    cur.execute("INSERT INTO epochs (date) VALUES (?)", (date,))
+    cur.execute("SELECT epoch FROM epochs WHERE date=?", (date,))
+    epoch = cur.fetchone()[0]
+    print("File {0} has date {1} = epoch {2}".format(cat, date, epoch))
+    c = Table.read(cat)
     # map catalogue columns into db columns, append epoch number
-    # input all rows
+    cols = c.colnames
+    # construct a query without having to hard code everything
+    qry = "INSERT INTO sources ({0}, epoch) VALUES ({1},{2})".format(','.join(cols), ','.join(['?']*len(cols)), epoch)
+    for row in c.as_array():
+        # convert numpy types into python types
+        data = map(lambda x: x.item(), row)
+        cur.execute(qry, data)
     return
 
 
@@ -65,9 +72,14 @@ if __name__ == "__main__":
                         help='Image from which the catalogue was made.')
     results = parser.parse_args()
 
+    if None in (results.name, results.cat, results.image):
+        parser.print_help()
+        sys.exit(1)
+
     conn = sqlite3.connect(results.name)
     c = conn.cursor()
-
+    date = get_date(results.image)
+    add_catalogue(c, date, results.cat)
     conn.commit()
     conn.close()
 
