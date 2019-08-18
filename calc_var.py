@@ -1,11 +1,9 @@
 #!/usr/bin/env python
 __author__ = 'Paul Hancock'
-__date__ = ''
+__date__ = '2019/08/18'
 
 import argparse
-from astropy.table import Table
 import sqlite3
-import pandas as pd
 import numpy as np
 from scipy import stats
 import sys
@@ -59,7 +57,7 @@ def calc_stats(cur, ndof=None):
         m = std/mean
         chisq = np.sum(( fluxes[mask] - mean)**2 / err[mask]**2)
         npts = len(mask)
-        if npts <2:
+        if npts < 2:
             pval = 0
         else:
             if ndof is None:
@@ -77,134 +75,6 @@ def calc_stats(cur, ndof=None):
     return
 
 
-def chisq(series, fluxes=[], errs=[]):
-    f = series[fluxes].values
-    e = series[errs].values
-    m = e == e
-    f = f[m]
-    e = e[m]
-    mean = np.mean(f)
-    val = np.sum((f - mean) ** 2 / e**2)
-    return val
-
-
-def pval(series, fluxes=[], errs=[], ndof=None):
-    chi = chisq(series, fluxes, errs)
-    e = series[errs].values
-    m = e == e
-    npts = len(m)
-    if npts < 2:
-        return 0
-    if ndof is None:
-        ndof = npts - 1
-    p = stats.chi2.sf(chi, ndof)
-    return max(p, 1e-10)
-
-
-def modulation_index(series, fluxes=[], errs=[]):
-    f = series[fluxes]
-    return np.std(f)/np.mean(f)
-
-
-def debias_modulation_index(series, fluxes=[], errs=[]):
-    f = series[fluxes].values
-    e = series[errs].values
-    m = e == e
-    f = f[m]
-    e = e[m]
-    mean = np.mean(f)
-    desc = np.sum((f - mean)**2) - np.sum(e**2)
-    md = 1./mean * np.sqrt(np.abs(desc)/len(m))
-    md = md*((desc > 0)*2 - 1)
-
-    return md
-
-
-def norm(series, fluxes=[]):
-    f = series[fluxes].values
-    mean = np.mean(f)
-    return f/mean
-
-
-def load_table(filename, correct=False):
-    """
-    Load the given table, and apply corrections if requested.
-
-    parameters
-    ==========
-    filename : string
-      The name of the file to read
-
-    correct : bool
-      Compute and remove the 'mean light curve' if correct=True, 
-      and there are more than 5 rows in the table.
-
-    return
-    ======
-    df : pandas.df
-      A data frame of the given table.
-    """
-    tab = Table.read(filename)
-    df = tab.to_pandas()
-
-    ## The following corrections are not required unless your data has some
-    ## real problems with instrumental variability.
-    if correct:
-        flux_cols = [n for n in df.columns if n.startswith('peak')]
-        err_flux_cols = [n for n in df.columns if n.startswith('err_peak')]
-        if len(df) > 5:
-            mean_fluxes = df[flux_cols].apply(norm, axis=1, fluxes=flux_cols)
-            mean_lc = mean_fluxes.median(axis=0)
-            df[flux_cols] = df[flux_cols] / mean_lc
-            df[err_flux_cols] = df[err_flux_cols].divide(mean_lc.values)
-    return df
-
-
-def add_stats(df, outfile=None, ndof=None):
-    """
-
-    Parameters
-    ----------
-    tab : pandas.Dataframe
-
-    outfile: string
-
-    ndof: float
-
-    Returns
-    -------
-
-    """
-    flux_cols = [n for n in df.columns if n.startswith('peak')]
-    err_flux_cols = [n for n in df.columns if n.startswith('err_peak')]
-
-    if ndof is None:
-        ndof = len(flux_cols) - 1
-
-    mean_flux = df[flux_cols].mean(axis=1)
-    df['mean_peak_flux'] = pd.Series(mean_flux, index=df.index)
-
-    std_flux = df[flux_cols].std(axis=1)
-    df['std_peak_flux'] = pd.Series(std_flux, index=df.index)
-
-    chi_flux = df.apply(chisq, axis=1, fluxes=flux_cols, errs=err_flux_cols)
-    df['chisq_peak_flux'] = pd.Series(chi_flux, index=df.index)
-
-    pval_flux = df.apply(pval, axis=1, fluxes=flux_cols, errs=err_flux_cols, ndof=ndof)
-    df['pval_peak_flux'] = pd.Series(pval_flux, index=df.index)
-
-    m = df.apply(modulation_index, axis=1, fluxes=flux_cols, errs=err_flux_cols)
-    df['m'] = pd.Series(m, index=df.index)
-
-    md = df.apply(debias_modulation_index, axis=1, fluxes=flux_cols, errs=err_flux_cols)
-    df['md'] = pd.Series(md, index=df.index)
-
-
-    tab2 = Table.from_pandas(df)
-    fmt = outfile.split('.')[-1]
-    if 'vot' in fmt:
-        fmt = 'votable'
-    tab2.write(outfile, overwrite=True, format=fmt)
 
 
 if __name__ == '__main__':
