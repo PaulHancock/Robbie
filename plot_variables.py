@@ -1,4 +1,5 @@
 #! /usr/bin/env python
+from __future__ import print_function
 
 from astropy.table import Table
 import numpy as np
@@ -8,9 +9,10 @@ from matplotlib.patches import Ellipse
 import sqlite3
 import argparse
 import sys
+import os
 
 
-def plot(cur, plotfile):
+def plot_summary(cur, plotfile):
     """
     Plot
     """
@@ -42,6 +44,39 @@ def plot(cur, plotfile):
     return
 
 
+def plot_lc(cur):
+    cur.execute("""SELECT DISTINCT uuid FROM sources""")
+    sources = cur.fetchall()
+
+    for src in sources:
+        uuid = src[0]
+        fname = 'plots/{0}.png'.format(uuid)
+        print(fname, end='')
+        if os.path.exists(fname):
+            print(".. skip")
+            continue
+
+        cur.execute("""SELECT peak_flux, err_peak_flux, epoch FROM sources WHERE uuid=? ORDER BY epoch """, (uuid,))
+        peak_flux, err_peak_flux, _ = map(np.array, zip(*cur.fetchall()))
+        cur.execute("""SELECT m, md, chisq_peak_flux FROM stats WHERE uuid=? """, (uuid,))
+        m, md, chisq_peak_flux = cur.fetchone()
+
+        pyplot.clf()
+        pyplot.errorbar(range(len(peak_flux)), peak_flux, yerr=err_peak_flux)
+        pyplot.xlabel('Epoch')
+        pyplot.ylabel('Flux Density (Jy/Beam)')
+        s = 'm={0:5.3f}\nmd={1:4.2f}\nchisq={2:4.1f}'.format(m, md, chisq_peak_flux)
+        xlims = pyplot.xlim((-0.5, len(peak_flux)+5))
+        ylims = pyplot.ylim()
+        y = ylims[0] + (ylims[1]-ylims[0])*0.8
+        pyplot.text(x=xlims[1]*0.8, y=y, s=s)
+        pyplot.title('{0}'.format(uuid))
+        pyplot.savefig(fname)
+        print(".. done")
+    return
+
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     group1 = parser.add_argument_group("Create a variability plot")
@@ -58,5 +93,6 @@ if __name__ == "__main__":
 
     conn = sqlite3.connect(results.name)
     cur = conn.cursor()
-    plot(cur=cur, plotfile=results.plotfile)
+    plot_summary(cur=cur, plotfile=results.plotfile)
+    plot_lc(cur=cur)
     conn.close()
