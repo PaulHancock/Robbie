@@ -84,6 +84,8 @@ if __name__ == "__main__":
                         help="The input catalogue.")
     group1.add_argument("--plot", dest='plotfile', type=str, default=None,
                         help="output plot")
+    group1.add_argument("--all", dest='all', action='store_true', default=False,
+                        help="Also plot individual light curves. Default:False")
 
     results = parser.parse_args()
 
@@ -94,5 +96,6 @@ if __name__ == "__main__":
     conn = sqlite3.connect(results.name)
     cur = conn.cursor()
     plot_summary(cur=cur, plotfile=results.plotfile)
-    plot_lc(cur=cur)
+    if results.all:
+        plot_lc(cur=cur)
     conn.close()
