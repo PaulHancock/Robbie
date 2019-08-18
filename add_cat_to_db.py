@@ -45,8 +45,8 @@ def add_catalogue(cur, date, cat):
     """
     # open the catalogue
     # add the date to the epoch table and get the epoch number
-    cur.execute("INSERT INTO epochs (date) VALUES (?)", (date,))
-    cur.execute("SELECT epoch FROM epochs WHERE date=?", (date,))
+    cur.execute("INSERT INTO epochs (date, file) VALUES (?,?)", (date,cat))
+    cur.execute("SELECT epoch FROM epochs WHERE date=? and file=?", (date,cat))
     epoch = cur.fetchone()[0]
     print("File {0} has date {1} = epoch {2}".format(cat, date, epoch))
     c = Table.read(cat)

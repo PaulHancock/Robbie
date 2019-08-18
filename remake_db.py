@@ -25,7 +25,7 @@ if __name__ == "__main__":
     c = conn.cursor()
     c.execute("""
     CREATE TABLE epochs
-    (date TEXT,
+    (date TEXT, file TEXT,
     epoch INTEGER PRIMARY KEY ASC AUTOINCREMENT)
     """)
     c.execute("""
