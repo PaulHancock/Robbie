@@ -5,22 +5,26 @@ import numpy as np
 import matplotlib
 from matplotlib import pyplot
 from matplotlib.patches import Ellipse
+import sqlite3
 import argparse
 import sys
 
 
-def plot(fitsfile, plotfile):
+def plot(cur, plotfile):
     """
     Plot
     """
+    cur.execute("""SELECT pval_peak_flux, md, mean_peak_flux FROM stats""")
+    rows = cur.fetchall()
 
-    tab = Table.read(fitsfile)
+    pval_peak_flux, md, mean_peak_flux = map(np.array, zip(*rows))
 
     kwargs = {'fontsize':14}
     fig = pyplot.figure(figsize=(5,8))
 
+
     ax = fig.add_subplot(1,1,1)
-    cax = ax.scatter(tab['md'], np.log10(tab['pval_peak_flux']), c = np.log10(tab['peak_flux_1']), cmap=matplotlib.cm.viridis_r)
+    cax = ax.scatter(md, np.log10(pval_peak_flux), c = np.log10(mean_peak_flux), cmap=matplotlib.cm.viridis_r)
     cb = fig.colorbar(cax,ax=ax)
     cb.set_label("log10(Peak flux in epoch 1) (Jy)", **kwargs)
 
@@ -41,14 +45,18 @@ def plot(fitsfile, plotfile):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     group1 = parser.add_argument_group("Create a variability plot")
-    group1.add_argument("--in", dest='infile', type=str, default=None,
+    group1.add_argument("--name", dest='name', type=str, default=None,
                         help="The input catalogue.")
     group1.add_argument("--plot", dest='plotfile', type=str, default=None,
                         help="output plot")
 
     results = parser.parse_args()
 
-    if len(sys.argv) <= 1:
+    if None in (results.name, results.plotfile):
         parser.print_help()
         sys.exit()
-    plot(fitsfile=results.infile, plotfile=results.plotfile)
+
+    conn = sqlite3.connect(results.name)
+    cur = conn.cursor()
+    plot(cur=cur, plotfile=results.plotfile)
+    conn.close()
