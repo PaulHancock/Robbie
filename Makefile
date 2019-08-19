@@ -25,6 +25,8 @@ MEAN:=$(PREFIX)mean.fits
 CUBE:=$(PREFIX)cube.fits
 # region file to use for masking the source finding and reference catalogue.
 REGION:=square.mim
+# a catalogue that includes additional points to monitor
+MONITOR:=monitor.fits
 
 # HELP!
 help:
@@ -146,12 +148,17 @@ $(MEAN:.fits=_comp.fits): %_comp.fits : %.fits %_bkg.fits %_rms.fits
 ###
 # Persistent sources
 ###
+$(PREFIX)persistent_sources.fits : $(PREFIX)mean_comp.fits $(MONITOR)
+	if [[ -n "$(MONITOR)" ]] ;\
+	then $(STILTS) tcatn nin=2 in1=$(PREFIX)mean_comp.fits in2=$(MONITOR) out=$(PREFIX)persistent_sources.fits\
+	else cp $< $@ ;\
+	fi
 
 # priorize source finding to make light curves from warped images based on the master catalogue
-$(IMAGES:.fits=_warped_prior_comp.fits): %_warped_prior_comp.fits : %_warped.fits %_bkg.fits %_rms.fits $(PREFIX)mean_comp.fits
+$(IMAGES:.fits=_warped_prior_comp.fits): %_warped_prior_comp.fits : %_warped.fits %_bkg.fits %_rms.fits $(PREFIX)persistent_sources.fits
 	aegean $< --background $*_bkg.fits --noise $*_rms.fits \
                     --table $*_warped_prior.fits,$*_warped_prior.reg --priorized 2 \
-		            --input $(PREFIX)mean_comp.fits --noregroup
+		            --input $(PREFIX)persistent_sources.fits --noregroup
 
 
 # put all the catalogues into the database
