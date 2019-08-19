@@ -27,6 +27,8 @@ CUBE:=$(PREFIX)cube.fits
 REGION:=square.mim
 # a catalogue that includes additional points to monitor
 MONITOR:=monitor.fits
+# plot dates by setting this to '--dates' otherwise leave it blank.
+PLOT_DATES:=--dates
 
 # HELP!
 help:
@@ -173,7 +175,7 @@ $(PREFIX)flux_table.db: $(IMAGES:.fits=_warped_prior_comp.fits)
 
 
 $(PREFIX)variables.png: $(PREFIX)flux_table.db
-	./plot_variables.py --name $< --plot $@ --all
+	./plot_variables.py --name $< --plot $@ --all $(PLOT_DATES)<
 
 ###
 # Transient candidates
