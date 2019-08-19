@@ -1,20 +1,28 @@
 #! /usr/bin/env python
 from __future__ import print_function
 
-from astropy.table import Table
 import numpy as np
 import matplotlib
 from matplotlib import pyplot
-from matplotlib.patches import Ellipse
 import sqlite3
 import argparse
 import sys
 import os
 
+__author__ = ["Paul Hancock"]
+__date__ = '2019/08/19'
+
 
 def plot_summary(cur, plotfile):
     """
-    Plot
+    Create a summary plot for all sources, identifying which are likely to be variable.
+
+    parameters
+    ----------
+    cur : sqlite3.connection.cursor
+        DB connection
+    plotfile : str
+        Filename for the output plot file.
     """
     cur.execute("""SELECT pval_peak_flux, md, mean_peak_flux FROM stats""")
     rows = cur.fetchall()
@@ -45,6 +53,15 @@ def plot_summary(cur, plotfile):
 
 
 def plot_lc(cur):
+    """
+    Create individual light curve plots.
+    Each plot is saved to plots/uuid.png
+
+    parameters
+    ----------
+    cur : sqlite3.connection.cursor
+        DB connection
+    """
     cur.execute("""SELECT DISTINCT uuid FROM sources""")
     sources = cur.fetchall()
 
@@ -74,7 +91,6 @@ def plot_lc(cur):
         pyplot.savefig(fname)
         print(".. done")
     return
-
 
 
 if __name__ == "__main__":
