@@ -1,6 +1,8 @@
 #! /usr/bin/env python
 from __future__ import print_function
 
+import dateutil
+import dateutil.parser
 import numpy as np
 import matplotlib
 from matplotlib import pyplot
@@ -52,7 +54,7 @@ def plot_summary(cur, plotfile):
     return
 
 
-def plot_lc(cur):
+def plot_lc(cur, dates=False):
     """
     Create individual light curve plots.
     Each plot is saved to plots/uuid.png
@@ -70,26 +72,33 @@ def plot_lc(cur):
         fname = 'plots/{0}.png'.format(uuid)
         print(fname, end='')
         if os.path.exists(fname):
-            print(".. skip")
+            print(" ... skip")
             continue
 
-        cur.execute("""SELECT peak_flux, err_peak_flux, epoch FROM sources WHERE uuid=? ORDER BY epoch """, (uuid,))
-        peak_flux, err_peak_flux, _ = map(np.array, zip(*cur.fetchall()))
+        cur.execute(""" SELECT peak_flux, err_peak_flux, s.epoch, date 
+        FROM sources s JOIN epochs e 
+        ON s.epoch = e.epoch WHERE uuid=?
+        ORDER BY e.epoch """, (uuid,))
+        peak_flux, err_peak_flux, epoch, date = map(np.array, zip(*cur.fetchall()))
         cur.execute("""SELECT m, md, chisq_peak_flux FROM stats WHERE uuid=? """, (uuid,))
         m, md, chisq_peak_flux = cur.fetchone()
 
+        if dates:
+            try:
+                epoch = [dateutil.parser.parse(d) for d in date]
+            except ValueError as e:
+                print(" ... Unknown date encountered, reverting to epoch plotting", end='')
+                dates = False
         pyplot.clf()
-        pyplot.errorbar(range(len(peak_flux)), peak_flux, yerr=err_peak_flux)
-        pyplot.xlabel('Epoch')
-        pyplot.ylabel('Flux Density (Jy/Beam)')
         s = 'm={0:5.3f}\nmd={1:4.2f}\nchisq={2:4.1f}'.format(m, md, chisq_peak_flux)
-        xlims = pyplot.xlim((-0.5, len(peak_flux)+5))
-        ylims = pyplot.ylim()
-        y = ylims[0] + (ylims[1]-ylims[0])*0.8
-        pyplot.text(x=xlims[1]*0.8, y=y, s=s)
+        pyplot.errorbar(epoch, peak_flux, yerr=err_peak_flux, label=s)
+        pyplot.ylabel('Flux Density (Jy/Beam)')
+        if not dates:
+            pyplot.xlabel('Epoch')
         pyplot.title('{0}'.format(uuid))
+        pyplot.legend()
         pyplot.savefig(fname)
-        print(".. done")
+        print(" ... done")
     return
 
 
@@ -102,6 +111,8 @@ if __name__ == "__main__":
                         help="output plot")
     group1.add_argument("--all", dest='all', action='store_true', default=False,
                         help="Also plot individual light curves. Default:False")
+    group1.add_argument("--dates", dest='dates', action='store_true', default=False,
+                        help="Individual plots have date on the horizontal axis.")
 
     results = parser.parse_args()
 
@@ -113,5 +124,5 @@ if __name__ == "__main__":
     cur = conn.cursor()
     plot_summary(cur=cur, plotfile=results.plotfile)
     if results.all:
-        plot_lc(cur=cur)
+        plot_lc(cur=cur, dates=results.dates)
     conn.close()
