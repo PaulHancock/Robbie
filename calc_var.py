@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+
+from __future__ import print_function
 __author__ = 'Paul Hancock'
 __date__ = '2019/08/18'
 
@@ -46,17 +48,19 @@ def calc_stats(cur, ndof=None):
     sources = cur.fetchall()
     for s in sources:
         cur.execute("SELECT peak_flux FROM sources WHERE uuid=? ORDER BY epoch", s)
-        fluxes = np.array(cur.fetchall())
+        fluxes = np.array([i[0] for i in cur.fetchall()])
         cur.execute("SELECT err_peak_flux FROM sources WHERE uuid=? ORDER BY epoch", s)
-        err = np.array(cur.fetchall())
-
+        err = np.array([i[0] for i in cur.fetchall()])
         # don't include fit errors in the stats calculation
         mask = np.where(err>0)
+        # modulation index
         mean = np.mean(fluxes[mask])
         std = np.std(fluxes[mask])
         m = std/mean
-        chisq = np.sum(( fluxes[mask] - mean)**2 / err[mask]**2)
-        npts = len(mask)
+        # chi squared
+        chisq = np.sum((fluxes[mask] - mean)**2 / err[mask]**2)
+        # pvalue
+        npts = len(mask[0])
         if npts < 2:
             pval = 0
         else:
@@ -66,8 +70,9 @@ def calc_stats(cur, ndof=None):
             pval = max(pval, 1e-10)
         # debiased modulation index
         desc = np.sum((fluxes[mask] - mean)**2) - np.sum(err[mask]**2)
-        md = 1./mean * np.sqrt(np.abs(desc)/len(mask))
-        md = md*((desc > 0)*2 - 1)
+        md = 1./mean * np.sqrt(np.abs(desc)/npts)
+        if desc < 0:
+            md *= -1
         # add all to the stats table
         cur.execute("""INSERT INTO stats(uuid, mean_peak_flux, std_peak_flux, m, md, chisq_peak_flux, pval_peak_flux)
         VALUES (?,?,?,?,?,?,?)""",
