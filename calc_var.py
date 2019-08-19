@@ -80,8 +80,6 @@ def calc_stats(cur, ndof=None):
     return
 
 
-
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     group1 = parser.add_argument_group("Calculate variability stats")
