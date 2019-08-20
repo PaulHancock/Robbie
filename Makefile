@@ -175,7 +175,7 @@ $(PREFIX)flux_table.db: $(IMAGES:.fits=_warped_prior_comp.fits)
 
 
 $(PREFIX)variables.png: $(PREFIX)flux_table.db
-	./plot_variables.py --name $< --plot $@ --all $(PLOT_DATES)<
+	./plot_variables.py --name $< --plot $@ --all $(PLOT_DATES)
 
 ###
 # Transient candidates
