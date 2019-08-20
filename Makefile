@@ -152,7 +152,7 @@ $(MEAN:.fits=_comp.fits): %_comp.fits : %.fits %_bkg.fits %_rms.fits
 ###
 $(PREFIX)persistent_sources.fits : $(PREFIX)mean_comp.fits $(MONITOR)
 	if [[ -n "$(MONITOR)" ]] ;\
-	then $(STILTS) tcatn nin=2 in1=$(PREFIX)mean_comp.fits in2=$(MONITOR) out=$(PREFIX)persistent_sources.fits\
+	then $(STILTS) tcatn nin=2 in1=$(PREFIX)mean_comp.fits in2=$(MONITOR) out=$(PREFIX)persistent_sources.fits ;\
 	else cp $< $@ ;\
 	fi
 
