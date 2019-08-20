@@ -28,7 +28,12 @@ In particular you need to set:
 - `STILTS` = `<however you would run stilts from the command line>`
 - `IMAGEFILE` = a file that contains a list of all the images in epoch order (default=all_images.txt)
 - `REFCAT` = /path/to/your/external/reference/catalogue.fits
+
+Optional parameters:
 - `REGION` = a [MIMAS](https://github.com/PaulHancock/Aegean/wiki/MIMAS) region file describing the region of interest.
+- `WARP` = Blank means apply warping, any non-empty value means warping will be skipped
+- `MONITOR` = An aegean format catalogue that includes additional sources to be monitored. (put interesting source names into uuid)
+- `PLOT_DATES` = use `--dates` to have light curves plotted against date, otherwise leave blank to have them plotted against epoch.
 
 ## Usage
 ```
@@ -43,7 +48,7 @@ Usage is: make [command | file]
 
  commands:
   transients = transients.png
-  variables = flux_table_var.fits
+  variables = variables.png
   sceince = variables + transients
 
 I recommend that you `make science`

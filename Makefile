@@ -7,7 +7,7 @@ SHELL:=/bin/bash
 ###
 
 # input images should be listed in epoch order in this file
-IMFILE:=all_images_180805a_l1_05s.txt
+IMFILE:=all_images_180805a_05s.txt
 #IMFILE:=image_1217495544.txt
 IMAGES:=$(shell cat $(IMFILE))
 NEPOCH:=$(shell cat $(IMFILE) | wc -l)
@@ -20,14 +20,17 @@ REFCAT_DEC:=DEJ2000
 # This variable is used to invoke stilts
 STILTS:=java -jar /home/gemma/software/stilts.jar
 # prefix for output files
-PREFIX:=GRB180805A_05s_l1_
+PREFIX:=GRB180805A_05s_
 #PREFIX:=GRB180805A_1217495544_
 # The name of the mean image and image cube
 MEAN:=$(PREFIX)mean.fits
 CUBE:=$(PREFIX)cube.fits
 # region file to use for masking the source finding and reference catalogue.
 REGION:=cutout_big_v4.mim
-#REGION:=GRB180805A/individual_robbie_2m/1217495184.mim
+# a catalogue that includes additional points to monitor
+MONITOR:=monitor.fits
+# plot dates by setting this to '--dates' otherwise leave it blank.
+PLOT_DATES:=--dates
 
 # HELP!
 help:
@@ -70,12 +73,8 @@ cite:
 	@echo '}'
 
 # Shorcuts for easy processing
-<<<<<<< HEAD
-#variables: $(PREFIX)flux_table_var.fits
-variables: $(PREFIX)flux_table_var.vot
-=======
+
 variables: $(PREFIX)variables.png
->>>>>>> b3d383d75d26054e14ecff60c195c76ecea423d3
 transients: $(PREFIX)transients.png
 science: variables transients
 
@@ -137,8 +136,11 @@ $(CUBE): $(IMAGES:.fits=_warped.fits)
 	rm temp_list.txt
 
 # create mean image from the image cube
-$(MEAN): $(CUBE)
-	./make_mean.py $^ $@
+$(MEAN): $(IMAGES:.fits=_warped.fits)
+	sed -e 's:.fits:_warped.fits:g' $(IMFILE) > temp_list.txt
+	./make_mean.py --out $@ --infile temp_list.txt
+	rm temp_list.txt
+
 
 # create background and noise mapse for the mean image
 $(MEAN:.fits=_bkg.fits) $(MEAN:.fits=_rms.fits): $(MEAN)
@@ -151,44 +153,32 @@ $(MEAN:.fits=_comp.fits): %_comp.fits : %.fits %_bkg.fits %_rms.fits
 ###
 # Persistent sources
 ###
+$(PREFIX)persistent_sources.fits : $(PREFIX)mean_comp.fits $(MONITOR)
+	if [[ -n "$(MONITOR)" ]] ;\
+	then $(STILTS) tcatn nin=2 in1=$(PREFIX)mean_comp.fits in2=$(MONITOR) out=$(PREFIX)persistent_sources.fits\
+	else cp $< $@ ;\
+	fi
 
 # priorize source finding to make light curves from warped images based on the master catalogue
-$(IMAGES:.fits=_warped_prior_comp.fits): %_warped_prior_comp.fits : %_warped.fits %_bkg.fits %_rms.fits $(PREFIX)mean_comp.fits
+$(IMAGES:.fits=_warped_prior_comp.fits): %_warped_prior_comp.fits : %_warped.fits %_bkg.fits %_rms.fits $(PREFIX)persistent_sources.fits
 	aegean $< --background $*_bkg.fits --noise $*_rms.fits \
                     --table $*_warped_prior.fits,$*_warped_prior.reg --priorized 2 \
-		            --input $(PREFIX)mean_comp.fits --noregroup
+		            --input $(PREFIX)persistent_sources.fits --noregroup
 
-# join all priorized sources into a single table based on the UUID column
-$(PREFIX)flux_table.fits: $(IMAGES:.fits=_warped_prior_comp.fits)
+
+# put all the catalogues into the database
+$(PREFIX)flux_table.db: $(IMAGES:.fits=_warped_prior_comp.fits)
 	files=($^) ;\
-	cmd="$(STILTS) tmatchn nin=$${#files[@]} matcher=exact out=$@ " ;\
-	for n in $${!files[@]} ;\
-	do \
-	m=$$( echo "$${n}+1" | bc ) ;\
-	cmd="$${cmd} in$${m}=$${files[$${n}]} values$${m}='uuid' suffix$${m}=_$${n}" ;\
-	done ;\
-	echo $${cmd} | bash
+	./remake_db.py --name $@ ;\
+	for f in $${files[@]} ;\
+	do im=$$(echo $${f} | sed -e 's:_prior_comp.fits:.fits:g') ;\
+	./add_cat_to_db.py --name $@ --cat $${f} --image $${im};\
+	done
+	./calc_var.py --name $@
 
-$(PREFIX)flux_table.vot: $(IMAGES:.fits=_warped_prior_comp.fits)
-	files=($^) ;\
-	cmd="$(STILTS) tmatchn nin=$${#files[@]} matcher=exact out=$@ " ;\
-	for n in $${!files[@]} ;\
-	do \
-	m=$$( echo "$${n}+1" | bc ) ;\
-	cmd="$${cmd} in$${m}=$${files[$${n}]} values$${m}='uuid' suffix$${m}=_$${n}" ;\
-	done ;\
-	echo $${cmd} | bash
 
-$(PREFIX)flux_table_var.vot: $(PREFIX)flux_table.vot
-	ndof=($$(./auto_corr.py $(PREFIX)cube.fits)) ;\
-	./calc_var.py --infile $< --outfile $@ --ndof $${ndof[-1]}
-	./plot_lc.py $@
-
-#$(PREFIX)variables.png: $(PREFIX)flux_table_var.fits
-#	./plot_variables.py --in $< --plot $@
-
-$(PREFIX)variables.png: $(PREFIX)flux_table_var.vot
-	./plot_variables.py --in $< --plot $@
+$(PREFIX)variables.png: $(PREFIX)flux_table.db
+	./plot_variables.py --name $< --plot $@ --all $(PLOT_DATES)<
 
 ###
 # Transient candidates

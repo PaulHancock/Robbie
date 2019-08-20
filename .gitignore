@@ -1,6 +1,7 @@
 *.fits
 *.vot
 *.reg
+*.db
 .idea
 vis.png
 makefile2dot.py
