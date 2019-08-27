@@ -26,7 +26,7 @@ def plot_summary(cur, plotfile):
     plotfile : str
         Filename for the output plot file.
     """
-    cur.execute("""SELECT pval_peak_flux, md, mean_peak_flux FROM stats""")
+    cur.execute("""SELECT pval_peak_flux, md, abs(mean_peak_flux) FROM stats WHERE pval_peak_flux >0""")
     rows = cur.fetchall()
 
     pval_peak_flux, md, mean_peak_flux = map(np.array, zip(*rows))
