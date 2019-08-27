@@ -53,26 +53,30 @@ def calc_stats(cur, ndof=None):
         err = np.array([i[0] for i in cur.fetchall()])
         # don't include fit errors in the stats calculation
         mask = np.where(err>0)
-        # modulation index
-        mean = np.mean(fluxes[mask])
-        std = np.std(fluxes[mask])
-        m = std/mean
-        # chi squared
-        chisq = np.sum((fluxes[mask] - mean)**2 / err[mask]**2)
-        # pvalue
         npts = len(mask[0])
+        
         if npts < 2:
-            pval = 0
+            pval = 0.
+            md = 0.
+            mean = 0.
         else:
+            # modulation index
+            mean = np.mean(fluxes[mask])
+            std = np.std(fluxes[mask])
+            m = std/mean
+            # chi squared
+            chisq = np.sum((fluxes[mask] - mean)**2 / err[mask]**2)
+            # pvalue
             if ndof is None:
                 ndof = npts - 1
             pval = stats.chi2.sf(chisq, ndof)
             pval = max(pval, 1e-10)
-        # debiased modulation index
-        desc = np.sum((fluxes[mask] - mean)**2) - np.sum(err[mask]**2)
-        md = 1./mean * np.sqrt(np.abs(desc)/npts)
-        if desc < 0:
-            md *= -1
+            # debiased modulation index
+            desc = np.sum((fluxes[mask] - mean)**2) - np.sum(err[mask]**2)
+            #print(mean, desc, npts)
+            md = 1./mean * np.sqrt(np.abs(desc)/npts)
+            if desc < 0:
+                md *= -1
         # add all to the stats table
         cur.execute("""INSERT INTO stats(uuid, mean_peak_flux, std_peak_flux, m, md, chisq_peak_flux, pval_peak_flux)
         VALUES (?,?,?,?,?,?,?)""",
