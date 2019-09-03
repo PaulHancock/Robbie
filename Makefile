@@ -165,12 +165,13 @@ $(IMAGES:.fits=_warped_prior_comp.fits): %_warped_prior_comp.fits : %_warped.fit
 
 # put all the catalogues into the database
 $(PREFIX)flux_table.db: $(IMAGES:.fits=_warped_prior_comp.fits)
-	files=($^) ;\
 	./remake_db.py --name $@ ;\
-	END=$${#files[@]};\
-	for ((i=0;i<=END;i++));\
-	do im=$$(echo $${files[$$i]} | sed -e 's:_prior_comp.fits:.fits:g') ;\
-	./add_cat_to_db.py --name $@ --cat $${files[$$i]} --image $${im};\
+	END=($$(wc -l $(IMFILE) )); END=$${END[0]};\
+	for ((i=0;i<END;i++));\
+	do j=$$(echo "$${i}+1" | bc -l ) ;\
+	im=$$(sed -e "$${j}q;d" $(IMFILE) ) ;\
+	f=$$(echo $${im} | sed -e 's:.fits:_warped_prior_comp.fits:g' ) ;\
+	./add_cat_to_db.py --name $@ --cat $${f} --image $${im};\
 	done
 	./calc_var.py --name $@
 
