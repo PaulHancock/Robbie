@@ -167,9 +167,10 @@ $(IMAGES:.fits=_warped_prior_comp.fits): %_warped_prior_comp.fits : %_warped.fit
 $(PREFIX)flux_table.db: $(IMAGES:.fits=_warped_prior_comp.fits)
 	files=($^) ;\
 	./remake_db.py --name $@ ;\
-	for f in $${files[@]} ;\
-	do im=$$(echo $${f} | sed -e 's:_prior_comp.fits:.fits:g') ;\
-	./add_cat_to_db.py --name $@ --cat $${f} --image $${im};\
+	END=$${#files[@]};\
+	for ((i=0;i<=END;i++));\
+	do im=$$(echo $${files[$$i]} | sed -e 's:_prior_comp.fits:.fits:g') ;\
+	./add_cat_to_db.py --name $@ --cat $${files[$$i]} --image $${im};\
 	done
 	./calc_var.py --name $@
 
