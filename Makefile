@@ -7,26 +7,25 @@ SHELL:=/bin/bash
 ###
 
 # input images should be listed in epoch order in this file
-IMFILE:=all_images_180805a_05s.txt
+IMFILE:=sim_images.txt
 #IMFILE:=image_1217495544.txt
 IMAGES:=$(shell cat $(IMFILE))
 NEPOCH:=$(shell cat $(IMFILE) | wc -l)
 # set warp to be empty to do astrometry corrections
 WARP:=No
 # (external) reference catalogue used for astrometry correction via fits_warp
-REFCAT:=/home/gemma/software/GLEAM_EGC.fits
-REFCAT_RA:=RAJ2000
-REFCAT_DEC:=DEJ2000
+REFCAT:=Reference_sim.fits
+REFCAT_RA:=ra
+REFCAT_DEC:=dec
 # This variable is used to invoke stilts
-STILTS:=java -jar /home/gemma/software/stilts.jar
+STILTS:=java -jar /home/hancock/Software/topcat/topcat-full.jar -stilts
 # prefix for output files
-PREFIX:=GRB180805A_05s_
-#PREFIX:=GRB180805A_1217495544_
+PREFIX:=sim_
 # The name of the mean image and image cube
 MEAN:=$(PREFIX)mean.fits
 CUBE:=$(PREFIX)cube.fits
 # region file to use for masking the source finding and reference catalogue.
-REGION:=cutout_big_v4.mim
+REGION:=square.mim
 # a catalogue that includes additional points to monitor
 MONITOR:=monitor.fits
 # plot dates by setting this to '--dates' otherwise leave it blank.
