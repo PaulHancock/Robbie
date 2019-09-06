@@ -53,6 +53,22 @@ def join_all(flist):
     return tab
 
 
+def clean_flist(flist):
+    """
+    remove files that don't exist from the flist
+
+    :param flist:
+    :return:
+    """
+    exists = []
+    for f in flist:
+        if os.path.exists(f):
+            exists.append(f)
+        else:
+            print("Ingore missing file {0}".format(f))
+    return exists
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     group1 = parser.add_argument_group("Collect catalogues")
@@ -62,6 +78,8 @@ if __name__ == '__main__':
                         help="Explicit list of catalogues to include. [optional]")
     group1.add_argument("--out", dest='outfile', type=str, default=None,
                         help="Output filename.")
+    group1.add_argument("--ignoremissing", dest='ignore_missing', action='store_true', default=False,
+                         help="If true, ignore missing input files. Default=False")
     results = parser.parse_args()
 
     if results.outfile is None:
@@ -73,6 +91,9 @@ if __name__ == '__main__':
         flist.extend([a.strip() for a in open(results.infile).readlines()])
     if results.files:
         flist.extend(results.files)
+
+    if results.ignore_missing:
+        flist = clean_flist(flist)
 
     tab = join_all(flist)
     if os.path.exists(results.outfile):
