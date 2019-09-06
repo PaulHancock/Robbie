@@ -19,7 +19,7 @@ def add_epoch(table, epoch):
     :param epoch:
     :return:
     """
-    col = table.Column(data=np.ones(len(table), dtype=np.int32)*epoch, name='Epoch')
+    col = table.Column(data=np.ones(len(table), dtype=np.int32)*epoch, name='epoch')
     table.add_column(col)
     return table
 
