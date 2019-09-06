@@ -208,19 +208,10 @@ $(IMAGES:.fits=_warped_blanked_comp_filtered.fits): %_warped_blanked_comp_filter
 
 # join all transients into one catalogue
 $(PREFIX)transients.fits: $(IMAGES:.fits=_warped_blanked_comp_filtered.fits)
-	files=($$( ls $^ )) ;\
-	if [[ -z $${files} ]];\
-	  then touch $@;\
-	else \
-	  cmd="$(STILTS) tcatn nin=$${#files[@]}" ;\
-	  for i in $$( seq 1 1 $${#files[@]} ) ;\
-	  do \
-	    j=$$( echo "$${i} -1" | bc ) ;\
-	    cmd="$${cmd} in$${i}=$${files[$${j}]} icmd$${i}='addcol epoch $${i}'" ;\
-	  done ;\
-	  cmd="$${cmd} out=$@ ofmt=fits" ;\
-	  echo $${cmd} | bash ;\
-	fi
+	sed -e 's:.fits:_warped_blanked_comp_filtered.fits:g' $(IMFILE) > temp.dat ;\
+	./collect_transients.py --infile temp.dat --out $@ --ignoremissing ;\
+	rm temp.dat
+
 
 # plot the transients into a single image
 $(PREFIX)transients.png: $(PREFIX)transients.fits
