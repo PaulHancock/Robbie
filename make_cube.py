@@ -49,7 +49,7 @@ if __name__ == "__main__":
 
     if (results.infile is None) and (results.files is None):
         parser.print_help()
-        sys.exit()
+        sys.exit(1)
 
     if results.infile is not None:
         files = [l.strip() for l in open(results.infile).readlines()]
