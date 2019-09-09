@@ -74,7 +74,7 @@ def get_db_endof(db):
     for i, uuid in enumerate(uuids):
         cur.execute("""
         SELECT peak_flux - mean_peak_flux
-        FROM sources JOIN stats ON source.uuid = stats.uuid WHERE stats.uuid = ? """, (uuid,))
+        FROM sources JOIN stats ON sources.uuid = stats.uuid WHERE stats.uuid = ? """, (uuid,))
         fluxes[:, i] = zip(*cur.fetchall())[0]
 
     acorr = np.array([autocorr(fluxes[:,i]) for i in range(NPIX)])
@@ -109,4 +109,5 @@ if __name__ == "__main__":
         print("Effective degrees of freedom: {0}".format(get_cube_endof(cube)))
     elif results.db:
         print("Reading data from {0}".format(results.db))
-
+        ndof = get_db_endof(results.db)
+        print("Effective degrees of freedom: {0}".format(ndof))
