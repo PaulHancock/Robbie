@@ -179,6 +179,10 @@ $(PREFIX)flux_table.db: $(IMAGES:.fits=_warped_prior_comp.fits)
 	./calc_var.py --name $@ --ndof $${NDOF[-1]}
 
 
+$(PREFIX)variables.fits: $(PREFIX)flux_table.db
+	./get_variables_from_db.py --name $^ --out $@
+
+
 $(PREFIX)variables.png: $(PREFIX)flux_table.db
 	./plot_variables.py --name $< --plot $@ --all $(PLOT_DATES)
 
