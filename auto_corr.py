@@ -66,7 +66,7 @@ def get_db_endof(db):
     cur = conn.cursor()
     cur.execute("SELECT count(*) FROM epochs")
     epochs = cur.fetchone()[0]
-    cur.execute("SELECT uuid FROM stats ORDER BY RANDOM() LIMIT ?", (NPIX,))
+    cur.execute("SELECT DISTINCT uuid FROM sources ORDER BY RANDOM() LIMIT ?", (NPIX,))
     uuids = [a[0] for a in cur.fetchall()]
 
     fluxes = np.zeros(shape=(epochs, NPIX))
