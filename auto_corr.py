@@ -73,8 +73,8 @@ def get_db_endof(db):
 
     for i, uuid in enumerate(uuids):
         cur.execute("""
-        SELECT peak_flux - mean_peak_flux
-        FROM sources JOIN stats ON sources.uuid = stats.uuid WHERE stats.uuid = ? """, (uuid,))
+        SELECT s1.peak_flux - s2.mean_peak_flux
+        FROM sources as s1 JOIN (SELECT uuid, AVG(peak_flux) as mean_peak_flux FROM sources WHERE uuid=?) as s2 ON s1.uuid = s2.uuid WHERE s1.uuid = ? """, (uuid,uuid))
         fluxes[:, i] = zip(*cur.fetchall())[0]
 
     acorr = np.array([autocorr(fluxes[:,i]) for i in range(NPIX)])
@@ -83,7 +83,6 @@ def get_db_endof(db):
     fzero = np.min(np.where(mean-std < 0))
     ndof = epochs - 1 - fzero
     return ndof
-
 
 
 if __name__ == "__main__":
