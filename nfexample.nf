@@ -134,5 +134,66 @@ process source_monitor {
               --table=${image} ${image} --priorized 1 --input=${mean_cat}
   touch ${basename}_comp.fits
   """
+}
 
+
+process create_db {
+  input:
+  file(catalogue) from priorized_catalogue_ch
+
+  output:
+  val('done') into db_finished_ch
+
+  script:
+  """
+  echo ingest ${catalogue} into db
+  """
+}
+
+
+process other {
+  input:
+  val(whatever) from db_finished_ch.collect()
+
+  output:
+  val('done') into (stats_finished_ch, stats_finished_ch2)
+
+  script:
+  """
+  echo analyse db
+  """
+}
+
+process plot_lc {
+  publishDir params.output_dir, mode:'copy', overwrite:false
+
+  input:
+  val(whatever) from stats_finished_ch
+
+  output:
+  path('lc_plots') into plots_ch
+
+  script:
+  """
+  echo make lots of plots !
+  mkdir lc_plots
+  cd lc_plots
+  for i in \$(seq 1 30); do touch plot\${i}.png;done
+  """
+}
+
+process variable_summary_plot {
+  publishDir params.output_dir, mode:'copy', overwrite:true
+
+  input:
+  val(whatever) from stats_finished_ch2
+
+  output:
+  file('variables.png') into summary_ch
+
+  script:
+  """
+  echo do summary plot
+  touch variables.png
+  """
 }
