@@ -58,7 +58,7 @@ process fits_warp {
 
   output:
   file("${basename}_warped.fits") into warped_images_ch
-  set val("${basename}_warped"), file("${basename}_warped.fits") into warped_images_ch2
+  set val("${basename}_warped"), file("${basename}_warped.fits") into (warped_images_ch2, warped_images_ch3)
 
   script:
   """
@@ -109,7 +109,7 @@ process sfind_mean_image {
   set val(basename), file(mean), file(bkg), file(rms) from bane_mean_image_ch
 
   output:
-  file("${basename}_comp.fits") into mean_catalogue_sh
+  file("${basename}_comp.fits") into (mean_catalogue_ch, mean_catalogue_ch2)
 
   script:
   """
@@ -122,7 +122,7 @@ process source_monitor {
   publishDir params.output_dir, mode:'copy', overwrite:false
 
   input:
-  file(mean_cat) from mean_catalogue_sh
+  file(mean_cat) from mean_catalogue_ch
   set val(basename), file(image) from warped_images_ch2
 
   output:
@@ -151,7 +151,7 @@ process create_db {
 }
 
 
-process other {
+process compute_stats {
   input:
   val(whatever) from db_finished_ch.collect()
 
@@ -183,7 +183,7 @@ process plot_lc {
 }
 
 process variable_summary_plot {
-  publishDir params.output_dir, mode:'copy', overwrite:true
+  publishDir params.output_dir, mode:'copy', overwrite:false
 
   input:
   val(whatever) from stats_finished_ch2
@@ -195,5 +195,75 @@ process variable_summary_plot {
   """
   echo do summary plot
   touch variables.png
+  """
+}
+
+process mask_images {
+  publishDir params.output_dir, mode:'copy', overwrite:false
+
+  input:
+  file(mean_cat) from mean_catalogue_ch2
+  set val(basename), file(warped) from warped_images_ch3
+
+  output:
+  set val("${basename}_masked"), file("${basename}_masked.fits") into masked_images_ch
+
+  script:
+  """
+  echo aeres -c ${mean_cat} -f ${warped} -r ${basename}_masked.fits --add
+  touch ${basename}_masked.fits
+  """
+}
+
+process sfind_masked {
+  publishDir params.output_dir, mode:'copy', overwrite:false
+
+  input:
+  path rfile from params.region_file
+  set val(basename), file(masked) from masked_images_ch
+
+  output:
+  file("${basename}_comp.fits") into masked_catalogue_ch
+
+  script:
+  // Do a hack to figure out the name of the bkg/rms files since recomputing them isn't an option
+  """
+  base="${basename}"
+  base="\${base%%_warped_masked}"
+  echo aegean --background=\${base}_bkg.fits --noise=\${base}_rms.fits --table=${masked} ${masked}
+  touch ${basename}_comp.fits
+  """
+}
+
+process compile_transients_candidates {
+  input:
+  file(catalogue) from masked_catalogue_ch.collect()
+
+  output:
+  val('done') into transients_imported_ch
+
+  script:
+  """
+  for f in ${catalogue}
+  do
+    echo filter on \${f}
+    echo import \${f} into db
+  done
+  """
+}
+
+process transients_plot {
+  publishDir params.output_dir, mode:'copy', overwrite:false
+
+  input:
+  val(whatever) from transients_imported_ch
+
+  output:
+  file('transients.png') into transients_plot_ch
+
+  script:
+  """
+  echo plot transients.png
+  touch transients.png
   """
 }
