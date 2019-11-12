@@ -7,11 +7,13 @@ params.output_dir = 'results/'
 
 ref_catalogue_ch = Channel.value("${params.ref_catalogue}")
 
-raw_image_ch = Channel.fromPath("${params.input_dir}/Epoch0?.fits").map{ it -> [it.baseName, it]}
+raw_image_ch = Channel.fromPath("${params.input_dir}/Epoch0[0-4].fits").map{ it -> [it.baseName, it]}
 
 
 process bane_raw {
-  publishDir params.output_dir, mode:'copy', overwrite:false
+  label 'bane'
+
+  publishDir params.output_dir, mode:'copy', overwrite:true
 
   input:
   set val(basename), file(image) from raw_image_ch
@@ -22,17 +24,16 @@ process bane_raw {
 
   script:
   """
-  echo input ${image}
-  touch ${basename}_bkg.fits
-  touch ${basename}_rms.fits
+  BANE ${image}
   """
 }
 
 // raw_image_with_bkg_ch.view()
 
 process initial_sfind {
+  label 'aegean'
 
-  publishDir params.output_dir, mode:'copy', overwrite:false
+  publishDir params.output_dir, mode:'copy', overwrite:true
 
   input:
   set val(basename), file(image), file(bkg), file(rms) from raw_image_with_bkg_ch
@@ -42,14 +43,15 @@ process initial_sfind {
 
   script:
   """
-  echo aegean --background=${bkg} --noise=${rms} --table=${image} ${image}
-  touch ${basename}_comp.fits
+  aegean --background=${bkg} --noise=${rms} --table=${image} ${image}
   """
 }
 
 // initial_catalogue_ch.view()
 
 process fits_warp {
+  label 'warp'
+
   publishDir params.output_dir, mode:'copy', overwrite:false
 
   input:
@@ -86,6 +88,8 @@ process make_mean_image {
 }
 
 process bane_mean_image {
+  label 'bane'
+
   publishDir params.output_dir, mode:'copy', overwrite:false
 
   input:
@@ -103,6 +107,8 @@ process bane_mean_image {
 }
 
 process sfind_mean_image {
+  label 'aegean'
+
   publishDir params.output_dir, mode:'copy', overwrite:false
 
   input:
@@ -119,6 +125,8 @@ process sfind_mean_image {
 }
 
 process source_monitor {
+  label 'aegean'
+
   publishDir params.output_dir, mode:'copy', overwrite:false
 
   input:
@@ -216,6 +224,8 @@ process mask_images {
 }
 
 process sfind_masked {
+  label 'aegean'
+
   publishDir params.output_dir, mode:'copy', overwrite:false
 
   input:
