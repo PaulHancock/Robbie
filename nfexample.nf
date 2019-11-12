@@ -1,10 +1,12 @@
 #! /usr/bin/env nextflow
 
 params.input_dir = 'data/'
-params.ref_catalogue = "reference.fits"
+params.ref_catalogue = "master.fits"
 params.region_file = "$baseDir/square.mim"
 params.output_dir = 'results/'
 
+params.refcat_ra = 'ra'
+params.refcat_dec = 'dec'
 ref_catalogue_ch = Channel.value("${params.ref_catalogue}")
 
 raw_image_ch = Channel.fromPath("${params.input_dir}/Epoch0[0-4].fits").map{ it -> [it.baseName, it]}
@@ -24,7 +26,7 @@ process bane_raw {
 
   script:
   """
-  BANE ${image}
+  BANE --cores ${task.cpus} ${image}
   """
 }
 
@@ -43,7 +45,7 @@ process initial_sfind {
 
   script:
   """
-  aegean --background=${bkg} --noise=${rms} --table=${image} ${image}
+  aegean --cores ${task.cpus} --background=${bkg} --noise=${rms} --table=${image} ${image}
   """
 }
 
@@ -64,7 +66,14 @@ process fits_warp {
 
   script:
   """
-  echo fits_warp on ${image} with ${catalogue} and ${rfile}
+  fits_warp.py --cores ${task.ncpus} --refcat ${params.ref_catalogue} --incat ${catalogue} \
+               --ra1 ra --dec1 dec --ra2 ${params.refcat_ra} --dec2 ${params.refcat_dec} \
+               --xm ${basename}_xm.fits
+  fits_warp.py --infits ${image} --xm ${basename}_xm.fits --suffix warped \
+               --ra2 ${params.refcat_ra} --dec2 ${params.refcat_dec} \
+               --plot
+
+  ${image} with ${catalogue} and ${rfile}
   touch ${basename}_warped.fits
   """
 }
