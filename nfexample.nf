@@ -1,6 +1,5 @@
 #! /usr/bin/env nextflow
 
-params.input_dir = 'data/'
 params.ref_catalogue = "master.fits"
 params.region_file = "$baseDir/square.mim"
 params.output_dir = 'results/'
@@ -42,11 +41,12 @@ process initial_sfind {
   set val(basename), file(image), file('*') from raw_image_with_bkg_ch
 
   output:
-  set val(basename), file(image), file("${basename}_comp.fits") into initial_catalogue_ch
+  set val(basename), file(image), file("*_{bkg,rms,comp}.fits") into initial_catalogue_ch
 
   script:
   """
-   echo aegean --cores ${task.cpus} --background=*_bkg.fits --noise=*_rms.fits --table=${image} ${image}
+  echo ${task.process}
+  echo aegean --cores ${task.cpus} --background=*_bkg.fits --noise=*_rms.fits --table=${image} ${image}
   touch ${basename}_comp.fits
   """
 }
@@ -55,13 +55,15 @@ process initial_sfind {
 process fits_warp {
   label 'warp'
 
+  echo true
   input:
-  set val(basename), file(image), file(catalogue) from initial_catalogue_ch
+  set val(basename), file(image), file('*') from initial_catalogue_ch
   path rfile from params.region_file
 
   output:
-  file("${basename}_warped.fits") into warped_images_ch
-  set val("${basename}_warped"), file("${basename}_warped.fits") into (warped_images_ch2, warped_images_ch3)
+  file("*_warped.fits") into warped_images_ch // -> to mean image
+  set val("${basename}_warped"), file("*_warped.fits") into warped_images_ch2 // to monitoring
+  set val("${basename}_warped"), file("*_{warped,bkg,rms}.fits") into warped_images_ch3 // to masking
 
   script:
   if (params.warp == true)
@@ -78,6 +80,8 @@ process fits_warp {
   else
   """
   ln -s ${image} ${basename}_warped.fits
+  echo ${task.process}
+  ls *.fits
   """
 }
 
@@ -105,7 +109,7 @@ process bane_mean_image {
   set val(basename), file(mean) from mean_image_ch
 
   output:
-  set val(basename), file(mean), file("${basename}_bkg.fits"), file("${basename}_rms.fits") into bane_mean_image_ch
+  set val(basename), file(mean), file("${basename}_{bkg,rms}.fits") into bane_mean_image_ch
 
   script:
   """
@@ -122,10 +126,11 @@ process sfind_mean_image {
   echo true
 
   input:
-  set val(basename), file(mean), file(bkg), file(rms) from bane_mean_image_ch
+  set val(basename), file(mean), file('*') from bane_mean_image_ch
 
   output:
-  file("persistent_sources.fits") into (mean_catalogue_ch, mean_catalogue_ch2)
+  file("${basename}_comp.fits") into (mean_catalogue_ch,  // to source finding 
+                                      mean_catalogue_ch2) // to masking
 
   script:
   def mon="""
@@ -133,7 +138,7 @@ process sfind_mean_image {
   touch persistent_sources.fits
   """
   """
-  echo aegean --background=${bkg} --noise=${rms} --table=${mean} ${mean}
+  echo aegean --background *_bkg.fits --noise *_rms.fits --table=${mean} ${mean}
   ${ (params.monitor) ? "${mon}"  : "touch persistent_sources.fits" } 
   """
 }
@@ -220,18 +225,21 @@ process variable_summary_plot {
 }
 
 process mask_images {
-  publishDir params.output_dir, mode:'symlink', overwrite:false
 
+  echo true
+  
   input:
   file(mean_cat) from mean_catalogue_ch2
-  set val(basename), file(warped) from warped_images_ch3
+  set val(basename), file('*') from warped_images_ch3
 
   output:
-  set val("${basename}_masked"), file("${basename}_masked.fits") into masked_images_ch
+  set val("${basename}_masked"), file("*_{masked,bkg,rms}.fits") into masked_images_ch
 
   script:
   """
-  echo aeres -c ${mean_cat} -f ${warped} -r ${basename}_masked.fits --add
+  echo ${task.process}
+  ls *.fits
+  echo aeres -c ${mean_cat} -f *_warped.fits -r ${basename}_masked.fits --add
   touch ${basename}_masked.fits
   """
 }
@@ -239,19 +247,19 @@ process mask_images {
 process sfind_masked {
   label 'aegean'
 
+  echo true
+  
   input:
-  path rfile from params.region_file
-  set val(basename), file(masked) from masked_images_ch
+  path file from params.region_file
+  set val(basename), file('*') from masked_images_ch
 
   output:
   file("${basename}_comp.fits") into masked_catalogue_ch
-
+  
   script:
-  // Do a hack to figure out the name of the bkg/rms files since recomputing them isn't an option
   """
-  base="${basename}"
-  base="\${base%%_warped_masked}"
-  echo aegean --background=\${base}_bkg.fits --noise=\${base}_rms.fits --table=${masked} ${masked}
+  echo \$(ls *.fits)
+  echo ${task.process}: aegean --background *_bkg.fits --noise *_rms.fits --table *_masked.fits *_masked.fits
   touch ${basename}_comp.fits
   """
 }
