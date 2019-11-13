@@ -10,21 +10,19 @@ params.refcat_ra = 'ra'
 params.refcat_dec = 'dec'
 params.warp = true
 
+// Read the image names from a text file
 image_ch = Channel
   .fromPath(params.image_file)
   .splitText()
   .map{ it -> tuple(file(it).baseName, file(it.trim()))}
-//image_ch.subscribe { print it }
+
 
 process bane_raw {
   label 'bane'
 
-// TODO: See if we can set this directive as the default behaviour
-  publishDir params.output_dir, mode:'symlink', overwrite:true
-
   input:
   set val(basename), file(image) from image_ch
-// TODO: Can we pas a dict instead of a set/list?
+
   output:
   set val(basename), file(image), file("*_{bkg,rms}.fits") into raw_image_with_bkg_ch
 
@@ -33,15 +31,11 @@ process bane_raw {
   echo BANE --cores ${task.cpus} ${image}
   touch ${basename}_{bkg,rms}.fits
   """
-  //echo "$image $basename"
 }
 
-// raw_image_with_bkg_ch.view()
 
 process initial_sfind {
   label 'aegean'
-
-  publishDir params.output_dir, mode:'symlink', overwrite:true
 
   input:
   set val(basename), file(image), file('*') from raw_image_with_bkg_ch
@@ -56,14 +50,9 @@ process initial_sfind {
   """
 }
 
-// initial_catalogue_ch.view()
 
-
-// TODO: Figure out how to skip this step
 process fits_warp {
   label 'warp'
-
-  publishDir params.output_dir, mode:'symlink', overwrite:false
 
   input:
   set val(basename), file(image), file(catalogue) from initial_catalogue_ch
@@ -93,8 +82,6 @@ process fits_warp {
 
 
 process make_mean_image {
-  publishDir params.output_dir, mode:'symlink', overwrite:false
-
   input:
   file(image) from warped_images_ch.collect()
 
@@ -108,13 +95,10 @@ process make_mean_image {
   echo "do stuff with ${image}"
   touch mean.fits
   """
-
 }
 
 process bane_mean_image {
   label 'bane'
-
-  publishDir params.output_dir, mode:'symlink', overwrite:false
 
   input:
   set val(basename), file(mean) from mean_image_ch
@@ -133,8 +117,6 @@ process bane_mean_image {
 process sfind_mean_image {
   label 'aegean'
 
-  publishDir params.output_dir, mode:'symlink', overwrite:false
-
   input:
   set val(basename), file(mean), file(bkg), file(rms) from bane_mean_image_ch
 
@@ -152,8 +134,6 @@ process sfind_mean_image {
 
 process source_monitor {
   label 'aegean'
-
-  publishDir params.output_dir, mode:'symlink', overwrite:false
 
   input:
   file(mean_cat) from mean_catalogue_ch
@@ -202,8 +182,6 @@ process compute_stats {
 }
 
 process plot_lc {
-  publishDir params.output_dir, mode:'symlink', overwrite:false
-
   input:
   val(whatever) from stats_finished_ch
 
@@ -220,7 +198,6 @@ process plot_lc {
 }
 
 process variable_summary_plot {
-  publishDir params.output_dir, mode:'symlink', overwrite:false
 
   input:
   val(whatever) from stats_finished_ch2
@@ -255,8 +232,6 @@ process mask_images {
 process sfind_masked {
   label 'aegean'
 
-  publishDir params.output_dir, mode:'symlink', overwrite:false
-
   input:
   path rfile from params.region_file
   set val(basename), file(masked) from masked_images_ch
@@ -275,6 +250,7 @@ process sfind_masked {
 }
 
 process compile_transients_candidates {
+
   input:
   file(catalogue) from masked_catalogue_ch.collect()
 
@@ -292,7 +268,6 @@ process compile_transients_candidates {
 }
 
 process transients_plot {
-  publishDir params.output_dir, mode:'symlink', overwrite:false
 
   input:
   val(whatever) from transients_imported_ch
