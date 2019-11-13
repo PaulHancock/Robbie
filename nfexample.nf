@@ -9,17 +9,21 @@ params.refcat_ra = 'ra'
 params.refcat_dec = 'dec'
 ref_catalogue_ch = Channel.value("${params.ref_catalogue}")
 
+// TODO: Figure out how to read a file which contains all the datasets and then populate a channel with
+// TODO: those file names
 raw_image_ch = Channel.fromPath("${params.input_dir}/Epoch0[0-4].fits").map{ it -> [it.baseName, it]}
 
 
 process bane_raw {
   label 'bane'
 
-  publishDir params.output_dir, mode:'copy', overwrite:true
+// TODO: See if we can set this directive as the default behaviour
+  publishDir params.output_dir, mode:'symlink', overwrite:true
 
   input:
   set val(basename), file(image) from raw_image_ch
 
+// TODO: Can we pas a dict instead of a set/list?
   output:
   set val(basename), file(image), file("${basename}_bkg.fits"), \
      file("${basename}_rms.fits") into raw_image_with_bkg_ch
@@ -35,7 +39,7 @@ process bane_raw {
 process initial_sfind {
   label 'aegean'
 
-  publishDir params.output_dir, mode:'copy', overwrite:true
+  publishDir params.output_dir, mode:'symlink', overwrite:true
 
   input:
   set val(basename), file(image), file(bkg), file(rms) from raw_image_with_bkg_ch
@@ -51,10 +55,12 @@ process initial_sfind {
 
 // initial_catalogue_ch.view()
 
+
+// TODO: Figure out how to skip this step
 process fits_warp {
   label 'warp'
 
-  publishDir params.output_dir, mode:'copy', overwrite:false
+  publishDir params.output_dir, mode:'symlink', overwrite:false
 
   input:
   set val(basename), file(image), file(catalogue) from initial_catalogue_ch
@@ -80,7 +86,7 @@ process fits_warp {
 
 
 process make_mean_image {
-  publishDir params.output_dir, mode:'copy', overwrite:false
+  publishDir params.output_dir, mode:'symlink', overwrite:false
 
   input:
   file(image) from warped_images_ch.collect()
@@ -88,6 +94,8 @@ process make_mean_image {
   output:
   set val('mean'), file('mean.fits') into mean_image_ch
 
+// TODO: How do we avoid a command with an argument list of 3k files?
+// TODO: Can we write the list into a text file as we did with Make?
   script:
   """
   echo "do stuff with ${image}"
@@ -99,7 +107,7 @@ process make_mean_image {
 process bane_mean_image {
   label 'bane'
 
-  publishDir params.output_dir, mode:'copy', overwrite:false
+  publishDir params.output_dir, mode:'symlink', overwrite:false
 
   input:
   set val(basename), file(mean) from mean_image_ch
@@ -118,7 +126,7 @@ process bane_mean_image {
 process sfind_mean_image {
   label 'aegean'
 
-  publishDir params.output_dir, mode:'copy', overwrite:false
+  publishDir params.output_dir, mode:'symlink', overwrite:false
 
   input:
   set val(basename), file(mean), file(bkg), file(rms) from bane_mean_image_ch
@@ -133,10 +141,12 @@ process sfind_mean_image {
   """
 }
 
+// TODO: Join the monitoring list to the persistent source catalogue
+
 process source_monitor {
   label 'aegean'
 
-  publishDir params.output_dir, mode:'copy', overwrite:false
+  publishDir params.output_dir, mode:'symlink', overwrite:false
 
   input:
   file(mean_cat) from mean_catalogue_ch
@@ -153,6 +163,9 @@ process source_monitor {
   """
 }
 
+
+// TODO: Future problem is that sqlite db is not good for 3M rows
+// TODO: What other options are there.
 
 process create_db {
   input:
@@ -182,7 +195,7 @@ process compute_stats {
 }
 
 process plot_lc {
-  publishDir params.output_dir, mode:'copy', overwrite:false
+  publishDir params.output_dir, mode:'symlink', overwrite:false
 
   input:
   val(whatever) from stats_finished_ch
@@ -200,7 +213,7 @@ process plot_lc {
 }
 
 process variable_summary_plot {
-  publishDir params.output_dir, mode:'copy', overwrite:false
+  publishDir params.output_dir, mode:'symlink', overwrite:false
 
   input:
   val(whatever) from stats_finished_ch2
@@ -216,7 +229,7 @@ process variable_summary_plot {
 }
 
 process mask_images {
-  publishDir params.output_dir, mode:'copy', overwrite:false
+  publishDir params.output_dir, mode:'symlink', overwrite:false
 
   input:
   file(mean_cat) from mean_catalogue_ch2
@@ -235,7 +248,7 @@ process mask_images {
 process sfind_masked {
   label 'aegean'
 
-  publishDir params.output_dir, mode:'copy', overwrite:false
+  publishDir params.output_dir, mode:'symlink', overwrite:false
 
   input:
   path rfile from params.region_file
@@ -272,7 +285,7 @@ process compile_transients_candidates {
 }
 
 process transients_plot {
-  publishDir params.output_dir, mode:'copy', overwrite:false
+  publishDir params.output_dir, mode:'symlink', overwrite:false
 
   input:
   val(whatever) from transients_imported_ch
