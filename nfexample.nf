@@ -7,7 +7,7 @@ params.output_dir = 'results/'
 
 params.refcat_ra = 'ra'
 params.refcat_dec = 'dec'
-ref_catalogue_ch = Channel.value("${params.ref_catalogue}")
+params.warp = true
 
 // TODO: Figure out how to read a file which contains all the datasets and then populate a channel with
 // TODO: those file names
@@ -25,12 +25,12 @@ process bane_raw {
 
 // TODO: Can we pas a dict instead of a set/list?
   output:
-  set val(basename), file(image), file("${basename}_bkg.fits"), \
-     file("${basename}_rms.fits") into raw_image_with_bkg_ch
+  set val(basename), file(image), file("*_{bkg,rms}.fits") into raw_image_with_bkg_ch
 
   script:
   """
-  BANE --cores ${task.cpus} ${image}
+  echo BANE --cores ${task.cpus} ${image}
+  touch ${basename}_{bkg,rms}.fits
   """
 }
 
@@ -42,14 +42,15 @@ process initial_sfind {
   publishDir params.output_dir, mode:'symlink', overwrite:true
 
   input:
-  set val(basename), file(image), file(bkg), file(rms) from raw_image_with_bkg_ch
+  set val(basename), file(image), file('*') from raw_image_with_bkg_ch
 
   output:
   set val(basename), file(image), file("${basename}_comp.fits") into initial_catalogue_ch
 
   script:
   """
-  aegean --cores ${task.cpus} --background=${bkg} --noise=${rms} --table=${image} ${image}
+  echo aegean --cores ${task.cpus} --background=*_bkg.fits --noise=*_rms.fits --table=${image} ${image}
+  touch ${basename}_comp.fits
   """
 }
 
@@ -71,6 +72,7 @@ process fits_warp {
   set val("${basename}_warped"), file("${basename}_warped.fits") into (warped_images_ch2, warped_images_ch3)
 
   script:
+  if (params.warp == true)
   """
   fits_warp.py --cores ${task.ncpus} --refcat ${params.ref_catalogue} --incat ${catalogue} \
                --ra1 ra --dec1 dec --ra2 ${params.refcat_ra} --dec2 ${params.refcat_dec} \
@@ -80,7 +82,10 @@ process fits_warp {
                --plot
 
   ${image} with ${catalogue} and ${rfile}
-  touch ${basename}_warped.fits
+  """
+  else
+  """
+  ln -s ${image} ${basename}_warped.fits
   """
 }
 
