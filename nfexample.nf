@@ -9,6 +9,7 @@ params.image_file = 'images.txt'
 params.refcat_ra = 'ra'
 params.refcat_dec = 'dec'
 params.warp = true
+params.monitor = 'monitor.fits'
 
 // Read the image names from a text file
 image_ch = Channel
@@ -45,7 +46,7 @@ process initial_sfind {
 
   script:
   """
-  echo aegean --cores ${task.cpus} --background=*_bkg.fits --noise=*_rms.fits --table=${image} ${image}
+   echo aegean --cores ${task.cpus} --background=*_bkg.fits --noise=*_rms.fits --table=${image} ${image}
   touch ${basename}_comp.fits
   """
 }
@@ -114,23 +115,29 @@ process bane_mean_image {
   """
 }
 
+// Create persistent catalogue and optionally join on a monitoring list
+
 process sfind_mean_image {
   label 'aegean'
+  echo true
 
   input:
   set val(basename), file(mean), file(bkg), file(rms) from bane_mean_image_ch
 
   output:
-  file("${basename}_comp.fits") into (mean_catalogue_ch, mean_catalogue_ch2)
+  file("persistent_sources.fits") into (mean_catalogue_ch, mean_catalogue_ch2)
 
   script:
+  def mon="""
+  echo ${params.stilts} tcatn nin=2 in1=${mean} in2=${params.monitor} out=persistent_sources.fits
+  touch persistent_sources.fits
+  """
   """
   echo aegean --background=${bkg} --noise=${rms} --table=${mean} ${mean}
-  touch ${basename}_comp.fits
+  ${ (params.monitor) ? "${mon}"  : "touch persistent_sources.fits" } 
   """
 }
 
-// TODO: Join the monitoring list to the persistent source catalogue
 
 process source_monitor {
   label 'aegean'
