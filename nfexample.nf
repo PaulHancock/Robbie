@@ -4,15 +4,17 @@ params.input_dir = 'data/'
 params.ref_catalogue = "master.fits"
 params.region_file = "$baseDir/square.mim"
 params.output_dir = 'results/'
+params.image_file = 'images.txt'
 
 params.refcat_ra = 'ra'
 params.refcat_dec = 'dec'
 params.warp = true
 
-// TODO: Figure out how to read a file which contains all the datasets and then populate a channel with
-// TODO: those file names
-raw_image_ch = Channel.fromPath("${params.input_dir}/Epoch0[0-4].fits").map{ it -> [it.baseName, it]}
-
+image_ch = Channel
+  .fromPath(params.image_file)
+  .splitText()
+  .map{ it -> tuple(file(it).baseName, file(it.trim()))}
+//image_ch.subscribe { print it }
 
 process bane_raw {
   label 'bane'
@@ -21,8 +23,7 @@ process bane_raw {
   publishDir params.output_dir, mode:'symlink', overwrite:true
 
   input:
-  set val(basename), file(image) from raw_image_ch
-
+  set val(basename), file(image) from image_ch
 // TODO: Can we pas a dict instead of a set/list?
   output:
   set val(basename), file(image), file("*_{bkg,rms}.fits") into raw_image_with_bkg_ch
@@ -32,6 +33,7 @@ process bane_raw {
   echo BANE --cores ${task.cpus} ${image}
   touch ${basename}_{bkg,rms}.fits
   """
+  //echo "$image $basename"
 }
 
 // raw_image_with_bkg_ch.view()
