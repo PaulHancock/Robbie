@@ -1,14 +1,33 @@
 #! /usr/bin/env nextflow
 
-params.ref_catalogue = "master.fits"
-params.region_file = "$baseDir/square.mim"
-params.output_dir = 'results/'
-params.image_file = 'images.txt'
+/* CONFIGURATION STAGE */
 
+// input images are listed in this file, one image per line
+params.image_file = "$baseDir/images.txt"
+
+// database to use
+params.db = 'sqlite3'
+params.db_file = "$baseDir/flux_table.db"
+
+// Warping stage
+params.warp = true
+params.ref_catalogue = "$baseDir/master.fits"
 params.refcat_ra = 'ra'
 params.refcat_dec = 'dec'
-params.warp = true
-params.monitor = 'monitor.fits'
+
+// name of monitoring file - set to null if not required
+params.monitor='monitor.fits'
+
+// calling stilts
+params.stilts = "java -jar /data/nextflow/stilts/stilts.jar"
+
+// Source finding params
+params.region_file = "$baseDir/square.mim"
+
+// output directory
+params.output_dir = 'results/'
+
+
 
 // Read the image names from a text file
 image_ch = Channel
@@ -92,17 +111,18 @@ process fits_warp {
 
 
 process make_mean_image {
+
+  // echo true
   input:
   path(image) from warped_images_ch.collect()
 
   output:
   tuple val('mean'), path('mean.fits') into mean_image_ch
 
-// TODO: How do we avoid a command with an argument list of 3k files?
-// TODO: Can we write the list into a text file as we did with Make?
   script:
   """
-  echo "do stuff with ${image}"
+  ls *_warped.fits > images.txt
+  echo make_mean.py --out mean.fits --infile images.txt
   touch mean.fits
   """
 }
@@ -126,8 +146,6 @@ process bane_mean_image {
 
 process sfind_mean_image {
   label 'aegean'
-
-//  echo true
 
   input:
   tuple val(basename), path(mean), path('*') from bane_mean_image_ch
