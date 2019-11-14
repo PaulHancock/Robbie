@@ -62,6 +62,7 @@ process bane_raw {
   echo BANE --cores ${task.cpus} ${image}
   touch ${basename}_{bkg,rms}.fits
   ls *.fits
+  echo \${HOSTNAME}
   """
 }
 
@@ -82,6 +83,7 @@ process initial_sfind {
   echo aegean --cores ${task.cpus} --background=*_bkg.fits --noise=*_rms.fits --table=${image} ${image}
   touch ${basename}_comp.fits
   ls *.fits
+  echo \${HOSTNAME}
   """
 }
 
@@ -116,6 +118,8 @@ process fits_warp {
   ln -s ${basename}.fits ${basename}_warped.fits
   echo ${task.process}
   ls *.fits
+  echo \${HOSTNAME}
+  echo \${HOSTNAME}
   """
 }
 
@@ -134,6 +138,7 @@ process make_mean_image {
   ls *_warped.fits > images.txt
   echo make_mean.py --out mean.fits --infile images.txt
   touch mean.fits
+  echo \${HOSTNAME}
   """
 }
 
@@ -151,6 +156,7 @@ process bane_mean_image {
   echo bane on ${mean}
   touch ${basename}_bkg.fits
   touch ${basename}_rms.fits
+  echo \${HOSTNAME}
   """
 }
 
@@ -172,6 +178,7 @@ process sfind_mean_image {
   """
   echo aegean --background *_bkg.fits --noise *_rms.fits --table=${mean} ${mean}
   ${ (params.monitor) ? "${mon}"  : "touch persistent_sources.fits" } 
+  echo \${HOSTNAME}
   """
 }
 
@@ -191,6 +198,7 @@ process source_monitor {
   echo aegean --background=${basename}_bkg.fits --noise=${basename}_rms.fits \
               --table=${image} ${image} --priorized 1 --input=${mean_cat}
   touch ${basename}_comp.fits
+  echo \${HOSTNAME}
   """
 }
 
@@ -208,6 +216,7 @@ process create_db {
   script:
   """
   echo ingest ${catalogue} into db
+  echo \${HOSTNAME}
   """
 }
 
@@ -222,6 +231,7 @@ process compute_stats {
   script:
   """
   echo analyse db
+  echo \${HOSTNAME}
   """
 }
 
@@ -238,6 +248,7 @@ process plot_lc {
   mkdir lc_plots
   cd lc_plots
   for i in \$(seq 1 30); do touch plot\${i}.png;done
+  echo \${HOSTNAME}
   """
 }
 
@@ -253,6 +264,7 @@ process variable_summary_plot {
   """
   echo do summary plot
   touch variables.png
+  echo \${HOSTNAME}
   """
 }
 
@@ -273,6 +285,7 @@ process mask_images {
   ls *.fits
   echo aeres -c ${mean_cat} -f *_warped.fits -r ${basename}_masked.fits --add
   touch ${basename}_masked.fits
+  echo \${HOSTNAME}
   """
 }
 
@@ -294,6 +307,7 @@ process sfind_masked {
   echo  aegean --background *_bkg.fits --noise *_rms.fits --table *_masked.fits *_masked.fits
   touch ${basename}_comp.fits
   ls *.fits
+  echo \${HOSTNAME}
   """
 }
 
@@ -312,6 +326,7 @@ process compile_transients_candidates {
     echo filter on \${f}
     echo import \${f} into db
   done
+  echo \${HOSTNAME}
   """
 }
 
@@ -327,5 +342,6 @@ process transients_plot {
   """
   echo plot transients.png
   touch transients.png
+  echo \${HOSTNAME}
   """
 }
