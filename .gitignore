@@ -7,4 +7,5 @@ makefile2dot.py
 *.png
 *images.txt
 work
-.nextflow
+.nextflow*
+.vscode
