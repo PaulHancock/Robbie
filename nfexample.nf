@@ -27,7 +27,18 @@ params.region_file = "$baseDir/square.mim"
 // output directory
 params.output_dir = 'results/'
 
-
+log.info """\
+         ROBBIE the Space Detective 
+         ==========================
+         images from  : ${params.image_file}
+         using db     : ${params.db_file} (type=${params.db})
+         do warping?  : ${params.warp}
+         ref cat      : ${params.ref_catalogue}
+         minotor cat  : ${params.monitor}
+         region file  : ${params.region_file}
+         output to    : ${params.output_dir}
+         """
+         .stripIndent()
 
 // Read the image names from a text file
 image_ch = Channel
@@ -40,7 +51,6 @@ process bane_raw {
   label 'bane'
 
   // echo true
-  
   input:
   tuple val(basename), path(image) from image_ch
 
