@@ -56,3 +56,6 @@ I recommend that you `make science`
 
 ## Credit
 If you make use of Robbie as part of your work please cite [Hancock et al. 2018](http://adsabs.harvard.edu/abs/2019A%26C....27...23H), and link to this repository.
+
+## Links
+You can obtain a docker image with the Robbie dependencies installed at [DockerHub](https://hub.docker.com/repository/docker/paulhancock/robbie-next/)

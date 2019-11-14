@@ -7,4 +7,7 @@ vis.png
 makefile2dot.py
 *.mim
 *.png
-all_images.txt
+*images.txt
+work
+.nextflow*
+.vscode
