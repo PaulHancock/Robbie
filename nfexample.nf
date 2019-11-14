@@ -20,34 +20,39 @@ image_ch = Channel
 process bane_raw {
   label 'bane'
 
+  // echo true
+  
   input:
-  set val(basename), file(image) from image_ch
+  tuple val(basename), path(image) from image_ch
 
   output:
-  set val(basename), file(image), file("*_{bkg,rms}.fits") into raw_image_with_bkg_ch
+  tuple val(basename), path(image), path("*_{bkg,rms}.fits") into raw_image_with_bkg_ch
 
   script:
   """
   echo BANE --cores ${task.cpus} ${image}
   touch ${basename}_{bkg,rms}.fits
+  ls *.fits
   """
 }
 
 
 process initial_sfind {
   label 'aegean'
-
+  // echo true
   input:
-  set val(basename), file(image), file('*') from raw_image_with_bkg_ch
+  tuple val(basename), path(image), path('*') from raw_image_with_bkg_ch
 
   output:
-  set val(basename), file(image), file("*_{bkg,rms,comp}.fits") into initial_catalogue_ch
+  //tuple val(basename), path(image), path("*_{bkg,rms,comp}.fits") into initial_catalogue_ch
+  tuple val(basename), path('*.fits', includeInputs:true) into initial_catalogue_ch
 
   script:
   """
   echo ${task.process}
   echo aegean --cores ${task.cpus} --background=*_bkg.fits --noise=*_rms.fits --table=${image} ${image}
   touch ${basename}_comp.fits
+  ls *.fits
   """
 }
 
@@ -55,15 +60,15 @@ process initial_sfind {
 process fits_warp {
   label 'warp'
 
-  echo true
+  //echo true
   input:
-  set val(basename), file(image), file('*') from initial_catalogue_ch
+  tuple val(basename), path('*') from initial_catalogue_ch
   path rfile from params.region_file
 
   output:
-  file("*_warped.fits") into warped_images_ch // -> to mean image
-  set val("${basename}_warped"), file("*_warped.fits") into warped_images_ch2 // to monitoring
-  set val("${basename}_warped"), file("*_{warped,bkg,rms}.fits") into warped_images_ch3 // to masking
+  path("*_warped.fits") into warped_images_ch // -> to mean image
+  tuple val("${basename}_warped"), path("*.fits", includeInputs:true) into warped_images_ch2 // to monitoring
+  tuple val("${basename}_warped"), path('*.fits', includeInputs:true) into warped_images_ch3 // to mask_images
 
   script:
   if (params.warp == true)
@@ -71,15 +76,15 @@ process fits_warp {
   fits_warp.py --cores ${task.ncpus} --refcat ${params.ref_catalogue} --incat ${catalogue} \
                --ra1 ra --dec1 dec --ra2 ${params.refcat_ra} --dec2 ${params.refcat_dec} \
                --xm ${basename}_xm.fits
-  fits_warp.py --infits ${image} --xm ${basename}_xm.fits --suffix warped \
+  fits_warp.py --infits ${basename}.fits --xm ${basename}_xm.fits --suffix warped \
                --ra2 ${params.refcat_ra} --dec2 ${params.refcat_dec} \
                --plot
 
-  ${image} with ${catalogue} and ${rfile}
+  echo ${basename}.fits with ${catalogue} and ${rfile}
   """
   else
   """
-  ln -s ${image} ${basename}_warped.fits
+  ln -s ${basename}.fits ${basename}_warped.fits
   echo ${task.process}
   ls *.fits
   """
@@ -88,10 +93,10 @@ process fits_warp {
 
 process make_mean_image {
   input:
-  file(image) from warped_images_ch.collect()
+  path(image) from warped_images_ch.collect()
 
   output:
-  set val('mean'), file('mean.fits') into mean_image_ch
+  tuple val('mean'), path('mean.fits') into mean_image_ch
 
 // TODO: How do we avoid a command with an argument list of 3k files?
 // TODO: Can we write the list into a text file as we did with Make?
@@ -106,10 +111,10 @@ process bane_mean_image {
   label 'bane'
 
   input:
-  set val(basename), file(mean) from mean_image_ch
+  tuple val(basename), path(mean) from mean_image_ch
 
   output:
-  set val(basename), file(mean), file("${basename}_{bkg,rms}.fits") into bane_mean_image_ch
+  tuple val(basename), path(mean), path("${basename}_{bkg,rms}.fits") into bane_mean_image_ch
 
   script:
   """
@@ -119,18 +124,17 @@ process bane_mean_image {
   """
 }
 
-// Create persistent catalogue and optionally join on a monitoring list
-
 process sfind_mean_image {
   label 'aegean'
-  echo true
+
+//  echo true
 
   input:
-  set val(basename), file(mean), file('*') from bane_mean_image_ch
+  tuple val(basename), path(mean), path('*') from bane_mean_image_ch
 
   output:
-  file("${basename}_comp.fits") into (mean_catalogue_ch,  // to source finding 
-                                      mean_catalogue_ch2) // to masking
+  path("persistent_sources.fits") into (mean_catalogue_ch,  // to source finding 
+                                       mean_catalogue_ch2)  // to masking
 
   script:
   def mon="""
@@ -148,11 +152,11 @@ process source_monitor {
   label 'aegean'
 
   input:
-  file(mean_cat) from mean_catalogue_ch
-  set val(basename), file(image) from warped_images_ch2
+  path(mean_cat) from mean_catalogue_ch
+  tuple val(basename), path(image) from warped_images_ch2
 
   output:
-  file("${basename}_comp.fits") into priorized_catalogue_ch
+  path("${basename}_comp.fits") into priorized_catalogue_ch
 
   script:
   """
@@ -168,7 +172,7 @@ process source_monitor {
 
 process create_db {
   input:
-  file(catalogue) from priorized_catalogue_ch
+  path(catalogue) from priorized_catalogue_ch
 
   output:
   val('done') into db_finished_ch
@@ -215,7 +219,7 @@ process variable_summary_plot {
   val(whatever) from stats_finished_ch2
 
   output:
-  file('variables.png') into summary_ch
+  path('variables.png') into summary_ch
 
   script:
   """
@@ -226,14 +230,14 @@ process variable_summary_plot {
 
 process mask_images {
 
-  echo true
+  // echo true
   
   input:
-  file(mean_cat) from mean_catalogue_ch2
-  set val(basename), file('*') from warped_images_ch3
+  path(mean_cat) from mean_catalogue_ch2
+  tuple val(basename), path('*') from warped_images_ch3
 
   output:
-  set val("${basename}_masked"), file("*_{masked,bkg,rms}.fits") into masked_images_ch
+  tuple val("${basename}_masked"), path("*.fits", includeInputs:true) into masked_images_ch
 
   script:
   """
@@ -247,27 +251,28 @@ process mask_images {
 process sfind_masked {
   label 'aegean'
 
-  echo true
+  // echo true
   
   input:
   path file from params.region_file
-  set val(basename), file('*') from masked_images_ch
+  tuple val(basename), path('*') from masked_images_ch
 
   output:
-  file("${basename}_comp.fits") into masked_catalogue_ch
+  path("${basename}_comp.fits") into masked_catalogue_ch
   
   script:
   """
-  echo \$(ls *.fits)
-  echo ${task.process}: aegean --background *_bkg.fits --noise *_rms.fits --table *_masked.fits *_masked.fits
+  echo ${task.process}
+  echo  aegean --background *_bkg.fits --noise *_rms.fits --table *_masked.fits *_masked.fits
   touch ${basename}_comp.fits
+  ls *.fits
   """
 }
 
 process compile_transients_candidates {
 
   input:
-  file(catalogue) from masked_catalogue_ch.collect()
+  path(catalogue) from masked_catalogue_ch.collect()
 
   output:
   val('done') into transients_imported_ch
@@ -288,7 +293,7 @@ process transients_plot {
   val(whatever) from transients_imported_ch
 
   output:
-  file('transients.png') into transients_plot_ch
+  path('transients.png') into transients_plot_ch
 
   script:
   """
