@@ -6,6 +6,7 @@ MAINTAINER Paul Hancock
 RUN apt update
 # install aegean tools
 RUN pip install aegeantools
+RUN pip install pandas
 
 # install fits_warp
 RUN pip install psutil
