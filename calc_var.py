@@ -69,6 +69,8 @@ def calc_stats(cur, ndof=None):
             # pvalue
             if ndof is None:
                 ndof = max(1,npts - 1)
+            else:
+                ndof = max(1,ndof)
             pval = stats.chi2.sf(chisq, ndof)
             pval = max(pval, 1e-10)
             # debiased modulation index
