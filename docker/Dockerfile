@@ -15,5 +15,7 @@ RUN mkdir /tmp/build && cd /tmp/build && git clone https://github.com/nhurleywal
 
 # 'install' the stilts/topcat file
 RUN cd /usr/local/lib && wget http://www.star.bris.ac.uk/~mbt/stilts/stilts.jar
-
+# install java
 RUN apt install -y openjdk-11-jdk
+# install sqlite3
+RUN apt install -y sqlite3
