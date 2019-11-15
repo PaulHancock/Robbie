@@ -56,7 +56,7 @@ def add_catalogue(cur, date, cat):
     qry = "INSERT INTO sources ({0}, epoch) VALUES ({1},{2})".format(','.join(cols), ','.join(['?']*len(cols)), epoch)
     for row in c.as_array():
         # convert numpy types into python types
-        data = map(lambda x: x.item(), row)
+        data = list(map(lambda x: x.item(), row))
         cur.execute(qry, data)
     return
 
