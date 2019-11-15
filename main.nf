@@ -59,8 +59,9 @@ process bane_raw {
 
   script:
   """
-  echo BANE --cores ${task.cpus} ${image}
-  touch ${basename}_{bkg,rms}.fits
+  echo ${task.process}
+  BANE --cores ${task.cpus} ${image}
+  # touch ${basename}_{bkg,rms}.fits
   ls *.fits
   echo \${HOSTNAME}
   """
@@ -80,8 +81,8 @@ process initial_sfind {
   script:
   """
   echo ${task.process}
-  echo aegean --cores ${task.cpus} --background=*_bkg.fits --noise=*_rms.fits --table=${image} ${image}
-  touch ${basename}_comp.fits
+  aegean --cores ${task.cpus} --background=*_bkg.fits --noise=*_rms.fits --table=${image} ${image}
+  # touch ${basename}_comp.fits
   ls *.fits
   echo \${HOSTNAME}
   """
@@ -115,10 +116,9 @@ process fits_warp {
   """
   else
   """
-  ln -s ${basename}.fits ${basename}_warped.fits
   echo ${task.process}
+  ln -s ${basename}.fits ${basename}_warped.fits
   ls *.fits
-  echo \${HOSTNAME}
   echo \${HOSTNAME}
   """
 }
@@ -135,9 +135,10 @@ process make_mean_image {
 
   script:
   """
+  echo ${task.process}
   ls *_warped.fits > images.txt
-  echo make_mean.py --out mean.fits --infile images.txt
-  touch mean.fits
+  make_mean.py --out mean.fits --infile images.txt
+  # touch mean.fits
   echo \${HOSTNAME}
   """
 }
@@ -153,9 +154,9 @@ process bane_mean_image {
 
   script:
   """
-  echo bane on ${mean}
-  touch ${basename}_bkg.fits
-  touch ${basename}_rms.fits
+  echo ${task.process}
+  BANE --cores ${task.cpus} ${mean}
+  # touch ${basename}_{bkg,rms}.fits
   echo \${HOSTNAME}
   """
 }
@@ -172,11 +173,12 @@ process sfind_mean_image {
 
   script:
   def mon="""
-  echo ${params.stilts} tcatn nin=2 in1=${mean} in2=${params.monitor} out=persistent_sources.fits
-  touch persistent_sources.fits
+  ${params.stilts} tcatn nin=2 in1=${mean} in2=${params.monitor} out=persistent_sources.fits
+  # touch persistent_sources.fits
   """
   """
-  echo aegean --background *_bkg.fits --noise *_rms.fits --table=${mean} ${mean}
+  echo ${task.process}
+  aegean --background *_bkg.fits --noise *_rms.fits --table=${mean} ${mean}
   ${ (params.monitor) ? "${mon}"  : "touch persistent_sources.fits" } 
   echo \${HOSTNAME}
   """
@@ -195,9 +197,10 @@ process source_monitor {
 
   script:
   """
-  echo aegean --background=${basename}_bkg.fits --noise=${basename}_rms.fits \
-              --table=${image} ${image} --priorized 1 --input=${mean_cat}
-  touch ${basename}_comp.fits
+  echo ${task.process}
+  aegean --background=${basename}_bkg.fits --noise=${basename}_rms.fits \
+         --table=${image} ${image} --priorized 1 --input=${mean_cat}
+  # touch ${basename}_comp.fits
   echo \${HOSTNAME}
   """
 }
@@ -215,6 +218,7 @@ process create_db {
 
   script:
   """
+  echo ${task.process}
   echo ingest ${catalogue} into db
   echo \${HOSTNAME}
   """
