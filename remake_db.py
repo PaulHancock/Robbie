@@ -43,7 +43,7 @@ if __name__ == "__main__":
     uuid TEXT,
     psf_a NUMERIC, psf_b NUMERIC, psf_pa NUMERIC,
     epoch INTEGER REFERENCES epochs(epoch),
-    UNIQUE (uuid, epoch))
+    UNIQUE (uuid, epoch) ON CONFLICT IGNORE)
     """)
     conn.commit()
     conn.close()
