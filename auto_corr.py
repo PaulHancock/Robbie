@@ -15,7 +15,7 @@ NPIX = 500
 
 def autocorr(x):
     corr = np.correlate(x, x, mode='full')
-    half = corr[corr.size/2:]
+    half = corr[corr.size//2:]
     normed = half/half[0]
     return normed
 
@@ -75,7 +75,7 @@ def get_db_endof(db):
         cur.execute("""
         SELECT s1.peak_flux - s2.mean_peak_flux
         FROM sources as s1 JOIN (SELECT uuid, AVG(peak_flux) as mean_peak_flux FROM sources WHERE uuid=?) as s2 ON s1.uuid = s2.uuid WHERE s1.uuid = ? """, (uuid,uuid))
-        fluxes[:, i] = zip(*cur.fetchall())[0]
+        fluxes[:, i] = list(zip(*cur.fetchall()))[0]
 
     acorr = np.array([autocorr(fluxes[:,i]) for i in range(NPIX)])
     mean = np.nanmean(acorr, axis=0)
