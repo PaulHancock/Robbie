@@ -29,7 +29,7 @@ def plot_summary(cur, plotfile):
     cur.execute("""SELECT pval_peak_flux, md, abs(mean_peak_flux) FROM stats WHERE pval_peak_flux >0""")
     rows = cur.fetchall()
 
-    pval_peak_flux, md, mean_peak_flux = map(np.array, zip(*rows))
+    pval_peak_flux, md, mean_peak_flux = list(map(np.array, zip(*rows)))
 
     kwargs = {'fontsize':14}
     fig = pyplot.figure(figsize=(5,8))
