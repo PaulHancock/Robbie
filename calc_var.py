@@ -68,7 +68,7 @@ def calc_stats(cur, ndof=None):
             chisq = np.sum((fluxes[mask] - mean)**2 / err[mask]**2)
             # pvalue
             if ndof is None:
-                ndof = npts - 1
+                ndof = max(1,npts - 1)
             pval = stats.chi2.sf(chisq, ndof)
             pval = max(pval, 1e-10)
             # debiased modulation index
