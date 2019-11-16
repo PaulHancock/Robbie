@@ -26,7 +26,8 @@ if __name__ == "__main__":
     c.execute("""
     CREATE TABLE epochs
     (date TEXT, file TEXT,
-    epoch INTEGER PRIMARY KEY ASC AUTOINCREMENT)
+    epoch INTEGER PRIMARY KEY ASC AUTOINCREMENT,
+    UNIQUE (file) ON CONFLICT IGNORE)
     """)
     c.execute("""
     CREATE TABLE sources
