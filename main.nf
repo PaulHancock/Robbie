@@ -141,7 +141,7 @@ process make_mean_image {
   """
   echo ${task.process}
   ls *_warped.fits > images.txt
-  ${baseDir}/make_mean.py --out mean.fits --infile images.txt
+  make_mean.py --out mean.fits --infile images.txt
   # touch mean.fits
   echo \${HOSTNAME}
   """
@@ -215,17 +215,20 @@ process source_monitor {
 // TODO: What other options are there.
 
 process make_db {
+  label 'python'
 
   output:
   path '*.db' into (db_file_ch1, db_file_ch2, db_file_ch3)
 
   script:
   """
-  ${baseDir}/remake_db.py --name ${params.db_file}
+  remake_db.py --name ${params.db_file}
   """
 }
 
 process populate_db {
+  label 'python'
+
   input:
   tuple path(cat), path(image) from priorized_catalogue_ch
   path 'database.db' from db_file_ch1
@@ -236,13 +239,16 @@ process populate_db {
   script:
   """
   echo ${task.process}
-  ${baseDir}/add_cat_to_db.py --name database.db --cat ${cat} --image *_warped.fits
+  add_cat_to_db.py --name database.db --cat ${cat} --image *_warped.fits
   echo \${HOSTNAME}
   """
 }
 
+// TODO: Figure out how to make this not break when we do -resume
 
 process compute_stats {
+  label 'python'
+
   input:
   val(whatever) from db_finished_ch.collect()
   path 'database.db' from db_file_ch2
@@ -254,14 +260,16 @@ process compute_stats {
   script:
   """
   echo ${task.process}
-  NDOF=(\$(${baseDir}/auto_corr.py --dbname database.db))
+  NDOF=(\$(auto_corr.py --dbname database.db))
   echo \${NDOF[@]} > NDOF.txt
-  ${baseDir}/calc_var.py --name database.db --ndof \${NDOF[-1]} 
+  calc_var.py --name database.db --ndof \${NDOF[-1]} 
   echo \${HOSTNAME}
   """
 }
 
 process plot_lc {
+  label 'python'
+
   input:
   val(whatever) from stats_finished_ch
   path 'database.db' from db_file_ch3
@@ -273,14 +281,14 @@ process plot_lc {
   """
   echo ${task.process}
   mkdir plots
-  ${baseDir}/plot_variables.py --name database.db --plot plots/variables.png --all ${ (params.by_epoch)? '': '--dates'}
+  plot_variables.py --name database.db --plot plots/variables.png --all ${ (params.by_epoch)? '': '--dates'}
   echo \${HOSTNAME}
   """
 }
 
 
 process mask_images {
-
+  label 'python'
   // echo true
   
   input:
@@ -316,9 +324,9 @@ process sfind_masked {
   echo ${task.process}
   echo \${HOSTNAME}
   aegean --background *_bkg.fits --noise *_rms.fits --table ${basename}.fits ${basename}.fits
-  ${baseDir}/filter_transients.py --incat ${basename}_comp.fits --image ${basename}.fits --outcat ${basename}_comp.fits
+  filter_transients.py --incat ${basename}_comp.fits --image ${basename}.fits --outcat ${basename}_comp.fits
   # Remove  the output file if it's empty
-  nsrc=(\$( ${params.stilts} tcat omode=count in=${basename}_comp.fits ))
+  nsrc=(\$( stilts tcat omode=count in=${basename}_comp.fits ))
   if [[ \${nsrc[-1]} -lt 1 ]]
   then
     rm *_comp.fits
@@ -328,6 +336,7 @@ process sfind_masked {
 }
 
 process compile_transients_candidates {
+  label 'python'
 
   input:
   path(catalogue) from masked_catalogue_ch.collect()
@@ -340,12 +349,13 @@ process compile_transients_candidates {
   echo ${task.process}
   echo \${HOSTNAME}
   ls *_comp.fits > temp.dat
-  ${baseDir}/collect_transients.py --infile temp.dat --out transients.fits --ignoremissing
+  collect_transients.py --infile temp.dat --out transients.fits --ignoremissing
   """
 }
 
 process transients_plot {
-
+  label 'python'
+  
   input:
   path(transients) from transients_imported_ch
 
@@ -355,7 +365,7 @@ process transients_plot {
   script:
   """
   echo ${task.process}
-  ${baseDir}/plot_transients.py --in ${transients} --plot transients.png
+  plot_transients.py --in ${transients} --plot transients.png
   echo \${HOSTNAME}
   """
 }
