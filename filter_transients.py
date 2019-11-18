@@ -20,6 +20,11 @@ def filter_cat(catalogue, image, outcat, region=None):
     wcs = WCS(im[0].header, naxis=2)
     # Convert ra/dec to pixel values (in x,y)
     pix = np.int32(wcs.all_world2pix(cat[['ra', 'dec']].values, 1)).T
+    
+    # constrain pixel values to be within the image
+    pix[0] = np.clip(pix[0], a_min=0, a_max=im[0].data.shape[0]-1)
+    pix[1] = np.clip(pix[1], a_min=0, a_max=im[0].data.shape[1]-1)
+
     struct1 = ndimage.generate_binary_structure(2, 1)
     dl = np.bitwise_not(morph.binary_dilation(np.bitwise_not(np.isfinite(im[0].data)),
                                               iterations=3,
