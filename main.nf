@@ -303,7 +303,7 @@ process mask_images {
   """
   echo ${task.process}
   ls *.fits
-  AeRes -c ${mean_cat} -f *_warped.fits -r ${basename}_masked.fits --add
+  AeRes -c ${mean_cat} -f *_warped.fits -r ${basename}_masked.fits --mask --sigma 0.1
   echo \${HOSTNAME}
   """
 }
