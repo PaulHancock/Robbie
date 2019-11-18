@@ -63,10 +63,11 @@ process bane_raw {
   script:
   """
   echo ${task.process}
+  echo \${HOSTNAME}
+  ls -lh *
+  pwd
   BANE --cores ${task.cpus} ${image}
   # touch ${basename}_{bkg,rms}.fits
-  ls *.fits
-  echo \${HOSTNAME}
   """
 }
 
