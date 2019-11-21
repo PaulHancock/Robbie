@@ -5,10 +5,6 @@
 // input images are listed in this file, one image per line
 params.image_file = "$baseDir/images.txt"
 
-// database to use
-params.db = 'sqlite3'
-params.db_file = "$baseDir/flux_table.db"
-
 // Warping stage
 params.warp = true
 params.ref_catalogue = "$baseDir/master.fits"
@@ -34,7 +30,6 @@ log.info """\
          ROBBIE the Space Detective 
          ==========================
          images from  : ${params.image_file}
-         using db     : ${params.db_file} (type=${params.db})
          do warping?  : ${params.warp}
          ref cat      : ${params.ref_catalogue}
          minotor cat  : ${params.monitor}
@@ -209,40 +204,6 @@ process source_monitor {
   aegean --background *_bkg.fits --noise *_rms.fits \
          --table ${basename}.fits --priorized 1 --input ${mean_cat} ${basename}.fits
   # touch ${basename}_comp.fits
-  echo \${HOSTNAME}
-  """
-}
-
-
-// TODO: Future problem is that sqlite db is not good for 3M rows
-// TODO: What other options are there.
-
-process make_db {
-  label 'python'
-
-  output:
-  path '*.db' into (db_file_ch1, db_file_ch2, db_file_ch3)
-
-  script:
-  """
-  remake_db.py --name ${params.db_file}
-  """
-}
-
-process populate_db {
-  label 'python'
-
-  input:
-  tuple path(cat), path(image) from priorized_catalogue_ch
-  path 'database.db' from db_file_ch1
-
-  output:
-  val('done') into db_finished_ch
-
-  script:
-  """
-  echo ${task.process}
-  add_cat_to_db.py --name database.db --cat ${cat} --image *_warped.fits
   echo \${HOSTNAME}
   """
 }
