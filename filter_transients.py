@@ -39,7 +39,13 @@ def filter_cat(catalogue, image, outcat, region=None):
         dec = tab['dec']
         mask = reg.sky_within(ra, dec, degin=True)
         tab = tab[mask]
-    tab.write(outcat,  overwrite=True)
+    # don't write empty files
+    if len(tab) > 0:
+        tab.write(outcat,  overwrite=True)
+        print("Wrote {0}".format(outcat))
+    else:
+        print("Empty table. No output written.")
+    return
 
 
 if __name__ == '__main__':
