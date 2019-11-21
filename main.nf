@@ -174,7 +174,8 @@ process sfind_mean_image {
 
   output:
   path("persistent_sources.fits") into (mean_catalogue_ch,  // to source finding 
-                                       mean_catalogue_ch2)  // to masking
+                                       mean_catalogue_ch2,  // to masking
+				       mean_catalogue_ch3)  // to flux_table
 
   script:
   def mon="""
@@ -200,6 +201,7 @@ process source_monitor {
 
   output:
   tuple path("${basename}_comp.fits"), path(image, includeInputs:true) into priorized_catalogue_ch
+  path("${basename}_comp.fits") into priorized_catalogue_ch2
 
   script:
   """
@@ -245,26 +247,45 @@ process populate_db {
   """
 }
 
-// TODO: Figure out how to make this not break when we do -resume
+
+process join_fluxes {
+  label 'python'
+
+  input:
+  path('*') from priorized_catalogue_ch2.collect()
+  path("reference.fits") from mean_catalogue_ch3
+
+  output:
+  path("flux_table.vot") into flux_table_ch
+
+  script:
+  """
+  echo ${task.process}
+  echo \${HOSTNAME}
+  ls
+  ls *_comp.fits > epochs.txt
+  join_catalogues.py --refcat reference.fits --epochs epochs.txt --out flux_table.vot
+  """
+}
+
 
 process compute_stats {
   label 'python'
 
   input:
-  val(whatever) from db_finished_ch.collect()
-  path 'database.db' from db_file_ch2
+  path("flux_table.vot") from flux_table_ch
 
   output:
-  val('done') into stats_finished_ch
-  path('NDOF.txt') into ndof_publish_ch
+  tuple path("flux_table.vot", includeInputs:true), path("stats_table.vot") into flux_stats_ch
 
   script:
   """
   echo ${task.process}
-  NDOF=(\$(auto_corr.py --dbname database.db))
-  echo \${NDOF[@]} > NDOF.txt
-  calc_var.py --name database.db --ndof \${NDOF[-1]} 
   echo \${HOSTNAME}
+  ls
+  NDOF=(\$(auto_corr.py --table flux_table.vot))
+  echo \${NDOF[@]} > NDOF.txt
+  calc_var.py --table flux_table.vot --ndof \${NDOF[-1]} --out stats_table.vot 
   """
 }
 
@@ -272,18 +293,16 @@ process plot_lc {
   label 'python'
 
   input:
-  val(whatever) from stats_finished_ch
-  path 'database.db' from db_file_ch3
+  tuple path("flux_table.vot"), path("stats_table.vot") from flux_stats_ch
 
   output:
   path('plots') into plots_ch
 
   script:
   """
-  echo ${task.process}
+  echo ${task.process} on \${HOSTNAME}
   mkdir plots
-  plot_variables.py --name database.db --plot plots/variables.png --all ${ (params.by_epoch)? '': '--dates'}
-  echo \${HOSTNAME}
+  plot_variables.py --ftable flux_table.vot --stable stats_table.vot --plot plots/variables.png --all
   """
 }
 
@@ -324,13 +343,13 @@ process sfind_masked {
   """
   echo ${task.process}
   echo \${HOSTNAME}
+  ls *
+  which filter_transients.py
   aegean --background *_bkg.fits --noise *_rms.fits --table ${basename}.fits ${basename}.fits
-  filter_transients.py --incat ${basename}_comp.fits --image ${basename}.fits --outcat ${basename}_comp.fits
-  # Remove  the output file if it's empty
-  nsrc=(\$( stilts tcat omode=count in=${basename}_comp.fits ))
-  if [[ \${nsrc[-1]} -lt 1 ]]
+  # Don't filter if there is no output
+  if [[ -e ${basename}_comp.fits ]]
   then
-    rm *_comp.fits
+    filter_transients.py --incat ${basename}_comp.fits --image ${basename}.fits --outcat ${basename}_comp.fits
   fi
   ls *.fits
   """
