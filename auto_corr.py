@@ -1,10 +1,11 @@
 #! /usr/bin/env python
 from __future__ import print_function
 __author__=['Tim White', 'Paul Hancock']
-__date__ = '2019/09/06'
+__date__ = '2019/11/21'
 
 import argparse
 from astropy.io import fits
+from astropy.table import Table
 import sqlite3
 import numpy as np
 import sys
@@ -85,6 +86,38 @@ def get_db_endof(db):
     return ndof
 
 
+def get_table_endof(filename):
+    """
+
+    parameters
+    ----------
+    filename : str
+       Table filename.
+
+    return
+    ------
+    endof : int
+       The effective number of degrees of freedom
+    """
+    tab = Table.read(filename)
+    flux_cols = [a for a in tab.colnames if a.startswith('peak_flux')]
+    
+    # Choose N random rows without repetition
+    idx = np.random.choice(range(max(NPIX,len(tab))), NPIX, replace=False)
+    fluxes = tab[idx][flux_cols]
+    
+    # construct the autocorrelation and determine ndof
+    # ensure that the light curves have zero mean
+    acorr = np.array([autocorr(np.array(list(arr)) -  np.nanmean(list(arr)))
+                      for arr in fluxes])
+    mean = np.nanmean(acorr, axis=0)
+    std = np.nanstd(acorr, axis=0)
+    fzero = np.min(np.where(mean-std < 0))
+    epochs = len(flux_cols)
+    ndof = epochs - 1 - fzero
+    return ndof
+    
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     group1 = parser.add_argument_group("Combine images into a cube")
@@ -92,21 +125,30 @@ if __name__ == "__main__":
                         help="Database name. [optional]")
     group1.add_argument('--cuebname', dest='cube', type=str, default=None,
                         help='Image cube name. [optional]')
+    group1.add_argument('--table', dest='table', type=str, default=None,
+                        help='Flux table name. [optional]')
     results = parser.parse_args()
 
-    if (results.db is None) and (results.cube is None):
-        print("ERROR: Either dbname or cubename need to be specified.")
-        parser.print_help()
-        sys.exit(1)
-
+    ndof = 0 # default
     if results.cube:
         print("Reading cube from {0}".format(results.cube))
         cube = fits.open(results.cube)[0].data
         if len(cube.shape) != 3:
             print("{0} needs to have 3 axes, but it has {1}".format(results.cube, len(cube.shape)))
             sys.exit(1)
-        print("Effective degrees of freedom: {0}".format(get_cube_endof(cube)))
+        ndof = get_cube_endof(cube)
+
     elif results.db:
         print("Reading data from {0}".format(results.db))
         ndof = get_db_endof(results.db)
-        print("Effective degrees of freedom: {0}".format(ndof))
+
+    elif results.table:
+        print("Reading data from {0}".format(results.table))
+        ndof = get_table_endof(results.table)
+
+    else:
+        print("ERROR: One of dbname, cubename, or table need to be specified.")
+        parser.print_help()
+        sys.exit(1)
+
+    print("Effective degrees of freedom: {0}".format(ndof))
