@@ -9,7 +9,8 @@ import sqlite3
 import numpy as np
 from scipy import stats
 import sys
-
+from astropy.table import Table
+from join_catalogues import write_table
 
 
 def make_table(cur):
@@ -86,24 +87,91 @@ def calc_stats(cur, ndof=None):
     return
 
 
+def calc_stats_table(filename):
+    """
+    Compute various stats for each light curve
+
+    parameters
+    ----------
+    filename : str
+        The filename of the table to be read
+
+    return
+    ------
+    tab : `astropy.table.Table`
+        A table of stats
+    """
+    tab = Table.read(filename)
+    flux_cols = [a for a in tab.colnames if a.startswith('peak_flux')]
+    err_flux_cols = [a for a in tab.colnames if a.startswith('err_peak_flux')]
+    stats = np.zeros(shape=(len(tab), 6))
+    
+    for i,row in enumerate(tab):
+        fluxes = row[flux_cols]
+        err = row[err_flux_cols]
+        mask = np.where(err>0)
+        npts = len(mask[0])
+        
+        if npts < 2:
+            pval = 0.
+            md = 0.
+            mean = 0.
+        else:
+            # modulation index
+            mean = np.mean(fluxes[mask])
+            std = np.std(fluxes[mask])
+            m = std/mean
+            # chi squared
+            chisq = np.sum((fluxes[mask] - mean)**2 / err[mask]**2)
+            # pvalue
+            if ndof is None:
+                ndof = max(1,npts - 1)
+            else:
+                ndof = max(1,ndof)
+            pval = stats.chi2.sf(chisq, ndof)
+            pval = max(pval, 1e-10)
+            # debiased modulation index
+            desc = np.sum((fluxes[mask] - mean)**2) - np.sum(err[mask]**2)
+            #print(mean, desc, npts)
+            md = 1./mean * np.sqrt(np.abs(desc)/npts)
+            if desc < 0:
+                md *= -1
+        stats[:,i] = [mean, std, m,  md, chisq, pval]
+        stats_tab = tab['uuid'].copy()
+        stats_tab.add_cols(stats, names=['meak_peak_flux', 'std_peak_flux',
+                                         'm', 'md', 'chisq_peak_flux', 'pval_peak_flux'])
+        return stats
+
+        
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     group1 = parser.add_argument_group("Calculate variability stats")
-    group1.add_argument("--name", dest='name', type=str, default=None,
+    group1.add_argument("--dbname", dest='db', type=str, default=None,
                         help="Database filename.")
+    group1.add_argument("--table", dest='table', type=str, default=None,
+                        help="Table filename. [requires --out]")
+    group1.add_argument("--out", dest='out', type=str, default=None,
+                        help="Output filename.")
     group1.add_argument("--ndof", dest='ndof', type=float, default=None,
                         help="Effective number of degrees of freedom. Defualt: N=epochs-1")
-    group1.add_argument("--correct", dest="correct", action='store_true', default=False,
-                        help="Compute and remove the mean light curve (if there are more than 5 rows). Default: False.")
+    
     results = parser.parse_args()
 
-    if results.name is None:
+    if results.db:
+        conn = sqlite3.connect(results.name)
+        c = conn.cursor()
+        make_table(c)
+        calc_stats(c, results.ndof)
+        conn.commit()
+        conn.close()
+    elif results.table:
+        if not results.out:
+            print("ERROR: --table requires --out to be set")
+            sys.exit(1)
+        tab = calc_stats_table(results.table)
+        write_table(tab, results.out)
+    else:
         parser.print_help()
         sys.exit(1)
 
-    conn = sqlite3.connect(results.name)
-    c = conn.cursor()
-    make_table(c)
-    calc_stats(c, results.ndof)
-    conn.commit()
-    conn.close()
