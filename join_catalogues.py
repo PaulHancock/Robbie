@@ -62,8 +62,8 @@ def join_catalogues(reference, epochs):
     for i,f in enumerate(files):
         print("Joining epoch {0} catalogue {1}".format(i,f))
         new_cols = Table.read(f)['uuid', 'peak_flux', 'err_peak_flux']
-        new_cols.rename_column('peak_flux', f'peak_flux_{i}')
-        new_cols.rename_column('err_peak_flux', f'err_peak_flux_{i}')
+        new_cols.rename_column('peak_flux', 'peak_flux_{0}'.format(i))
+        new_cols.rename_column('err_peak_flux', 'err_peak_flux_{0}'.format(i))
         ref = astropy.table.join(ref, new_cols, keys='uuid')
         
     return ref
