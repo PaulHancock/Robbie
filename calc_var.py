@@ -9,7 +9,7 @@ import sqlite3
 import numpy as np
 from scipy import stats
 import sys
-from astropy.table import Table
+from astropy.table import Table, Column
 from join_catalogues import write_table
 
 
@@ -44,6 +44,9 @@ def calc_stats(cur, ndof=None):
     ----------
     cur : sqlite3.connection.cursor
         Cursor for the database connection
+
+    ndof : int or None
+        Number of degrees of freedom for the light curves. None -> npts-1
     """
     cur.execute("SELECT DISTINCT uuid FROM sources")
     sources = cur.fetchall()
@@ -87,7 +90,7 @@ def calc_stats(cur, ndof=None):
     return
 
 
-def calc_stats_table(filename):
+def calc_stats_table(filename, ndof=None):
     """
     Compute various stats for each light curve
 
@@ -95,6 +98,9 @@ def calc_stats_table(filename):
     ----------
     filename : str
         The filename of the table to be read
+
+    ndof : int or None
+        Number of degrees of freedom for the light curves. None -> npts-1
 
     return
     ------
@@ -104,11 +110,11 @@ def calc_stats_table(filename):
     tab = Table.read(filename)
     flux_cols = [a for a in tab.colnames if a.startswith('peak_flux')]
     err_flux_cols = [a for a in tab.colnames if a.startswith('err_peak_flux')]
-    stats = np.zeros(shape=(len(tab), 6))
+    src_stats = np.zeros(shape=(len(tab), 6))
     
     for i,row in enumerate(tab):
-        fluxes = row[flux_cols]
-        err = row[err_flux_cols]
+        fluxes = np.array(list(row[flux_cols]))
+        err = np.array(list(row[err_flux_cols]))
         mask = np.where(err>0)
         npts = len(mask[0])
         
@@ -136,13 +142,17 @@ def calc_stats_table(filename):
             md = 1./mean * np.sqrt(np.abs(desc)/npts)
             if desc < 0:
                 md *= -1
-        stats[:,i] = [mean, std, m,  md, chisq, pval]
-        stats_tab = tab['uuid'].copy()
-        stats_tab.add_cols(stats, names=['meak_peak_flux', 'std_peak_flux',
-                                         'm', 'md', 'chisq_peak_flux', 'pval_peak_flux'])
-        return stats
-
-        
+        src_stats[i,:] = [mean, std, m,  md, chisq, pval]
+    print(src_stats[:5])
+    stats_tab = Table()
+    stats_tab.add_column(tab['uuid'])
+    stats_tab.add_column(Column(src_stats[:,0], name='mean_peak_flux'))
+    stats_tab.add_column(Column(src_stats[:,1], name='std_peak_flux'))
+    stats_tab.add_column(Column(src_stats[:,2], name='m'))
+    stats_tab.add_column(Column(src_stats[:,3], name='md'))
+    stats_tab.add_column(Column(src_stats[:,4], name='chisq_peak_flux'))
+    stats_tab.add_column(Column(src_stats[:,5], name='pval_peak_flux'))
+    return stats_tab
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
