@@ -68,6 +68,57 @@ def join_catalogues(reference, epochs):
         
     return ref
 
+
+def join_catalogues2(reference, epochs):
+    """
+    Take a reference cataloge, strip all but the uuid/ra/dec columns and then
+    join the flux/err_flux data from each of the epoch catalogues
+    From each epoch we extract the peak_flux and err_peak_flux columns and rename
+    them by appending _N where N is the epoch number
+
+    parameters
+    ----------
+    reference : str
+        Filename for the reference catalogue
+
+    epochs : list
+        A list of the individual epoch file names
+
+    returns
+    -------
+    table : `astropy.table.Table`
+        A joined table
+    """
+    # Read the reference catalogue and retain only the uuid and ra/dec columns
+    # rename the ra/dec columns
+    print("Using reference catalogue {0}".format(reference))
+    ref = Table.read(reference)['uuid', 'ra','dec']
+    ref.rename_column('ra', 'ref_ra')
+    ref.rename_column('dec', 'ref_dec')
+    ref.sort(keys='uuid')
+    # trim off some stupid padding that may exist
+    ref['uuid'] = [a.strip() for a in ref['uuid']]
+
+    # make the empty columns
+    new_cols =[]
+    data = np.zeros(len(ref), dtype=np.float32)
+    
+    for i in range(len(files)):
+        new_cols.append(Column(data=data.copy(), name='peak_flux_{0}'.format(i)))
+        new_cols.append(Column(data=data.copy(), name='err_peak_flux_{0}'.format(i)))
+    ref.add_columns(new_cols)
+    
+    # now put the data into the new big table
+    for i,f in enumerate(files):
+        print("Joining epoch {0} catalogue {1}".format(i,f))
+        new_cols = Table.read(f)['uuid', 'peak_flux', 'err_peak_flux']
+        # compute the order/presence
+        ordering = [np.where(i == ref['uuid'])[0][0] for i in new_cols['uuid']]
+        ref['peak_flux_{0}'.format(i)][ordering] = new_cols['peak_flux']
+        ref['err_peak_flux_{0}'.format(i)][ordering] = new_cols['err_peak_flux']
+    return ref
+    
+
 def write_table(tab, filename):
     """
     Write a VOTable using a binary format.
@@ -103,5 +154,5 @@ if __name__ == "__main__":
         sys.exit()
 
     files = get_epoch_catalogues(results.epochs)
-    table = join_catalogues(results.ref, files)
+    table = join_catalogues2(results.ref, files)
     write_table(table, results.outfile)
