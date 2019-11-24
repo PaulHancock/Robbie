@@ -2,6 +2,9 @@
 
 /* CONFIGURATION STAGE */
 
+// for executing without a container
+params.codeDir = "${baseDir}/"
+
 // input images are listed in this file, one image per line
 params.image_file = "$baseDir/images.txt"
 
@@ -105,11 +108,11 @@ process fits_warp {
   if (params.warp == true)
   """
   echo ${task.process}
-  fits_warp.py --cores ${task.ncpus} --refcat ${params.ref_catalogue} --incat ${catalogue} \
+  fits_warp.py --cores ${task.cpus} --refcat ${params.ref_catalogue} --incat ${basename}_comp.fits \
                --ra1 ra --dec1 dec --ra2 ${params.refcat_ra} --dec2 ${params.refcat_dec} \
                --xm ${basename}_xm.fits
   fits_warp.py --infits ${basename}.fits --xm ${basename}_xm.fits --suffix warped \
-               --ra2 ${params.refcat_ra} --dec2 ${params.refcat_dec} \
+               --ra1 ra_1 --dec1 dec_1 --ra2 ${params.refcat_ra}_2 --dec2 ${params.refcat_dec}_2 \
                --plot
   ls *.fits
   echo \${HOSTNAME}
@@ -137,7 +140,7 @@ process make_mean_image {
   """
   echo ${task.process}
   ls *_warped.fits > images.txt
-  make_mean.py --out mean.fits --infile images.txt
+  ${params.codeDir}make_mean.py --out mean.fits --infile images.txt
   # touch mean.fits
   echo \${HOSTNAME}
   """
@@ -225,7 +228,7 @@ process join_fluxes {
   echo \${HOSTNAME}
   ls
   ls *_comp.fits > epochs.txt
-  join_catalogues.py --refcat reference.fits --epochs epochs.txt --out flux_table.vot
+  ${params.codeDir}join_catalogues.py --refcat reference.fits --epochs epochs.txt --out flux_table.vot
   """
 }
 
@@ -244,9 +247,9 @@ process compute_stats {
   echo ${task.process}
   echo \${HOSTNAME}
   ls
-  NDOF=(\$(auto_corr.py --table flux_table.vot))
+  NDOF=(\$(${params.codeDir}auto_corr.py --table flux_table.vot))
   echo \${NDOF[@]} > NDOF.txt
-  calc_var.py --table flux_table.vot --ndof \${NDOF[-1]} --out stats_table.vot 
+  ${params.codeDir}calc_var.py --table flux_table.vot --ndof \${NDOF[-1]} --out stats_table.vot 
   """
 }
 
@@ -263,7 +266,7 @@ process plot_lc {
   """
   echo ${task.process} on \${HOSTNAME}
   mkdir plots
-  plot_variables.py --ftable flux_table.vot --stable stats_table.vot --plot plots/variables.png --all
+  ${params.codeDir}plot_variables.py --ftable flux_table.vot --stable stats_table.vot --plot plots/variables.png --all
   """
 }
 
@@ -302,15 +305,17 @@ process sfind_masked {
   
   script:
   """
-  echo ${task.process}
-  echo \${HOSTNAME}
+  echo ${task.process} on  \${HOSTNAME}
   ls *
-  which filter_transients.py
   aegean --background *_bkg.fits --noise *_rms.fits --table ${basename}.fits ${basename}.fits
   # Don't filter if there is no output
   if [[ -e ${basename}_comp.fits ]]
   then
-    filter_transients.py --incat ${basename}_comp.fits --image ${basename}.fits --outcat ${basename}_comp.fits
+    ${params.codeDir}filter_transients.py --incat ${basename}_comp.fits --image ${basename}.fits --outcat out.fits
+    if [[ -e out.fits ]]
+    then
+      mv out.fits ${basename}_comp.fits
+    fi
   fi
   ls *.fits
   """
@@ -327,10 +332,9 @@ process compile_transients_candidates {
 
   script:
   """
-  echo ${task.process}
-  echo \${HOSTNAME}
+  echo ${task.process} on \${HOSTNAME}
   ls *_comp.fits > temp.dat
-  collect_transients.py --infile temp.dat --out transients.fits --ignoremissing
+  ${params.codeDir}collect_transients.py --infile temp.dat --out transients.fits --ignoremissing
   """
 }
 
@@ -346,7 +350,7 @@ process transients_plot {
   script:
   """
   echo ${task.process}
-  plot_transients.py --in ${transients} --plot transients.png
+  ${params.codeDir}plot_transients.py --in ${transients} --plot transients.png
   echo \${HOSTNAME}
   """
 }
