@@ -1,7 +1,7 @@
 #! /usr/bin/env python3
 
 import astropy
-from astropy.table import Table
+from astropy.table import Table, Column
 from astropy.io.votable import from_table, writeto
 import numpy as np
 import glob
