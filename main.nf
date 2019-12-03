@@ -2,8 +2,9 @@
 
 /* CONFIGURATION STAGE */
 
-// for executing without a container
+/* for executing without a container */
 params.codeDir = "${baseDir}/"
+params.stilts = ""
 
 // input images are listed in this file, one image per line
 params.image_file = "$baseDir/images.txt"
@@ -17,17 +18,15 @@ params.refcat_dec = 'dec'
 // Plotting params
 params.by_epoch = true
 
-// name of monitoring file - set to null if not required
-params.monitor='monitor.fits'
+/* aux files */
+// name of monitoring file
+params.monitor=""
 
-// calling stilts
-params.stilts = "java -jar /data/nextflow/stilts/stilts.jar"
-
-// Source finding params
-params.region_file = "$baseDir/square.mim"
+// Source finding region file
+params.region_file = ""
 
 // output directory
-params.output_dir = 'results/'
+params.output_dir = "${baseDir}/results/"
 
 log.info """\
          ROBBIE the Space Detective 
