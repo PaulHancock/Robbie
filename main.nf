@@ -76,10 +76,10 @@ process initial_sfind {
   tuple val(basename), path('*.fits', includeInputs:true) into initial_catalogue_ch
 
   script:
+  region=(params.region_file ? "--region ${params.region_file}":'')
   """
-  echo ${task.process}
-  aegean --cores ${task.cpus} --background *_bkg.fits --noise *_rms.fits --table ${image} ${image}
-  # touch ${basename}_comp.fits
+  echo ${task.process} on \${HOSTNAME}
+  aegean --cores ${task.cpus} --background *_bkg.fits --noise *_rms.fits --table ${image} ${region} ${image}
   ls *.fits
   """
 }
@@ -91,7 +91,6 @@ process fits_warp {
   //echo true
   input:
   tuple val(basename), path('*') from initial_catalogue_ch
-  path rfile from params.region_file
 
   output:
   path("*_warped.fits") into warped_images_ch // -> to mean image
@@ -99,6 +98,9 @@ process fits_warp {
   tuple val("${basename}_warped"), path('*.fits', includeInputs:true) into warped_images_ch3 // to mask_images
 
   script:
+  suff1=(params.refcat_ra=='ra' ? '_1':'')
+  suff2=(params.refcat_ra=='ra' ? '_2':'')
+  
   if (params.warp == true)
   """
   echo ${task.process} on \${HOSTNAME}
@@ -106,7 +108,7 @@ process fits_warp {
                --ra1 ra --dec1 dec --ra2 ${params.refcat_ra} --dec2 ${params.refcat_dec} \
                --xm ${basename}_xm.fits
   fits_warp.py --infits ${basename}.fits --xm ${basename}_xm.fits --suffix warped \
-               --ra1 ra_1 --dec1 dec_1 --ra2 ${params.refcat_ra}_2 --dec2 ${params.refcat_dec}_2 \
+               --ra1 ra${suff1} --dec1 dec${suff1} --ra2 ${params.refcat_ra}${suff2} --dec2 ${params.refcat_dec}${suff2} \
                --plot
   ls *.fits
   """
@@ -157,20 +159,22 @@ process sfind_mean_image {
 
   input:
   tuple val(basename), path(mean), path('*') from bane_mean_image_ch
-
+  path('*') from params.region_file
+  
   output:
   path("persistent_sources.fits") into (mean_catalogue_ch,  // to source finding 
                                        mean_catalogue_ch2,  // to masking
 				       mean_catalogue_ch3)  // to flux_table
 
   script:
+  region=(params.region_file ? "--region ${params.region_file}":'')
   def mon="""
   ${params.stilts} tcatn nin=2 in1=mean_comp.fits in2=${params.monitor} out=persistent_sources.fits ofmt
   """
 
   """
-  echo ${task.process}
-  aegean --background *_bkg.fits --noise *_rms.fits --table ${mean} ${mean}
+  echo ${task.process} on \${HOSTNAME}
+  aegean --cores ${task.cpus} --background *_bkg.fits --noise *_rms.fits --table ${mean} ${region} ${mean}
   ${ (params.monitor) ? "${mon}"  : "mv *_comp.fits persistent_sources.fits" } 
   """
 }
@@ -189,8 +193,8 @@ process source_monitor {
 
   script:
   """
-  echo ${task.process}
-  aegean --background *_bkg.fits --noise *_rms.fits \
+  echo ${task.process} on \${HOSTNAME}
+  aegean --cores ${task.cpus} --background *_bkg.fits --noise *_rms.fits \
          --table ${basename}.fits --priorized 1 --input ${mean_cat} ${basename}.fits
   # touch ${basename}_comp.fits
   """
@@ -279,17 +283,18 @@ process sfind_masked {
   // echo true
   
   input:
-  path file from params.region_file
+  path rfile from Channel.fromPath(params.region_file)
   tuple val(basename), path('*') from masked_images_ch
 
   output:
   path("${basename}_comp.fits") optional true into masked_catalogue_ch
   
   script:
+  def  region = (params.region_file ? "--region ${params.region_file}":'')
   """
   echo ${task.process} on  \${HOSTNAME}
   ls *
-  aegean --background *_bkg.fits --noise *_rms.fits --table ${basename}.fits ${basename}.fits
+  aegean --cores ${task.cpus} --background *_bkg.fits --noise *_rms.fits --table ${basename}.fits ${basename}.fits ${region}
   # Don't filter if there is no output
   if [[ -e ${basename}_comp.fits ]]
   then
