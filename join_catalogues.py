@@ -112,8 +112,10 @@ def join_catalogues2(reference, epochs):
     for i,f in enumerate(files):
         print("Joining epoch {0} catalogue {1}".format(i,f))
         new_cols = Table.read(f)['uuid', 'peak_flux', 'err_peak_flux']
+        new_cols.sort('uuid')
         # compute the order/presence
-        ordering = [np.where(i == ref['uuid'])[0][0] for i in new_cols['uuid']]
+        ordering = np.argwhere(np.in1d(ref['uuid'], new_cols['uuid'], assume_unique=True))[:,0]
+       # ordering = [np.where(i == ref['uuid'])[0][0] for i in new_cols['uuid']]
         ref['peak_flux_{0}'.format(i)][ordering] = new_cols['peak_flux']
         ref['err_peak_flux_{0}'.format(i)][ordering] = new_cols['err_peak_flux']
     return ref
