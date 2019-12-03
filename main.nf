@@ -59,12 +59,8 @@ process bane_raw {
 
   script:
   """
-  echo ${task.process}
-  echo \${HOSTNAME}
-  ls -lh *
-  pwd
+  echo ${task.process} on \${HOSTNAME}
   BANE --cores ${task.cpus} ${image}
-  # touch ${basename}_{bkg,rms}.fits
   """
 }
 
@@ -85,7 +81,6 @@ process initial_sfind {
   aegean --cores ${task.cpus} --background *_bkg.fits --noise *_rms.fits --table ${image} ${image}
   # touch ${basename}_comp.fits
   ls *.fits
-  echo \${HOSTNAME}
   """
 }
 
@@ -106,7 +101,7 @@ process fits_warp {
   script:
   if (params.warp == true)
   """
-  echo ${task.process}
+  echo ${task.process} on \${HOSTNAME}
   fits_warp.py --cores ${task.cpus} --refcat ${params.ref_catalogue} --incat ${basename}_comp.fits \
                --ra1 ra --dec1 dec --ra2 ${params.refcat_ra} --dec2 ${params.refcat_dec} \
                --xm ${basename}_xm.fits
@@ -114,14 +109,12 @@ process fits_warp {
                --ra1 ra_1 --dec1 dec_1 --ra2 ${params.refcat_ra}_2 --dec2 ${params.refcat_dec}_2 \
                --plot
   ls *.fits
-  echo \${HOSTNAME}
   """
   else
   """
-  echo ${task.process}
+  echo ${task.process} on \${HOSTNAME}
   ln -s ${basename}.fits ${basename}_warped.fits
   ls *.fits
-  echo \${HOSTNAME}
   """
 }
 
@@ -137,11 +130,9 @@ process make_mean_image {
 
   script:
   """
-  echo ${task.process}
+  echo ${task.process} on \${HOSTNAME}
   ls *_warped.fits > images.txt
   ${params.codeDir}make_mean.py --out mean.fits --infile images.txt
-  # touch mean.fits
-  echo \${HOSTNAME}
   """
 }
 
@@ -156,10 +147,8 @@ process bane_mean_image {
 
   script:
   """
-  echo ${task.process}
+  echo ${task.process} on \${HOSTNAME}
   BANE --cores ${task.cpus} ${mean}
-  # touch ${basename}_{bkg,rms}.fits
-  echo \${HOSTNAME}
   """
 }
 
@@ -177,14 +166,12 @@ process sfind_mean_image {
   script:
   def mon="""
   ${params.stilts} tcatn nin=2 in1=mean_comp.fits in2=${params.monitor} out=persistent_sources.fits ofmt
-  # touch persistent_sources.fits
   """
 
   """
   echo ${task.process}
   aegean --background *_bkg.fits --noise *_rms.fits --table ${mean} ${mean}
   ${ (params.monitor) ? "${mon}"  : "mv *_comp.fits persistent_sources.fits" } 
-  echo \${HOSTNAME}
   """
 }
 
@@ -206,7 +193,6 @@ process source_monitor {
   aegean --background *_bkg.fits --noise *_rms.fits \
          --table ${basename}.fits --priorized 1 --input ${mean_cat} ${basename}.fits
   # touch ${basename}_comp.fits
-  echo \${HOSTNAME}
   """
 }
 
@@ -223,8 +209,7 @@ process join_fluxes {
 
   script:
   """
-  echo ${task.process}
-  echo \${HOSTNAME}
+  echo ${task.process} on \${HOSTNAME}
   ls
   ls *_comp.fits > epochs.txt
   ${params.codeDir}join_catalogues.py --refcat reference.fits --epochs epochs.txt --out flux_table.vot
@@ -243,8 +228,7 @@ process compute_stats {
 
   script:
   """
-  echo ${task.process}
-  echo \${HOSTNAME}
+  echo ${task.process} on \${HOSTNAME}
   ls
   NDOF=(\$(${params.codeDir}auto_corr.py --table flux_table.vot))
   echo \${NDOF[@]} > NDOF.txt
@@ -283,10 +267,9 @@ process mask_images {
 
   script:
   """
-  echo ${task.process}
+  echo ${task.process} on \${HOSTNAME}
   ls *.fits
   AeRes -c ${mean_cat} -f *_warped.fits -r ${basename}_masked.fits --mask --sigma 0.1
-  echo \${HOSTNAME}
   """
 }
 
@@ -348,8 +331,7 @@ process transients_plot {
 
   script:
   """
-  echo ${task.process}
+  echo ${task.process} on \${HOSTNAME}
   ${params.codeDir}plot_transients.py --in ${transients} --plot transients.png
-  echo \${HOSTNAME}
   """
 }
