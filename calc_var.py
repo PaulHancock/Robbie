@@ -65,6 +65,9 @@ def calc_stats(cur, ndof=None):
             pval = 0.
             md = 0.
             mean = 0.
+            std = 0.
+            m = 0.
+            chisq = 0.
         else:
             # modulation index
             mean = np.mean(fluxes[mask])
@@ -230,7 +233,7 @@ if __name__ == '__main__':
         results.cores = mp.cpu_count()
 
     if results.db:
-        conn = sqlite3.connect(results.name)
+        conn = sqlite3.connect(results.db)
         c = conn.cursor()
         make_table(c)
         calc_stats(c, results.ndof)
