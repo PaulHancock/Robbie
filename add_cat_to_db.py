@@ -3,6 +3,7 @@ from __future__ import print_function
 
 from astropy.table import Table
 from astropy.io import fits
+import numpy as np
 import sqlite3
 import argparse
 import sys
@@ -57,6 +58,8 @@ def add_catalogue(cur, date, cat):
     for row in c.as_array():
         # convert numpy types into python types
         data = list(map(lambda x: x.item(), row))
+        #convert np.nan (in err fields) into a -1
+        data = [ -1.0 if x is np.nan else x for x in data]
         cur.execute(qry, data)
     return
 
