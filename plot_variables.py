@@ -93,6 +93,8 @@ def plot_lc(cur, dates=False):
                 dates = False
         pyplot.clf()
         s = 'm={0:5.3f}\nmd={1:4.2f}\nchisq={2:4.1f}'.format(m, md, chisq_peak_flux)
+        # convert None entries into 0 for the errors
+        err_peak_flux = [ 0 if x is None else x for x in err_peak_flux ] 
         pyplot.errorbar(epoch, peak_flux, yerr=err_peak_flux, label=s)
         pyplot.ylabel('Flux Density (Jy/Beam)')
         if not dates:
@@ -223,8 +225,8 @@ if __name__ == "__main__":
                         help="output plot")
     group1.add_argument("--all", dest='all', action='store_true', default=False,
                         help="Also plot individual light curves. Default:False")
-#    group1.add_argument("--dates", dest='dates', action='store_true', default=False,
-#                        help="Individual plots have date on the horizontal axis.")
+    group1.add_argument("--dates", dest='dates', action='store_true', default=False,
+                        help="Individual plots have date on the horizontal axis. [db only]")
     group1.add_argument("--cores", dest='cores', type=int, default=None,
                         help="Number of cores to use: Default all")
 
@@ -234,7 +236,7 @@ if __name__ == "__main__":
         results.cores = mp.cpu_count()
 
     if results.db:
-        conn = sqlite3.connect(results.name)
+        conn = sqlite3.connect(results.db)
         cur = conn.cursor()
         plot_summary(cur=cur, plotfile=results.plotfile)
         if results.all:
