@@ -176,7 +176,7 @@ $(PREFIX)flux_table.db: $(IMAGES:.fits=_warped_prior_comp.fits)
 	./add_cat_to_db.py --name $@ --cat $${f} --image $${im};\
 	done
 	NDOF=($$(./auto_corr.py --dbname $@ ));\
-	./calc_var.py --name $@ --ndof $${NDOF[-1]}
+	./calc_var.py --dbname $@ --ndof $${NDOF[-1]}
 
 
 $(PREFIX)variables.fits: $(PREFIX)flux_table.db
