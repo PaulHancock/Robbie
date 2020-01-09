@@ -184,7 +184,7 @@ $(PREFIX)variables.fits: $(PREFIX)flux_table.db
 
 
 $(PREFIX)variables.png: $(PREFIX)flux_table.db
-	./plot_variables.py --name $< --plot $@ --all $(PLOT_DATES)
+	./plot_variables.py --dbname $< --plot $@ --all $(PLOT_DATES)
 
 ###
 # Transient candidates
