@@ -204,11 +204,6 @@ $(IMAGES:.fits=_warped_blanked_comp.fits): %_warped_blanked_comp.fits : %_warped
 $(IMAGES:.fits=_warped_blanked_comp_filtered.fits): %_warped_blanked_comp_filtered.fits : %_warped_blanked_comp.fits
 	if [[ -e $^ ]];\
 	  then ./filter_transients.py --incat $^ --image $*_warped_blanked.fits --outcat $@ ;\
-	  nsrc=($$( $(STILTS) tcat omode=count in=$@ ));\
-	  nsrc=$${nsrc[-1]};\
-	  if [[ $${nsrc} -lt 1 ]];\
-	    then rm $@;\
-	  fi;\
 	fi
 
 # join all transients into one catalogue
