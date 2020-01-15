@@ -169,7 +169,7 @@ process sfind_mean_image {
   script:
   region=(params.region_file ? "--region ${params.region_file}":'')
   def mon="""
-  ${params.stilts} tcatn nin=2 in1=mean_comp.fits in2=${params.monitor} out=persistent_sources.fits ofmt
+  ${params.stilts} tcatn nin=2 in1=mean_comp.fits in2=${params.monitor} out=persistent_sources.fits ofmt=fits
   """
 
   """
