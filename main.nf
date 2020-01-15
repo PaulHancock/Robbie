@@ -236,7 +236,7 @@ process compute_stats {
   ls
   NDOF=(\$(${params.codeDir}auto_corr.py --table flux_table.vot))
   echo \${NDOF[@]} > NDOF.txt
-  ${params.codeDir}calc_var.py --table flux_table.vot --ndof \${NDOF[-1]} --out stats_table.vot 
+  ${params.codeDir}calc_var.py --table flux_table.vot --ndof \${NDOF[-1]} --out stats_table.vot --cores ${task.cpus}
   """
 }
 
@@ -253,7 +253,7 @@ process plot_lc {
   """
   echo ${task.process} on \${HOSTNAME}
   mkdir plots
-  ${params.codeDir}plot_variables.py --ftable flux_table.vot --stable stats_table.vot --plot plots/variables.png --all
+  ${params.codeDir}plot_variables.py --ftable flux_table.vot --stable stats_table.vot --plot plots/variables.png --all --cores ${task.cpus}
   """
 }
 
@@ -283,14 +283,13 @@ process sfind_masked {
   // echo true
   
   input:
-  path rfile from Channel.fromPath(params.region_file)
   tuple val(basename), path('*') from masked_images_ch
 
   output:
   path("${basename}_comp.fits") optional true into masked_catalogue_ch
   
   script:
-  def  region = (params.region_file ? "--region ${params.region_file}":'')
+  region = (params.region_file ? "--region ${params.region_file}":'')
   """
   echo ${task.process} on  \${HOSTNAME}
   ls *
