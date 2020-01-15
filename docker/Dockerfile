@@ -18,7 +18,8 @@ RUN pip install aegeantools pandas psutil && \
     git clone https://github.com/nhurleywalker/fits_warp.git && cd fits_warp && \
     git checkout py3 && chmod ugo+x fits_warp.py && mv fits_warp.py /usr/bin/. 
 
-# add Robbie scripts
+# add Robbie scripts (always)
+ADD "https://www.random.org/cgi-bin/randbyte?nbytes=10&format=h" skipcache
 RUN cd /tmp/build && git clone https://github.com/PaulHancock/Robbie.git && \
     cd Robbie && chmod ugo+x *.py && mv *.py /usr/bin/. && \
     rm -rf /tmp/build

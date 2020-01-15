@@ -11,6 +11,7 @@ import sqlite3
 import argparse
 import sys
 import os
+import multiprocessing as mp
 
 __author__ = ["Paul Hancock"]
 __date__ = '2019/08/19'
@@ -92,6 +93,8 @@ def plot_lc(cur, dates=False):
                 dates = False
         pyplot.clf()
         s = 'm={0:5.3f}\nmd={1:4.2f}\nchisq={2:4.1f}'.format(m, md, chisq_peak_flux)
+        # convert None entries into 0 for the errors
+        err_peak_flux = [ 0 if x is None else x for x in err_peak_flux ] 
         pyplot.errorbar(epoch, peak_flux, yerr=err_peak_flux, label=s)
         pyplot.ylabel('Flux Density (Jy/Beam)')
         if not dates:
@@ -101,6 +104,7 @@ def plot_lc(cur, dates=False):
         pyplot.savefig(fname)
         print(" ... done")
     return
+
 
 def plot_summary_table(filename, plotfile):
     """
@@ -140,22 +144,32 @@ def plot_summary_table(filename, plotfile):
     pyplot.savefig(plotfile)
     return
 
-def plot_lc_table(flux_table, stats_table):
+
+def plot_lc_table(flux_table, stats_table, start=0, stride=1):
     """
     Create individual light curve plots.
     Each plot is saved to plots/uuid.png
 
     parameters
     ----------
-    filename : str
+    flux_table : str
         Filename of the flux table
+
+    stats_table : str
+        Filename of the stats table
+
+    start : int
+        Starting row (default=0)
+
+    stride : int
+        Process every Nth row of the table. Default =1
     """
     ftab = Table.read(flux_table)
     stab = Table.read(stats_table)
     fluxes = [a for a in ftab.colnames if a.startswith('peak_flux')]
     err_fluxes = [a for a in ftab.colnames if a.startswith('err_peak_flux')]
     epoch = list(range(len(fluxes)))
-    for row in ftab:
+    for row in ftab[start::stride]:
         fname = 'plots/{0}.png'.format(row['uuid'])
         print(fname, end='')
         if os.path.exists(fname):
@@ -174,7 +188,28 @@ def plot_lc_table(flux_table, stats_table):
         pyplot.savefig(fname)
         print(" ... done")
     return
-       
+
+
+def plot_lc_table_parallel(flux_table, stats_table, nprocs=1):
+    """
+    parameters
+    ----------
+    flux_table : str
+        Filename of the flux table
+
+    stats_table : str
+        Filename of the stats table
+
+    nprocs : int
+        Number of processes to use simultaneously
+    """
+    pool = mp.Pool(nprocs)
+    for i in range(nprocs):
+        pool.apply_async(plot_lc_table,
+                         args=[flux_table, stats_table],
+                         kwds={'start':i, 'stride':nprocs})
+    pool.close()
+    pool.join()
 
 
 if __name__ == "__main__":
@@ -190,14 +225,18 @@ if __name__ == "__main__":
                         help="output plot")
     group1.add_argument("--all", dest='all', action='store_true', default=False,
                         help="Also plot individual light curves. Default:False")
-#    group1.add_argument("--dates", dest='dates', action='store_true', default=False,
-#                        help="Individual plots have date on the horizontal axis.")
+    group1.add_argument("--dates", dest='dates', action='store_true', default=False,
+                        help="Individual plots have date on the horizontal axis. [db only]")
+    group1.add_argument("--cores", dest='cores', type=int, default=None,
+                        help="Number of cores to use: Default all")
 
     results = parser.parse_args()
 
+    if results.cores is None:
+        results.cores = mp.cpu_count()
 
     if results.db:
-        conn = sqlite3.connect(results.name)
+        conn = sqlite3.connect(results.db)
         cur = conn.cursor()
         plot_summary(cur=cur, plotfile=results.plotfile)
         if results.all:
@@ -208,7 +247,7 @@ if __name__ == "__main__":
             print("ERROR: --stable and --ftable are both required, only one supplied.")
         plot_summary_table(results.stable, results.plotfile)
         if results.all:
-            plot_lc_table(results.ftable, results.stable)
+            plot_lc_table_parallel(results.ftable, results.stable, nprocs=results.cores)
     else:
         parser.print_help()
         sys.exit()

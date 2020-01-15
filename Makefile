@@ -176,7 +176,7 @@ $(PREFIX)flux_table.db: $(IMAGES:.fits=_warped_prior_comp.fits)
 	./add_cat_to_db.py --name $@ --cat $${f} --image $${im};\
 	done
 	NDOF=($$(./auto_corr.py --dbname $@ ));\
-	./calc_var.py --name $@ --ndof $${NDOF[-1]}
+	./calc_var.py --dbname $@ --ndof $${NDOF[-1]}
 
 
 $(PREFIX)variables.fits: $(PREFIX)flux_table.db
@@ -184,7 +184,7 @@ $(PREFIX)variables.fits: $(PREFIX)flux_table.db
 
 
 $(PREFIX)variables.png: $(PREFIX)flux_table.db
-	./plot_variables.py --name $< --plot $@ --all $(PLOT_DATES)
+	./plot_variables.py --dbname $< --plot $@ --all $(PLOT_DATES)
 
 ###
 # Transient candidates
@@ -204,11 +204,6 @@ $(IMAGES:.fits=_warped_blanked_comp.fits): %_warped_blanked_comp.fits : %_warped
 $(IMAGES:.fits=_warped_blanked_comp_filtered.fits): %_warped_blanked_comp_filtered.fits : %_warped_blanked_comp.fits
 	if [[ -e $^ ]];\
 	  then ./filter_transients.py --incat $^ --image $*_warped_blanked.fits --outcat $@ ;\
-	  nsrc=($$( $(STILTS) tcat omode=count in=$@ ));\
-	  nsrc=$${nsrc[-1]};\
-	  if [[ $${nsrc} -lt 1 ]];\
-	    then rm $@;\
-	  fi;\
 	fi
 
 # join all transients into one catalogue
