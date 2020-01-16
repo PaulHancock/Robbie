@@ -12,8 +12,9 @@ RUN apt update && \
 RUN cd /usr/local/lib && wget http://www.star.bris.ac.uk/~mbt/stilts/stilts.jar && \
     cd /usr/local/bin && echo 'java -jar /usr/local/lib/stilts.jar "$@"' > /usr/local/bin/stilts && chmod ugo+x /usr/local/bin/stilts
 
-# python modules
-RUN pip install aegeantools pandas psutil && \
+# python modules, with specific versions specified for longevity
+ADD requirements.txt .
+RUN pip install -r requirements.txt && \
     mkdir /tmp/build && cd /tmp/build && \
     git clone https://github.com/nhurleywalker/fits_warp.git && cd fits_warp && \
     git checkout py3 && chmod ugo+x fits_warp.py && mv fits_warp.py /usr/bin/. 
