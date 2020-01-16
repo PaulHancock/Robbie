@@ -11,3 +11,7 @@ makefile2dot.py
 work
 .nextflow*
 .vscode
+*.[1-9]
+*.sif
+*.pyc
+*~
