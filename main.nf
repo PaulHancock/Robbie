@@ -267,7 +267,7 @@ process mask_images {
   // echo true
   
   input:
-  path(mean_cat) from mean_catalogue_ch2
+  path(mean_cat) from mean_catalogue_ch2.collect()
   tuple val(basename), path('*') from warped_images_ch3
 
   output:
