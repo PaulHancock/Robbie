@@ -188,7 +188,7 @@ process source_monitor {
   label 'aegean'
 
   input:
-  path(mean_cat) from mean_catalogue_ch
+  path(mean_cat) from mean_catalogue_ch.collect()
   tuple val(basename), path(image) from warped_images_ch2
 
   output:
