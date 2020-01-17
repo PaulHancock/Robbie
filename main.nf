@@ -163,7 +163,7 @@ process sfind_mean_image {
 
   input:
   tuple val(basename), path(mean), path('*') from bane_mean_image_ch
-  path('*') from params.region_file
+  //path('*') from params.region_file
   
   output:
   path("persistent_sources.fits") into (mean_catalogue_ch,  // to source finding 
