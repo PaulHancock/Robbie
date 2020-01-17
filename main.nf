@@ -166,9 +166,9 @@ process sfind_mean_image {
   //path('*') from params.region_file
   
   output:
-  path("persistent_sources.fits") into (mean_catalogue_ch,  // to source finding 
-                                       mean_catalogue_ch2,  // to masking
-				       mean_catalogue_ch3)  // to flux_table
+  path("persistent_sources.fits") into (mean_catalogue_ch,  // to source_monitor
+                                       mean_catalogue_ch2,  // to mask_images
+                                       mean_catalogue_ch3)  // to join_fluxes
 
   script:
   region=(params.region_file ? "--region ${params.region_file}":'')
