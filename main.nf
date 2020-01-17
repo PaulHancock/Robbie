@@ -37,6 +37,10 @@ log.info """\
          minotor cat  : ${params.monitor}
          region file  : ${params.region_file}
          output to    : ${params.output_dir}
+         --
+         run as       : ${workflow.commandLine}
+         config files : ${workflow.configFiles}
+         container    : ${workflow.containerEngine}:${workflow.container}
          """
          .stripIndent()
 
