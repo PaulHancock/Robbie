@@ -163,6 +163,7 @@ process sfind_mean_image {
 
   input:
   tuple val(basename), path(mean), path('*') from bane_mean_image_ch
+  path('monitoring.fits') from Channel.fromPath(params.monitor)
   //path('*') from params.region_file
   
   output:
@@ -173,7 +174,7 @@ process sfind_mean_image {
   script:
   region=(params.region_file ? "--region ${params.region_file}":'')
   def mon="""
-  ${params.stilts} tcatn nin=2 in1=mean_comp.fits in2=${params.monitor} out=persistent_sources.fits ofmt=fits
+  ${params.stilts} tcatn nin=2 in1=mean_comp.fits in2=monitoring.fits out=persistent_sources.fits ofmt=fits
   """
 
   """
@@ -198,7 +199,7 @@ process source_monitor {
   script:
   """
   echo ${task.process} on \${HOSTNAME}
-  aegean --cores ${task.cpus} --background *_bkg.fits --noise *_rms.fits \
+  aegean --cores ${task.cpus} --background *_bkg.fits --noise *_rms.fits --noregroup\
          --table ${basename}.fits --priorized 1 --input ${mean_cat} ${basename}.fits
   # touch ${basename}_comp.fits
   """
@@ -239,6 +240,7 @@ process compute_stats {
   echo ${task.process} on \${HOSTNAME}
   ls
   NDOF=(\$(${params.codeDir}auto_corr.py --table flux_table.vot))
+  echo \${NDOF[@]}
   echo \${NDOF[@]} > NDOF.txt
   ${params.codeDir}calc_var.py --table flux_table.vot --ndof \${NDOF[-1]} --out stats_table.vot --cores ${task.cpus}
   """
