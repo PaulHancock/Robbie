@@ -13,7 +13,6 @@ log.info """\
 
 channel_ch = Channel.from(0..23)
              .map{it -> String.format("%04d",it)}
-             .view()
 
 obsid_ch1 = Channel.create()
 obsid_ch2 = Channel.create()
