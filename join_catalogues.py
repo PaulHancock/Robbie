@@ -61,11 +61,12 @@ def join_catalogues(reference, epochs):
     # keep only the flux/err_flux columns and rename to include the epoch number
     for i,f in enumerate(files):
         print("Joining epoch {0} catalogue {1}".format(i,f))
-        new_cols = Table.read(f)['uuid', 'peak_flux', 'err_peak_flux']
+        new_cols = Table.read(f)['uuid', 'peak_flux', 'err_peak_flux', 'local_rms', 'background']
         new_cols.rename_column('peak_flux', 'peak_flux_{0}'.format(i))
         new_cols.rename_column('err_peak_flux', 'err_peak_flux_{0}'.format(i))
+        new_cols.rename_column('local_rms', 'local_rms_{0}'.format(i))
+        new_cols.rename_column('background', 'background_{0}'.format(i))
         ref = astropy.table.join(ref, new_cols, keys='uuid')
-        
     return ref
 
 
@@ -102,24 +103,27 @@ def join_catalogues2(reference, epochs):
     # make the empty columns
     new_cols =[]
     data = np.zeros(len(ref), dtype=np.float32)
-    
+
     for i in range(len(files)):
         new_cols.append(Column(data=data.copy(), name='peak_flux_{0}'.format(i)))
         new_cols.append(Column(data=data.copy(), name='err_peak_flux_{0}'.format(i)))
     ref.add_columns(new_cols)
-    
+
     # now put the data into the new big table
     for i,f in enumerate(files):
         print("Joining epoch {0} catalogue {1}".format(i,f))
-        new_cols = Table.read(f)['uuid', 'peak_flux', 'err_peak_flux']
+        new_cols = Table.read(f)['uuid', 'peak_flux', 'err_peak_flux', 'local_rms', 'background']
         new_cols.sort('uuid')
         # compute the order/presence
         ordering = np.argwhere(np.in1d(ref['uuid'], new_cols['uuid'], assume_unique=True))[:,0]
        # ordering = [np.where(i == ref['uuid'])[0][0] for i in new_cols['uuid']]
         ref['peak_flux_{0}'.format(i)][ordering] = new_cols['peak_flux']
         ref['err_peak_flux_{0}'.format(i)][ordering] = new_cols['err_peak_flux']
+        ref['local_rms_{0}'.format(i)][ordering] = new_cols['local_rms']
+        ref['background_{0}'.format(i)][ordering] = new_cols['background']
+
     return ref
-    
+
 
 def write_table(tab, filename):
     """
