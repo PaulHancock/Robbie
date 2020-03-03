@@ -17,7 +17,8 @@ ADD requirements.txt .
 RUN pip install -r requirements.txt && \
     mkdir /tmp/build && cd /tmp/build && \
     git clone https://github.com/nhurleywalker/fits_warp.git && cd fits_warp && \
-    git checkout py3 && chmod ugo+x fits_warp.py && mv fits_warp.py /usr/bin/. 
+    git checkout py3 && chmod ugo+x fits_warp.py && mv fits_warp.py /usr/bin/. && \
+    get clone https://gitlab.com/Sunmish/flux_warp.git && cd flux_warp && python setup.py install --force
 
 # add Robbie scripts (always)
 ADD "https://www.random.org/cgi-bin/randbyte?nbytes=10&format=h" skipcache
