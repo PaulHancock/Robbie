@@ -103,7 +103,8 @@ def get_table_endof(filename):
     flux_cols = [a for a in tab.colnames if a.startswith('peak_flux')]
     
     # Choose N random rows without repetition
-    idx = np.random.choice(range(max(NPIX,len(tab))), NPIX, replace=False)
+    nitems = min(NPIX, len(tab))
+    idx = np.random.choice(range(len(tab)), nitems, replace=False)
     fluxes = tab[idx][flux_cols]
     
     # construct the autocorrelation and determine ndof
