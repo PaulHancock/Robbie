@@ -201,6 +201,15 @@ process source_monitor {
   echo ${task.process} on \${HOSTNAME}
   aegean --cores ${task.cpus} --background *_bkg.fits --noise *_rms.fits --noregroup\
          --table ${basename}.fits --priorized 1 --input ${mean_cat} ${basename}.fits
+
+  # super hack to get stilts to play nice and add two columns of strings
+  epoch=\$(get_epoch.py ${basename}.fits)
+  epoch="\\\"${epoch}\\\""
+  filename="\\\"${basename}.fits\\\""
+  ${params.stilts} tpipe in=${basename}_comp.fits cmd="addcol image ${filename}" \
+                                                  cmd="addcol epoch ${epoch}" \
+                                                  ofmt=fits temp.fits
+  mv temp.fits ${basename}_comp.fits
   # touch ${basename}_comp.fits
   """
 }

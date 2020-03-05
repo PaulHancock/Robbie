@@ -56,47 +56,6 @@ def join_catalogues(reference, epochs):
     ref.rename_column('ra', 'ref_ra')
     ref.rename_column('dec', 'ref_dec')
     ref.sort(keys='uuid')
-
-    # read each of the proirized catalogues and join them to the reference catalogue
-    # keep only the flux/err_flux columns and rename to include the epoch number
-    for i,f in enumerate(files):
-        print("Joining epoch {0} catalogue {1}".format(i,f))
-        new_cols = Table.read(f)['uuid', 'peak_flux', 'err_peak_flux', 'local_rms', 'background']
-        new_cols.rename_column('peak_flux', 'peak_flux_{0}'.format(i))
-        new_cols.rename_column('err_peak_flux', 'err_peak_flux_{0}'.format(i))
-        new_cols.rename_column('local_rms', 'local_rms_{0}'.format(i))
-        new_cols.rename_column('background', 'background_{0}'.format(i))
-        ref = astropy.table.join(ref, new_cols, keys='uuid')
-    return ref
-
-
-def join_catalogues2(reference, epochs):
-    """
-    Take a reference cataloge, strip all but the uuid/ra/dec columns and then
-    join the flux/err_flux data from each of the epoch catalogues
-    From each epoch we extract the peak_flux and err_peak_flux columns and rename
-    them by appending _N where N is the epoch number
-
-    parameters
-    ----------
-    reference : str
-        Filename for the reference catalogue
-
-    epochs : list
-        A list of the individual epoch file names
-
-    returns
-    -------
-    table : `astropy.table.Table`
-        A joined table
-    """
-    # Read the reference catalogue and retain only the uuid and ra/dec columns
-    # rename the ra/dec columns
-    print("Using reference catalogue {0}".format(reference))
-    ref = Table.read(reference)['uuid', 'ra','dec']
-    ref.rename_column('ra', 'ref_ra')
-    ref.rename_column('dec', 'ref_dec')
-    ref.sort(keys='uuid')
     # trim off some stupid padding that may exist
     ref['uuid'] = [a.strip() for a in ref['uuid']]
 
@@ -112,7 +71,8 @@ def join_catalogues2(reference, epochs):
     # now put the data into the new big table
     for i,f in enumerate(files):
         print("Joining epoch {0} catalogue {1}".format(i,f))
-        new_cols = Table.read(f)['uuid', 'peak_flux', 'err_peak_flux', 'local_rms', 'background']
+        new_cols = Table.read(f)['uuid', 'peak_flux', 'err_peak_flux', 'local_rms', 'background',
+                                 'image', 'epoch']
         new_cols.sort('uuid')
         # compute the order/presence
         ordering = np.argwhere(np.in1d(ref['uuid'], new_cols['uuid'], assume_unique=True))[:,0]
@@ -121,6 +81,8 @@ def join_catalogues2(reference, epochs):
         ref['err_peak_flux_{0}'.format(i)][ordering] = new_cols['err_peak_flux']
         ref['local_rms_{0}'.format(i)][ordering] = new_cols['local_rms']
         ref['background_{0}'.format(i)][ordering] = new_cols['background']
+        ref['image_{0}'.format(i)][ordering] = new_cols['image']
+        ref['epoch_{0}'.format(i)][ordering] = new_cols['epoch']
 
     return ref
 
@@ -160,5 +122,5 @@ if __name__ == "__main__":
         sys.exit()
 
     files = get_epoch_catalogues(results.epochs)
-    table = join_catalogues2(results.ref, files)
+    table = join_catalogues(results.ref, files)
     write_table(table, results.outfile)
