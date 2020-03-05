@@ -62,10 +62,14 @@ def join_catalogues(reference, epochs):
     # make the empty columns
     new_cols =[]
     data = np.zeros(len(ref), dtype=np.float32)
+    str_data = Table.read(files[0])['image']
 
     for i in range(len(files)):
-        new_cols.append(Column(data=data.copy(), name='peak_flux_{0}'.format(i)))
-        new_cols.append(Column(data=data.copy(), name='err_peak_flux_{0}'.format(i)))
+        for colname in ['peak_flux_{0}','err_peak_flux_{0}', 'local_rms_{0}', 'background_{0}']:
+            new_cols.append(Column(data=data.copy(), name=colname.format(i)))
+        for colname in ['image_{0}', 'epoch_{0}']:
+            new_cols.append(Column(data=str_data.copy(), name=colname.format(i)))
+
     ref.add_columns(new_cols)
 
     # now put the data into the new big table
@@ -76,7 +80,6 @@ def join_catalogues(reference, epochs):
         new_cols.sort('uuid')
         # compute the order/presence
         ordering = np.argwhere(np.in1d(ref['uuid'], new_cols['uuid'], assume_unique=True))[:,0]
-       # ordering = [np.where(i == ref['uuid'])[0][0] for i in new_cols['uuid']]
         ref['peak_flux_{0}'.format(i)][ordering] = new_cols['peak_flux']
         ref['err_peak_flux_{0}'.format(i)][ordering] = new_cols['err_peak_flux']
         ref['local_rms_{0}'.format(i)][ordering] = new_cols['local_rms']
