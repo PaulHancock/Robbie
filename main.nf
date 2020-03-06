@@ -204,13 +204,12 @@ process source_monitor {
 
   # super hack to get stilts to play nice and add two columns of strings
   epoch=\$(get_epoch.py ${basename}.fits)
-  epoch="\\\"${epoch}\\\""
+  epoch="\\\"\${epoch}\\\""
   filename="\\\"${basename}.fits\\\""
-  ${params.stilts} tpipe in=${basename}_comp.fits cmd="addcol image ${filename}" \
-                                                  cmd="addcol epoch ${epoch}" \
+  ${params.stilts} tpipe in=${basename}_comp.fits cmd="addcol image \${filename}" \
+                                                  cmd="addcol epoch \${epoch}" \
                                                   ofmt=fits temp.fits
   mv temp.fits ${basename}_comp.fits
-  # touch ${basename}_comp.fits
   """
 }
 
