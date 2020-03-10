@@ -6,6 +6,9 @@
 params.codeDir = "${baseDir}/"
 params.stilts = ""
 
+// output directory
+params.output_dir = "${baseDir}/results/"
+
 // input images are listed in this file, one image per line
 params.image_file = "$baseDir/images.txt"
 
@@ -18,23 +21,28 @@ params.refcat_dec = 'dec'
 // Plotting params
 params.by_epoch = true
 
-/* aux files */
-// name of monitoring file
-params.monitor=""
+
+// monitoring of a pre-determined source
+params.use_monitoring_src_file = false
+params.monitoring_src_file = ''
+if (params.use_monitoring_src_file == false) {
+   params.monitoring_src_file='NO_FILE'
+}
 
 // Source finding region file
+params.use_region_file = false
 params.region_file = ""
-
-// output directory
-params.output_dir = "${baseDir}/results/"
+if (params.use_region_file == false) {
+   params.region_file='NO_FILE'
+}
 
 log.info """\
          ROBBIE the Space Detective 
          ==========================
          images from  : ${params.image_file}
-         do warping?  : ${params.warp}
-         ref cat      : ${params.ref_catalogue}
-         minotor cat  : ${params.monitor}
+         do warping   : ${params.warp}
+         warp ref cat : ${params.ref_catalogue}
+         minotor src  : ${params.monitoring_src_file}
          region file  : ${params.region_file}
          output to    : ${params.output_dir}
          --
@@ -50,6 +58,8 @@ image_ch = Channel
   .splitText()
   .map{ it -> tuple(file(it).baseName, file(it.trim()))}
 
+//region_ch = Channel.fromPath(params.region_file)
+//monitoring_ch = Channel.fromPath(params.monitoring_src_file)
 
 process bane_raw {
   label 'bane'
@@ -74,13 +84,14 @@ process initial_sfind {
   // echo true
   input:
   tuple val(basename), path(image), path('*') from raw_image_with_bkg_ch
+  file('region.mim') from Channel.fromPath(params.region_file)
 
   output:
   //tuple val(basename), path(image), path("*_{bkg,rms,comp}.fits") into initial_catalogue_ch
   tuple val(basename), path('*.fits', includeInputs:true) into initial_catalogue_ch
 
   script:
-  region=(params.region_file ? "--region ${params.region_file}":'')
+  def region = params.region_file != 'NO_FILE' ? "--region region.mim" : ''
   """
   echo ${task.process} on \${HOSTNAME}
   aegean --cores ${task.cpus} --background *_bkg.fits --noise *_rms.fits --table ${image} ${region} ${image}
@@ -163,8 +174,8 @@ process sfind_mean_image {
 
   input:
   tuple val(basename), path(mean), path('*') from bane_mean_image_ch
-  path('monitoring.fits') from Channel.fromPath(params.monitor)
-  //path('*') from params.region_file
+  path('region.mim') from Channel.fromPath(params.region_file)
+  path('monitor.fits') from Channel.fromPath(params.monitoring_src_file)
   
   output:
   path("persistent_sources.fits") into (mean_catalogue_ch,  // to source_monitor
@@ -172,7 +183,7 @@ process sfind_mean_image {
                                        mean_catalogue_ch3)  // to join_fluxes
 
   script:
-  region=(params.region_file ? "--region ${params.region_file}":'')
+  def region = params.region_file != 'NO_FILE' ? "--region region.mim":'')
   def mon="""
   ${params.stilts} tcatn nin=2 in1=mean_comp.fits in2=monitoring.fits out=persistent_sources.fits ofmt=fits
   """
@@ -180,7 +191,7 @@ process sfind_mean_image {
   """
   echo ${task.process} on \${HOSTNAME}
   aegean --cores ${task.cpus} --background *_bkg.fits --noise *_rms.fits --table ${mean} ${region} ${mean}
-  ${ (params.monitor) ? "${mon}"  : "mv *_comp.fits persistent_sources.fits" } 
+  ${ (params.use_monitor_src_file != 'NO_FILE') ? "${mon}"  : "mv *_comp.fits persistent_sources.fits" } 
   """
 }
 
@@ -298,12 +309,13 @@ process sfind_masked {
   
   input:
   tuple val(basename), path('*') from masked_images_ch
+  path('region.mim') from Channel.fromPath(params.region_file)
 
   output:
   path("${basename}_comp.fits") optional true into masked_catalogue_ch
   
   script:
-  region = (params.region_file ? "--region ${params.region_file}":'')
+  def region = (params.region_file != 'NO_FILE' ? "--region region.mim":'')
   """
   echo ${task.process} on  \${HOSTNAME}
   ls *
