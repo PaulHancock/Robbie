@@ -21,17 +21,19 @@ params.refcat_dec = 'dec'
 // Plotting params
 params.by_epoch = true
 
-
 // monitoring of a pre-determined source
 params.use_monitoring_src_file = false
 params.monitoring_src_file = ''
-if (params.use_monitoring_src_file == false) {
-   params.monitoring_src_file='NO_FILE'
-}
 
 // Source finding region file
 params.use_region_file = false
 params.region_file = ""
+
+
+// set NO_FILE as the filename if region/warping is turned off
+if (params.use_monitoring_src_file == false) {
+   params.monitoring_src_file='NO_FILE'
+}
 if (params.use_region_file == false) {
    params.region_file='NO_FILE'
 }
@@ -42,8 +44,8 @@ log.info """\
          images from  : ${params.image_file}
          do warping   : ${params.warp}
          warp ref cat : ${params.ref_catalogue}
-         minotor src  : ${params.monitoring_src_file}
-         region file  : ${params.region_file}
+         minotor src  : ${params.use_monitoring_src_file} / ${params.monitoring_src_file}
+         region file  : ${params.use_region_file} / ${params.region_file}
          output to    : ${params.output_dir}
          --
          run as       : ${workflow.commandLine}
@@ -58,8 +60,6 @@ image_ch = Channel
   .splitText()
   .map{ it -> tuple(file(it).baseName, file(it.trim()))}
 
-//region_ch = Channel.fromPath(params.region_file)
-//monitoring_ch = Channel.fromPath(params.monitoring_src_file)
 
 process bane_raw {
   label 'bane'
@@ -84,7 +84,7 @@ process initial_sfind {
   // echo true
   input:
   tuple val(basename), path(image), path('*') from raw_image_with_bkg_ch
-  file('region.mim') from Channel.fromPath(params.region_file)
+  file('region.mim') from file(params.region_file)
 
   output:
   //tuple val(basename), path(image), path("*_{bkg,rms,comp}.fits") into initial_catalogue_ch
@@ -174,8 +174,8 @@ process sfind_mean_image {
 
   input:
   tuple val(basename), path(mean), path('*') from bane_mean_image_ch
-  path('region.mim') from Channel.fromPath(params.region_file)
-  path('monitor.fits') from Channel.fromPath(params.monitoring_src_file)
+  path('region.mim') from file(params.region_file)
+  path('monitor.fits') from file(params.monitoring_src_file)
   
   output:
   path("persistent_sources.fits") into (mean_catalogue_ch,  // to source_monitor
@@ -183,9 +183,9 @@ process sfind_mean_image {
                                        mean_catalogue_ch3)  // to join_fluxes
 
   script:
-  def region = params.region_file != 'NO_FILE' ? "--region region.mim":'')
+  def region = params.region_file != 'NO_FILE' ? "--region region.mim":''
   def mon="""
-  ${params.stilts} tcatn nin=2 in1=mean_comp.fits in2=monitoring.fits out=persistent_sources.fits ofmt=fits
+  ${params.stilts} tcatn nin=2 in1=mean_comp.fits in2=monitor.fits out=persistent_sources.fits ofmt=fits
   """
 
   """
@@ -215,11 +215,11 @@ process source_monitor {
 
   # super hack to get stilts to play nice and add two columns of strings
   epoch=\$(get_epoch.py ${basename}.fits)
-  epoch="\\\"\${epoch}\\\""
-  filename="\\\"${basename}.fits\\\""
+  epoch="\\\\\\\"\${epoch}\\\\\\\""
+  filename="\\\\\\\"${basename}.fits\\\\\\\""
   ${params.stilts} tpipe in=${basename}_comp.fits cmd="addcol image \${filename}" \
                                                   cmd="addcol epoch \${epoch}" \
-                                                  ofmt=fits temp.fits
+                                                  ofmt=fits out=temp.fits
   mv temp.fits ${basename}_comp.fits
   """
 }
@@ -309,7 +309,7 @@ process sfind_masked {
   
   input:
   tuple val(basename), path('*') from masked_images_ch
-  path('region.mim') from Channel.fromPath(params.region_file)
+  path('region.mim') from file(params.region_file)
 
   output:
   path("${basename}_comp.fits") optional true into masked_catalogue_ch
