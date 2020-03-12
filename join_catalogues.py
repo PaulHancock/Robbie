@@ -14,7 +14,7 @@ __date__ = "2019-11-21"
 def get_epoch_catalogues(epochs_file):
     """
     Read a file which contains a list of the catalogues to be read
-    
+
     parameters
     ----------
     epochs_files : str
@@ -56,8 +56,6 @@ def join_catalogues(reference, epochs):
     ref.rename_column('ra', 'ref_ra')
     ref.rename_column('dec', 'ref_dec')
     ref.sort(keys='uuid')
-    # trim off some stupid padding that may exist
-    ref['uuid'] = [a.strip() for a in ref['uuid']]
 
     # make the empty columns
     new_cols =[]
@@ -69,7 +67,7 @@ def join_catalogues(reference, epochs):
             new_cols.append(Column(data=data.copy(), name=colname.format(i)))
         for colname in ['image_{0}', 'epoch_{0}']:
             new_cols.append(Column(data=str_data.copy(), name=colname.format(i)))
-
+    print("ref table is {0} rows".format(len(ref)))
     ref.add_columns(new_cols)
 
     # now put the data into the new big table
@@ -77,7 +75,7 @@ def join_catalogues(reference, epochs):
         print("Joining epoch {0} catalogue {1}".format(i,f))
         new_cols = Table.read(f)['uuid', 'peak_flux', 'err_peak_flux', 'local_rms', 'background',
                                  'image', 'epoch']
-        new_cols.sort('uuid')
+        new_cols.sort(keys='uuid')
         # compute the order/presence
         ordering = np.argwhere(np.in1d(ref['uuid'], new_cols['uuid'], assume_unique=True))[:,0]
         ref['peak_flux_{0}'.format(i)][ordering] = new_cols['peak_flux']
