@@ -60,7 +60,7 @@ def join_catalogues(reference, epochs):
     # make the empty columns
     new_cols =[]
     data = np.zeros(len(ref), dtype=np.float32)
-    str_data = Table.read(files[0])['image']
+    str_data = np.full(len(ref),Table.read(files[0])['image'][0])
 
     for i in range(len(files)):
         for colname in ['peak_flux_{0}','err_peak_flux_{0}', 'local_rms_{0}', 'background_{0}']:
