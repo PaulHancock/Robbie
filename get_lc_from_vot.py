@@ -28,7 +28,7 @@ def get_lc(tab, uuid):
        A table of the light curve
     """
     # load the table and extract the row of interest
-    master = Table.read(tab)[2100:2150]
+    master = Table.read(tab)
     row_id = np.where(np.array(list(map(str.strip,master['uuid']))) == uuid)
     row = master[row_id]
     if len(row) == 0:
