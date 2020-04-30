@@ -39,11 +39,11 @@ def get_lc(tab, uuid):
         return None
     # count the number of epochs and extract the data in epoch order
     nepochs = max([int(n.split('_')[-1]) for n in master.colnames if n.startswith('epoch')])
-    date = list([row[name].tolist()[0] for name in ['epoch_{0}'.format(i) for i in range(1, nepochs+1)]])
-    peak_flux = list([row[name].tolist()[0] for name in ['peak_flux_{0}'.format(i) for i in range(1, nepochs+1)]])
-    err_peak_flux = list([row[name].tolist()[0] for name in ['err_peak_flux_{0}'.format(i) for i in range(1, nepochs+1)]])
-    epoch = list(range(1,nepochs+1))
-    local_rms = list([row[name].tolist()[0] for name in ['local_rms_{0}'.format(i) for i in range(1, nepochs+1)]])
+    date = list([row[name].tolist()[0] for name in ['epoch_{0}'.format(i) for i in range(0, nepochs+1)]])
+    peak_flux = list([row[name].tolist()[0] for name in ['peak_flux_{0}'.format(i) for i in range(0, nepochs+1)]])
+    err_peak_flux = list([row[name].tolist()[0] for name in ['err_peak_flux_{0}'.format(i) for i in range(0, nepochs+1)]])
+    epoch = list(range(0,nepochs+1))
+    local_rms = list([row[name].tolist()[0] for name in ['local_rms_{0}'.format(i) for i in range(0, nepochs+1)]])
     # convert the lists into a table
     lc = Table(data = [date, peak_flux, err_peak_flux, epoch, local_rms], names=['Date', 'peak_flux', 'err_peak_flux', 'epoch','local_rms'])
     return lc
