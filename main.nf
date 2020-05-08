@@ -1,5 +1,7 @@
 #! /usr/bin/env nextflow
 
+version = '2.1.2-36-g6e2e212'
+date = '2020-05-08'
 /* CONFIGURATION STAGE */
 
 /* for executing without a container */
@@ -41,6 +43,7 @@ if (params.use_region_file == false) {
 log.info """\
          ROBBIE the Space Detective 
          ==========================
+         version      : ${version}(+1) - ${date}
          images from  : ${params.image_file}
          do warping   : ${params.warp}
          warp ref cat : ${params.ref_catalogue}
