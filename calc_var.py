@@ -80,7 +80,7 @@ def calc_stats_table(filename, ndof=None, start=0, stride=1):
 
             # Pvalue based on distribution of Z score
             Z = (fluxes[mask] - mean)/ err[mask]
-            pval_ks = stats.ks(Z,'norm').pvalue
+            pval_ks = stats.kstest(Z,'norm').pvalue
             pval_ks = max(pval_ks, 1e-10)
 
             # debiased modulation index
