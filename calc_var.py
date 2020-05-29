@@ -48,13 +48,13 @@ def calc_stats_table(filename, ndof=None, start=0, stride=1):
 
     flux_cols = [a for a in tab.colnames if a.startswith('peak_flux')]
     err_flux_cols = [a for a in tab.colnames if a.startswith('err_peak_flux')]
-    src_stats = np.zeros(shape=(len(tab), 6))
+    src_stats = np.zeros(shape=(len(tab), 7))
     for i, row in enumerate(tab):
         fluxes = np.array(list(row[flux_cols]))
         err = np.array(list(row[err_flux_cols]))
         mask = np.where(err>0)
         npts = len(mask[0])
-        
+
         if npts < 2:
             pval = 0.
             md = 0.
@@ -62,6 +62,7 @@ def calc_stats_table(filename, ndof=None, start=0, stride=1):
             std = 0.
             m = 0.
             chisq = 0.
+            pval_ks = 0.
         else:
             # modulation index
             mean = np.mean(fluxes[mask])
@@ -69,20 +70,26 @@ def calc_stats_table(filename, ndof=None, start=0, stride=1):
             m = std/mean
             # chi squared
             chisq = np.sum((fluxes[mask] - mean)**2 / err[mask]**2)
-            # pvalue
+            # pvalue from chi squared
             if ndof is None:
                 ndof = max(1,npts - 1)
             else:
                 ndof = max(1,ndof)
             pval = stats.chi2.sf(chisq, ndof)
             pval = max(pval, 1e-10)
+
+            # Pvalue based on distribution of Z score
+            Z = (fluxes[mask] - mean)/ err[mask]
+            pval_ks = stats.ks(Z,'norm').pvalue
+            pval_ks = max(pval_ks, 1e-10)
+
             # debiased modulation index
             desc = np.sum((fluxes[mask] - mean)**2) - np.sum(err[mask]**2)
             #print(mean, desc, npts)
             md = 1./mean * np.sqrt(np.abs(desc)/npts)
             if desc < 0:
                 md *= -1
-        src_stats[i, :] = [mean, std, m,  md, chisq, pval]
+        src_stats[i, :] = [mean, std, m,  md, chisq, pval, pval_ks]
 
     stats_tab = Table()
     stats_tab.add_column(tab['uuid'])
@@ -91,7 +98,8 @@ def calc_stats_table(filename, ndof=None, start=0, stride=1):
     stats_tab.add_column(Column(src_stats[:,2], name='m'))
     stats_tab.add_column(Column(src_stats[:,3], name='md'))
     stats_tab.add_column(Column(src_stats[:,4], name='chisq_peak_flux'))
-    stats_tab.add_column(Column(src_stats[:,5], name='pval_peak_flux'))
+    stats_tab.add_column(Column(src_stats[:,5], name='pval_peak_flux_chisq'))
+    stats_tab.add_column(Column(src_stats[:,6], name='pval_peak_flux_ks'))
     return stats_tab
 
 

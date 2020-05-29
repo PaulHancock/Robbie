@@ -13,57 +13,7 @@ import os
 import multiprocessing as mp
 
 __author__ = ["Paul Hancock"]
-__date__ = '2019/08/19'
-
-
-def plot_lc(cur, dates=False):
-    """
-    Create individual light curve plots.
-    Each plot is saved to plots/uuid.png
-
-    parameters
-    ----------
-    cur : sqlite3.connection.cursor
-        DB connection
-    """
-    cur.execute("""SELECT DISTINCT uuid FROM sources""")
-    sources = cur.fetchall()
-
-    for src in sources:
-        uuid = src[0]
-        fname = 'plots/{0}.png'.format(uuid)
-        print(fname, end='')
-        if os.path.exists(fname):
-            print(" ... skip")
-            continue
-
-        cur.execute(""" SELECT peak_flux, err_peak_flux, s.epoch, date 
-        FROM sources s JOIN epochs e 
-        ON s.epoch = e.epoch WHERE uuid=?
-        ORDER BY e.epoch """, (uuid,))
-        peak_flux, err_peak_flux, epoch, date = map(np.array, zip(*cur.fetchall()))
-        cur.execute("""SELECT m, md, chisq_peak_flux FROM stats WHERE uuid=? """, (uuid,))
-        m, md, chisq_peak_flux = cur.fetchone()
-
-        if dates:
-            try:
-                epoch = [dateutil.parser.parse(d) for d in date]
-            except ValueError as e:
-                print(" ... Unknown date encountered, reverting to epoch plotting", end='')
-                dates = False
-        pyplot.clf()
-        s = 'm={0:5.3f}\nmd={1:4.2f}\nchisq={2:4.1f}'.format(m, md, chisq_peak_flux)
-        # convert None entries into 0 for the errors
-        err_peak_flux = [ 0 if x is None else x for x in err_peak_flux ] 
-        pyplot.errorbar(epoch, peak_flux, yerr=err_peak_flux, label=s)
-        pyplot.ylabel('Flux Density (Jy/Beam)')
-        if not dates:
-            pyplot.xlabel('Epoch')
-        pyplot.title('{0}'.format(uuid))
-        pyplot.legend()
-        pyplot.savefig(fname)
-        print(" ... done")
-    return
+__date__ = '2020/05/29'
 
 
 def plot_summary_table(filename, plotfile):
@@ -78,7 +28,7 @@ def plot_summary_table(filename, plotfile):
         Filename for the output plot file
     """
     tab = Table.read(filename)
-    pval_peak_flux = tab['pval_peak_flux']
+    pval_peak_flux = tab['pval_peak_flux_ks']
     md = tab['md']
     mean_peak_flux = tab['mean_peak_flux']
 
@@ -93,7 +43,7 @@ def plot_summary_table(filename, plotfile):
 
     ax.set_ylim((-11,1.001))
     ax.set_xlim((-0.3,0.3))
-    ax.set_ylabel("log(p_val)", **kwargs)
+    ax.set_ylabel("log(p_val_ks)", **kwargs)
     ax.set_xlabel("Debiased modulation index ($m_d$)", **kwargs)
     ax.axhline(-3, c='k')
     ax.axvline(0.05, c='k')
