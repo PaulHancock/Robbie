@@ -7,7 +7,6 @@ import dateutil.parser
 import numpy as np
 import matplotlib
 from matplotlib import pyplot
-import sqlite3
 import argparse
 import sys
 import os
@@ -15,45 +14,6 @@ import multiprocessing as mp
 
 __author__ = ["Paul Hancock"]
 __date__ = '2019/08/19'
-
-
-def plot_summary(cur, plotfile):
-    """
-    Create a summary plot for all sources, identifying which are likely to be variable.
-
-    parameters
-    ----------
-    cur : sqlite3.connection.cursor
-        DB connection
-    plotfile : str
-        Filename for the output plot file.
-    """
-    cur.execute("""SELECT pval_peak_flux, md, abs(mean_peak_flux) FROM stats WHERE pval_peak_flux >0""")
-    rows = cur.fetchall()
-
-    pval_peak_flux, md, mean_peak_flux = list(map(np.array, zip(*rows)))
-
-    kwargs = {'fontsize':14}
-    fig = pyplot.figure(figsize=(5,8))
-
-
-    ax = fig.add_subplot(1,1,1)
-    cax = ax.scatter(md, np.log10(pval_peak_flux), c = np.log10(mean_peak_flux), cmap=matplotlib.cm.viridis_r)
-    cb = fig.colorbar(cax,ax=ax)
-    cb.set_label("log10(Peak flux in epoch 1) (Jy)", **kwargs)
-
-    ax.set_ylim((-11,1.001))
-    ax.set_xlim((-0.3,0.3))
-    ax.set_ylabel("log(p_val)", **kwargs)
-    ax.set_xlabel("Debiased modulation index ($m_d$)", **kwargs)
-    ax.axhline(-3, c='k')
-    ax.axvline(0.05, c='k')
-    ax.text(0.1, -5, "variable", **kwargs)
-    ax.fill_between([-0.3,0.05],-25, y2=2, color='k', alpha=0.2)
-    ax.fill_betweenx([-3,2],0.05, x2=0.3, color='k', alpha=0.2)
-    ax.text(-0.25, -5, "not variable", **kwargs)
-    pyplot.savefig(plotfile)
-    return
 
 
 def plot_lc(cur, dates=False):
