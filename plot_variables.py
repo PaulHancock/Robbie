@@ -125,8 +125,6 @@ def plot_lc_table_parallel(flux_table, stats_table, nprocs=1):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     group1 = parser.add_argument_group("Create a variability plot")
-    group1.add_argument("--dbname", dest='db', type=str, default=None,
-                        help="The input database")
     group1.add_argument("--ftable", dest='ftable', type=str, default=None,
                         help="flux table")
     group1.add_argument("--stable", dest='stable', type=str, default=None,
@@ -145,14 +143,7 @@ if __name__ == "__main__":
     if results.cores is None:
         results.cores = mp.cpu_count()
 
-    if results.db:
-        conn = sqlite3.connect(results.db)
-        cur = conn.cursor()
-        plot_summary(cur=cur, plotfile=results.plotfile)
-        if results.all:
-            plot_lc(cur=cur, dates=results.dates)
-        conn.close()
-    elif results.ftable or results.stable:
+    if results.ftable or results.stable:
         if not (results.ftable and results.stable):
             print("ERROR: --stable and --ftable are both required, only one supplied.")
         plot_summary_table(results.stable, results.plotfile)
