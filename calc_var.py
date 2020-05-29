@@ -5,7 +5,6 @@ __author__ = 'Paul Hancock'
 __date__ = '2019/08/18'
 
 import argparse
-import sqlite3
 import numpy as np
 from scipy import stats
 import sys
@@ -13,86 +12,6 @@ import astropy.table
 from astropy.table import Table, Column
 from join_catalogues import write_table
 import multiprocessing as mp
-
-
-def make_table(cur):
-    """
-    Create a table to store the variability stats for each source
-    Clear the table if it already exists
-
-    parameters
-    ----------
-    cur : sqlite3.connection.cursor
-        Cursor for database connection
-    """
-    cur.execute("""CREATE TABLE IF NOT EXISTS stats (
-    uuid TEXT,
-    mean_peak_flux NUMERIC,
-    std_peak_flux NUMERIC,
-    chisq_peak_flux NUMERIC,
-    m NUMERIC,
-    md NUMERIC,
-    pval_peak_flux NUMERIC)""")
-    # clear the table 
-    cur.execute("DELETE FROM stats")
-    return
-
-
-def calc_stats(cur, ndof=None):
-    """
-    Compute the mean and std of each light curve
-
-    parameters
-    ----------
-    cur : sqlite3.connection.cursor
-        Cursor for the database connection
-
-    ndof : int or None
-        Number of degrees of freedom for the light curves. None -> npts-1
-    """
-    cur.execute("SELECT DISTINCT uuid FROM sources")
-    sources = cur.fetchall()
-    for s in sources:
-        cur.execute("SELECT peak_flux FROM sources WHERE uuid=? ORDER BY epoch", s)
-        fluxes = np.array([i[0] for i in cur.fetchall()])
-        cur.execute("SELECT err_peak_flux FROM sources WHERE uuid=? ORDER BY epoch", s)
-        err = np.array([i[0] for i in cur.fetchall()])
-        # don't include fit errors in the stats calculation
-        mask = np.where(err>0)
-        npts = len(mask[0])
-        
-        if npts < 2:
-            pval = 0.
-            md = 0.
-            mean = 0.
-            std = 0.
-            m = 0.
-            chisq = 0.
-        else:
-            # modulation index
-            mean = np.mean(fluxes[mask])
-            std = np.std(fluxes[mask])
-            m = std/mean
-            # chi squared
-            chisq = np.sum((fluxes[mask] - mean)**2 / err[mask]**2)
-            # pvalue
-            if ndof is None:
-                ndof = max(1,npts - 1)
-            else:
-                ndof = max(1,ndof)
-            pval = stats.chi2.sf(chisq, ndof)
-            pval = max(pval, 1e-10)
-            # debiased modulation index
-            desc = np.sum((fluxes[mask] - mean)**2) - np.sum(err[mask]**2)
-            #print(mean, desc, npts)
-            md = 1./mean * np.sqrt(np.abs(desc)/npts)
-            if desc < 0:
-                md *= -1
-        # add all to the stats table
-        cur.execute("""INSERT INTO stats(uuid, mean_peak_flux, std_peak_flux, m, md, chisq_peak_flux, pval_peak_flux)
-        VALUES (?,?,?,?,?,?,?)""",
-                    (s[0], mean, std, m,  md, chisq, pval))
-    return
 
 
 def calc_stats_table(filename, ndof=None, start=0, stride=1):
@@ -216,8 +135,6 @@ def calc_stats_table_parallel(filename, ndof=None, nprocs=1):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     group1 = parser.add_argument_group("Calculate variability stats")
-    group1.add_argument("--dbname", dest='db', type=str, default=None,
-                        help="Database filename.")
     group1.add_argument("--table", dest='table', type=str, default=None,
                         help="Table filename. [requires --out]")
     group1.add_argument("--out", dest='out', type=str, default=None,
@@ -226,20 +143,13 @@ if __name__ == '__main__':
                         help="Effective number of degrees of freedom. Defualt: N=epochs-1")
     group1.add_argument("--cores", dest='cores', type=int, default=None,
                         help="Number of cores to use: Default all")
-    
+
     results = parser.parse_args()
 
     if results.cores is None:
         results.cores = mp.cpu_count()
 
-    if results.db:
-        conn = sqlite3.connect(results.db)
-        c = conn.cursor()
-        make_table(c)
-        calc_stats(c, results.ndof)
-        conn.commit()
-        conn.close()
-    elif results.table:
+    if results.table:
         if not results.out:
             print("ERROR: --table requires --out to be set")
             sys.exit(1)
