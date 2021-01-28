@@ -44,7 +44,7 @@ This file contains all the configuration setup with default values. Copy this fi
 
 ### Running
 
-Robbie can be run via: `nextflow -C my.config run -profile common,Zeus -resume`
+Robbie can be run via: `nextflow -C my.config run main.nf -profile common,Zeus -resume`
 
 The `-C my.config` directs nextflow to use *only* the configuration described in `my.config`. If you use `-c` then it will also read the `nextflow.config` file. The `-profile common,Zeus` allows you to use the `common` profile settings that are described in the config file, and `Zeus` uses the settings specific for the Zues cluster on Pawsey.
 
