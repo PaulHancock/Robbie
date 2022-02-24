@@ -16,12 +16,12 @@ RUN cd /usr/local/lib && wget http://www.star.bris.ac.uk/~mbt/stilts/stilts.jar 
 ADD requirements.txt .
 RUN pip install -r requirements.txt && \
     mkdir /tmp/build && cd /tmp/build && \
-    git clone https://github.com/nhurleywalker/fits_warp.git && cd fits_warp && \
-    git checkout py3 && chmod ugo+x fits_warp.py && mv fits_warp.py /usr/bin/. && \
-    git clone https://gitlab.com/Sunmish/flux_warp.git && cd flux_warp && python setup.py install --force
+    git clone https://github.com/nhurleywalker/fits_warp.git && cd fits_warp && python setup.py install --force && \
+    git clone https://gitlab.com/Sunmish/flux_warp.git && cd flux_warp && python setup.py install --force &&\
+    rm -rf /tmp/build
 
 # add Robbie scripts (always)
 ADD "https://www.random.org/cgi-bin/randbyte?nbytes=10&format=h" skipcache
-RUN cd /tmp/build && git clone https://github.com/PaulHancock/Robbie.git && \
+RUN mkdir /tmp/build && cd /tmp/build && git clone https://github.com/PaulHancock/Robbie.git && \
     cd Robbie && chmod ugo+x *.py && mv *.py /usr/bin/. && \
     rm -rf /tmp/build
