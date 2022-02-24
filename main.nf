@@ -32,14 +32,6 @@ params.use_region_file = false
 params.region_file = ""
 
 
-// set NO_FILE as the filename if region/warping is turned off
-if (params.use_monitoring_src_file == false) {
-   params.monitoring_src_file='NO_FILE'
-}
-if (params.use_region_file == false) {
-   params.region_file='NO_FILE'
-}
-
 log.info """\
          ROBBIE the Space Detective 
          ==========================
