@@ -14,4 +14,4 @@ pytz==2019.3
 scipy==1.4.1
 six==1.13.0
 uncertainties==3.1.2
-git+https://github.com/PaulHancock/Aegean.git@v2.2.4
+git+https://github.com/PaulHancock/Aegean.git@v2.2.5
