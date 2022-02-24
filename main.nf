@@ -169,8 +169,8 @@ process sfind_mean_image {
 
   input:
   tuple val(basename), path(mean), path('*') from bane_mean_image_ch
-  path('region.mim') from file(params.region_file)
-  path('monitor.fits') from file(params.monitoring_src_file)
+  path('region.mim') from params.region_file
+  path('monitor.fits') from params.monitoring_src_file
   
   output:
   path("persistent_sources.fits") into (mean_catalogue_ch,  // to source_monitor
@@ -178,15 +178,15 @@ process sfind_mean_image {
                                        mean_catalogue_ch3)  // to join_fluxes
 
   script:
-  def region = params.region_file != 'NO_FILE' ? "--region region.mim":''
-  def mon="""
+  def region = params.use_region_file ? "--region region.mim":''
+  def mon = params.use_monitoring_src_file ? """
   ${params.stilts} tcatn nin=2 in1=mean_comp.fits in2=monitor.fits out=persistent_sources.fits ofmt=fits
-  """
+  """ : "mv *_comp.fits persistent_sources.fits" 
 
   """
   echo ${task.process} on \${HOSTNAME}
   aegean --cores ${task.cpus} --background *_bkg.fits --noise *_rms.fits --table ${mean} ${region} ${mean}
-  ${ (params.use_monitor_src_file != 'NO_FILE') ? "${mon}"  : "mv *_comp.fits persistent_sources.fits" } 
+  ${mon} 
   """
 }
 
