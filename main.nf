@@ -1,12 +1,12 @@
 #! /usr/bin/env nextflow
-
-version = '2.1.2-36-g6e2e212'
-date = '2020-05-08'
+author = "Paul Hancock"
+version = "2.1.2-36-g6e2e212"
+date = "2022-02-24"
 /* CONFIGURATION STAGE */
 
 /* for executing without a container */
 params.codeDir = "${baseDir}/"
-params.stilts = ""
+params.stilts = "stilts"
 
 // output directory
 params.output_dir = "${baseDir}/results/"
@@ -25,7 +25,7 @@ params.by_epoch = true
 
 // monitoring of a pre-determined source
 params.use_monitoring_src_file = false
-params.monitoring_src_file = ''
+params.monitoring_src_file = ""
 
 // Source finding region file
 params.use_region_file = false
@@ -209,7 +209,7 @@ process source_monitor {
          --table ${basename}.fits --priorized 1 --input ${mean_cat} ${basename}.fits
 
   # super hack to get stilts to play nice and add two columns of strings
-  epoch=\$(get_epoch.py ${basename}.fits)
+  epoch=\$(${params.codeDir}get_epoch.py ${basename}.fits)
   epoch="\\\\\\\"\${epoch}\\\\\\\""
   filename="\\\\\\\"${basename}.fits\\\\\\\""
   ${params.stilts} tpipe in=${basename}_comp.fits cmd="addcol image \${filename}" \
