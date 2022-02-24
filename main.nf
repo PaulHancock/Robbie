@@ -1,6 +1,7 @@
 #! /usr/bin/env nextflow
 author = "Paul Hancock"
-version = "2.1.2-36-g6e2e212"
+version = "2.2.0"
+prev_git_hash = "7d6c6"
 date = "2022-02-24"
 /* CONFIGURATION STAGE */
 
@@ -35,7 +36,7 @@ params.region_file = ""
 log.info """\
          ROBBIE the Space Detective 
          ==========================
-         version      : ${version}(+1) - ${date}
+         version      : ${version} (${prev_git_hash}) - ${date}
          images from  : ${params.image_file}
          do warping   : ${params.warp}
          warp ref cat : ${params.ref_catalogue}
