@@ -31,7 +31,7 @@ def grain_plot(fitsfile, plotfile):
     cax = ax.scatter(tab['ra'],tab['dec'],
                      c=tab['peak_flux']/tab['local_rms'],
                      cmap=cmap, norm=norm,
-                     vmin=3, vmax=15,
+                     #vmin=3, vmax=15,
                      zorder=100)
     for r in tab:
         ax.add_patch(Ellipse((r['ra'],r['dec']),

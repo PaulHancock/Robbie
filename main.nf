@@ -34,7 +34,7 @@ params.region_file = ""
 
 
 log.info """\
-         ROBBIE the Space Detective 
+         ROBBIE the Space Detective
          ==========================
          version      : ${version} (${prev_git_hash}) - ${date}
          images from  : ${params.image_file}
@@ -111,7 +111,7 @@ process fits_warp {
   script:
   suff1=(params.refcat_ra=='ra' ? '_1':'')
   suff2=(params.refcat_ra=='ra' ? '_2':'')
-  
+
   if (params.warp == true)
   """
   echo ${task.process} on \${HOSTNAME}
@@ -169,25 +169,25 @@ process sfind_mean_image {
   label 'aegean'
 
   input:
-  tuple val(basename), path(mean), path('*') from bane_mean_image_ch
-  path('region.mim') from params.region_file
-  path('monitor.fits') from params.monitoring_src_file
-  
+  tuple val(basename), path(mean), path(wildcard) from bane_mean_image_ch
+  file region_file from params.region_file
+  file monitoring_src_file from params.monitoring_src_file
+
   output:
   path("persistent_sources.fits") into (mean_catalogue_ch,  // to source_monitor
                                        mean_catalogue_ch2,  // to mask_images
                                        mean_catalogue_ch3)  // to join_fluxes
 
   script:
-  def region = params.use_region_file ? "--region region.mim":''
+  def region = params.use_region_file ? "--region ${region_file}":''
   def mon = params.use_monitoring_src_file ? """
-  ${params.stilts} tcatn nin=2 in1=mean_comp.fits in2=monitor.fits out=persistent_sources.fits ofmt=fits
-  """ : "mv *_comp.fits persistent_sources.fits" 
+  ${params.stilts} tcatn nin=2 in1=mean_comp.fits in2=${monitoring_src_file} out=persistent_sources.fits ofmt=fits
+  """ : "mv *_comp.fits persistent_sources.fits"
 
   """
   echo ${task.process} on \${HOSTNAME}
   aegean --cores ${task.cpus} --background *_bkg.fits --noise *_rms.fits --table ${mean} ${region} ${mean}
-  ${mon} 
+  ${mon}
   """
 }
 
@@ -282,7 +282,7 @@ process plot_lc {
 process mask_images {
   label 'python'
   // echo true
-  
+
   input:
   path(mean_cat) from mean_catalogue_ch2.collect()
   tuple val(basename), path('*') from warped_images_ch3
@@ -302,14 +302,14 @@ process sfind_masked {
   label 'aegean'
 
   // echo true
-  
+
   input:
   tuple val(basename), path('*') from masked_images_ch
   path('region.mim') from file(params.region_file)
 
   output:
   path("${basename}_comp.fits") optional true into masked_catalogue_ch
-  
+
   script:
   def region = (params.region_file != 'NO_FILE' ? "--region region.mim":'')
   """
@@ -348,7 +348,7 @@ process compile_transients_candidates {
 
 process transients_plot {
   label 'python'
-  
+
   input:
   path(transients) from transients_imported_ch
 
