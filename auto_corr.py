@@ -101,12 +101,12 @@ def get_table_endof(filename):
     """
     tab = Table.read(filename)
     flux_cols = [a for a in tab.colnames if a.startswith('peak_flux')]
-    
+
     # Choose N random rows without repetition
     nitems = min(NPIX, len(tab))
     idx = np.random.choice(range(len(tab)), nitems, replace=False)
     fluxes = tab[idx][flux_cols]
-    
+
     # construct the autocorrelation and determine ndof
     # ensure that the light curves have zero mean
     acorr = np.array([autocorr(np.array(list(arr)) -  np.nanmean(list(arr)))
@@ -117,14 +117,14 @@ def get_table_endof(filename):
     epochs = len(flux_cols)
     ndof = epochs - 1 - fzero
     return ndof
-    
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     group1 = parser.add_argument_group("Combine images into a cube")
     group1.add_argument("--dbname", dest='db', type=str, default=None,
                         help="Database name. [optional]")
-    group1.add_argument('--cuebname', dest='cube', type=str, default=None,
+    group1.add_argument('--cubename', dest='cube', type=str, default=None,
                         help='Image cube name. [optional]')
     group1.add_argument('--table', dest='table', type=str, default=None,
                         help='Flux table name. [optional]')

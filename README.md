@@ -26,7 +26,7 @@ Robbie relies on the following software:
 - [fits_warp](https://github.com/nhurleywalker/fits_warp)
 - [Stils/TOPCAT](http://www.star.bris.ac.uk/~mbt/topcat/)
 
-The best way to use Robbie is via a docker container which has all the sofware dependencies installed. Such a container can be built using `docker/Dockerfile`, or by pulling the latest build from [DockerHub](https://hub.docker.com/r/paulhancock/robbie-next) via `docker pull paulhancock/robbie-next`.
+The best way to use Robbie is via a docker container which has all the software dependencies installed. Such a container can be built using `docker/Dockerfile`, or by pulling the latest build from [DockerHub](https://hub.docker.com/r/paulhancock/robbie-next) via `docker pull paulhancock/robbie-next`.
 
 Robbie scripts are written for Python3. If you require Python2 compatibility then you should invest in a time machine.
 
@@ -35,7 +35,7 @@ Robbie now uses Nextflow to manage the workflow. The `Makefile` is obsolete and 
 
 Robbie can be run on a local system or on an HPC, and can use a container via singularity or docker, or can use software installed on the host. The current development cycle tests Robbie by using singularity on an HPC with the Slurm executor - other setups *should* work, but haven't been extensively tested.
 
-### `main.nf` 
+### `main.nf`
 This file describes the workflow and can be inspected but shouldn't need to be edited directly.
 
 
