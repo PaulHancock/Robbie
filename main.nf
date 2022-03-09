@@ -155,9 +155,31 @@ process make_mean_image {
 
   script:
   """
-  echo ${task.process} on \${HOSTNAME}
-  ls *_warped.fits > images.txt
-  ${params.codeDir}make_mean.py --out mean.fits --infile images.txt
+  #!/usr/bin/env python
+
+  from astropy.io import fits
+  import sys
+  import socket
+
+  print(f"${task.process} on {socket.gethostname()}")
+  files = ["${image.join('","')}"]
+  if len(files) < 2:
+      print("not enough files, need at least 2 to make a mean image")
+      print("given {0}".format(files))
+      sys.exit(1)
+
+  print(f"Reading {files[0]}")
+  hdu = fits.open(files[0])
+  data = hdu[0].data
+
+  for f in files[1:]:
+      print(f"Adding {f}")
+      data += fits.getdata(f)
+  data /= len(files)
+
+  hdu[0].data = data
+  hdu.writeto("mean.fits")
+  print("Wrote mean.fits")
   """
 }
 
@@ -361,8 +383,48 @@ process transients_plot {
 
   script:
   """
-  echo ${task.process} on \${HOSTNAME}
-  ${params.codeDir}plot_transients.py --in ${transients} --plot transients.png
+  #! /usr/bin/env python
+
+  from astropy.table import Table
+  import numpy as np
+  import matplotlib
+  from matplotlib import pyplot
+  from matplotlib.patches import Ellipse
+  import socket
+
+  print(f"${task.process} on {socket.gethostname()}")
+
+  tab = Table.read("${transients}")
+  nepochs = np.max(tab['epoch'])*1.
+  kwargs={'fontsize':14}
+
+  cmap = pyplot.cm.plasma_r
+  # define the bins and normalize
+  bounds = np.linspace(3,15,13)
+  norm = matplotlib.colors.BoundaryNorm(bounds, cmap.N)
+
+  fig = pyplot.figure(figsize=(8,7))
+  ax = fig.add_subplot(1,1,1)
+  cax = ax.scatter(tab['ra'],tab['dec'],
+                    c=tab['peak_flux']/tab['local_rms'],
+                    cmap=cmap, norm=norm, zorder=100)
+  for r in tab:
+      ax.add_patch(Ellipse((r['ra'],r['dec']),
+                            width=0.5, height=3, angle=r['epoch']/nepochs*360,
+                            alpha=0.35, edgecolor='none',
+                            color=cmap(norm(r['peak_flux']/r['local_rms'])),
+                            zorder=norm(r['peak_flux']/r['local_rms'])
+                          ))
+
+  cb = fig.colorbar(cax,ax=ax)
+  cb.set_ticks(range(3,16,2))
+  cb.set_label("SNR", **kwargs)
+  ax.set_xlabel("RA J2000",**kwargs)
+  ax.set_ylabel("Dec J2000", **kwargs)
+  # flip the x axis so that RA increases to the left
+  ax.set_xlim((ax.get_xlim()[1],ax.get_xlim()[0]))
+  ax.grid()
+  pyplot.savefig("transients.png")
   """
 }
 
