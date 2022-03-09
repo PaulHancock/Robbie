@@ -1,4 +1,7 @@
 #! /usr/bin/env nextflow
+
+nextflow.enable.dsl=2
+
 author = "Paul Hancock"
 version = "2.2.0"
 prev_git_hash = "7d6c6"
@@ -56,16 +59,31 @@ image_ch = Channel
   .splitText()
   .map{ it -> tuple(file(it).baseName, file(it.trim()))}
 
+// Set up optional commands
+if ( params.use_monitoring_src_file ) {
+  monitoring_src_file = Channel.fromPath( params.monitoring_src_file )
+  monitoring_command = "${params.stilts} tcatn nin=2 in1=mean_comp.fits in2=${monitoring_src_file} out=persistent_sources.fits ofmt=fits"
+}
+else {
+  monitoring_command =  "mv *_comp.fits persistent_sources.fits"
+}
+if ( params.use_region_file ) {
+  region_file = Channel.fromPath( params.region_file )
+  region_command = "--region ${region_file}"
+}
+else {
+  region_command = ""
+}
+
 
 process bane_raw {
   label 'bane'
 
-  // echo true
   input:
-  tuple val(basename), path(image) from image_ch
+  tuple val(basename), path(image)
 
   output:
-  tuple val(basename), path(image), path("*_{bkg,rms}.fits") into raw_image_with_bkg_ch
+  tuple val(basename), path(image), path("*_{bkg,rms}.fits")
 
   script:
   """
@@ -77,20 +95,17 @@ process bane_raw {
 
 process initial_sfind {
   label 'aegean'
-  // echo true
+
   input:
-  tuple val(basename), path(image), path('*') from raw_image_with_bkg_ch
-  file('region.mim') from file(params.region_file)
+  tuple val(basename), path(image), path(bkg_rms_fits)
 
   output:
-  //tuple val(basename), path(image), path("*_{bkg,rms,comp}.fits") into initial_catalogue_ch
-  tuple val(basename), path('*.fits', includeInputs:true) into initial_catalogue_ch
+  tuple val(basename), path('*.fits', includeInputs:true)
 
   script:
-  def region = params.region_file != 'NO_FILE' ? "--region region.mim" : ''
   """
   echo ${task.process} on \${HOSTNAME}
-  aegean --cores ${task.cpus} --background *_bkg.fits --noise *_rms.fits --table ${image} ${region} ${image}
+  aegean --cores ${task.cpus} --background *_bkg.fits --noise *_rms.fits --table ${image} ${region_command} ${image}
   ls *.fits
   """
 }
@@ -99,14 +114,13 @@ process initial_sfind {
 process fits_warp {
   label 'warp'
 
-  //echo true
   input:
-  tuple val(basename), path('*') from initial_catalogue_ch
+  tuple val(basename), path(initial_catalogue)
+  each ref_catalogue
 
   output:
-  path("*_warped.fits") into warped_images_ch // -> to mean image
-  tuple val("${basename}_warped"), path("*.fits", includeInputs:true) into warped_images_ch2 // to monitoring
-  tuple val("${basename}_warped"), path('*.fits', includeInputs:true) into warped_images_ch3 // to mask_images
+  path "*_warped.fits"
+  tuple val("${basename}_warped"), path("*.fits", includeInputs:true)
 
   script:
   suff1=(params.refcat_ra=='ra' ? '_1':'')
@@ -115,7 +129,7 @@ process fits_warp {
   if (params.warp == true)
   """
   echo ${task.process} on \${HOSTNAME}
-  fits_warp.py --cores ${task.cpus} --refcat ${params.ref_catalogue} --incat ${basename}_comp.fits \
+  fits_warp.py --cores ${task.cpus} --refcat ${ref_catalogue} --incat ${basename}_comp.fits \
                --ra1 ra --dec1 dec --ra2 ${params.refcat_ra} --dec2 ${params.refcat_dec} \
                --xm ${basename}_xm.fits
   fits_warp.py --infits ${basename}.fits --xm ${basename}_xm.fits --suffix warped \
@@ -133,13 +147,11 @@ process fits_warp {
 
 
 process make_mean_image {
-
-  // echo true
   input:
-  path(image) from warped_images_ch.collect()
+  path image
 
   output:
-  tuple val('mean'), path('mean.fits') into mean_image_ch
+  tuple val('mean'), path('mean.fits')
 
   script:
   """
@@ -149,14 +161,15 @@ process make_mean_image {
   """
 }
 
+
 process bane_mean_image {
   label 'bane'
 
   input:
-  tuple val(basename), path(mean) from mean_image_ch
+  tuple val(basename), path(mean)
 
   output:
-  tuple val(basename), path(mean), path("${basename}_{bkg,rms}.fits") into bane_mean_image_ch
+  tuple val(basename), path(mean), path("${basename}_{bkg,rms}.fits")
 
   script:
   """
@@ -165,29 +178,21 @@ process bane_mean_image {
   """
 }
 
+
 process sfind_mean_image {
   label 'aegean'
 
   input:
-  tuple val(basename), path(mean), path(wildcard) from bane_mean_image_ch
-  file region_file from params.region_file
-  file monitoring_src_file from params.monitoring_src_file
+  tuple val(basename), path(mean), path(bkg_rms_fits)
 
   output:
-  path("persistent_sources.fits") into (mean_catalogue_ch,  // to source_monitor
-                                       mean_catalogue_ch2,  // to mask_images
-                                       mean_catalogue_ch3)  // to join_fluxes
+  path "persistent_sources.fits"
 
   script:
-  def region = params.use_region_file ? "--region ${region_file}":''
-  def mon = params.use_monitoring_src_file ? """
-  ${params.stilts} tcatn nin=2 in1=mean_comp.fits in2=${monitoring_src_file} out=persistent_sources.fits ofmt=fits
-  """ : "mv *_comp.fits persistent_sources.fits"
-
   """
   echo ${task.process} on \${HOSTNAME}
-  aegean --cores ${task.cpus} --background *_bkg.fits --noise *_rms.fits --table ${mean} ${region} ${mean}
-  ${mon}
+  aegean --cores ${task.cpus} --background *_bkg.fits --noise *_rms.fits --table ${mean} ${region_command} ${mean}
+  ${monitoring_command}
   """
 }
 
@@ -196,12 +201,12 @@ process source_monitor {
   label 'aegean'
 
   input:
-  path(mean_cat) from mean_catalogue_ch.collect()
-  tuple val(basename), path(image) from warped_images_ch2
+  path mean_cat
+  tuple val(basename), path(image)
 
   output:
-  tuple path("${basename}_comp.fits"), path(image, includeInputs:true) into priorized_catalogue_ch
-  path("${basename}_comp.fits") into priorized_catalogue_ch2
+  tuple path("${basename}_comp.fits"), path(image, includeInputs:true)
+  path "${basename}_comp.fits"
 
   script:
   """
@@ -225,18 +230,18 @@ process join_fluxes {
   label 'python'
 
   input:
-  path('*') from priorized_catalogue_ch2.collect()
-  path("reference.fits") from mean_catalogue_ch3
+  path source_monitor_cat
+  path reference_fits
 
   output:
-  path("flux_table.vot") into flux_table_ch
+  path "flux_table.vot"
 
   script:
   """
   echo ${task.process} on \${HOSTNAME}
   ls
   ls *_comp.fits > epochs.txt
-  ${params.codeDir}join_catalogues.py --refcat reference.fits --epochs epochs.txt --out flux_table.vot
+  ${params.codeDir}join_catalogues.py --refcat ${reference_fits} --epochs epochs.txt --out flux_table.vot
   """
 }
 
@@ -245,50 +250,50 @@ process compute_stats {
   label 'python'
 
   input:
-  path("flux_table.vot") from flux_table_ch
+  path flux_table
 
   output:
-  tuple path("flux_table.vot", includeInputs:true), path("stats_table.vot") into flux_stats_ch
+  tuple path("flux_table.vot", includeInputs:true), path("stats_table.vot")
 
   script:
   """
   echo ${task.process} on \${HOSTNAME}
   ls
-  NDOF=(\$(${params.codeDir}auto_corr.py --table flux_table.vot))
+  NDOF=(\$(${params.codeDir}auto_corr.py --table ${flux_table}))
   echo \${NDOF[@]}
   echo \${NDOF[@]} > NDOF.txt
   ${params.codeDir}calc_var.py --table flux_table.vot --ndof \${NDOF[-1]} --out stats_table.vot --cores ${task.cpus}
   """
 }
 
+
 process plot_lc {
   label 'python'
 
   input:
-  tuple path("flux_table.vot"), path("stats_table.vot") from flux_stats_ch
+  tuple path(flux_table), path(stats_table)
 
   output:
-  path('plots') into plots_ch
+  path 'plots'
 
   script:
   """
   echo ${task.process} on \${HOSTNAME}
   mkdir plots
-  ${params.codeDir}plot_variables.py --ftable flux_table.vot --stable stats_table.vot --plot plots/variables.png --all --cores ${task.cpus}
+  ${params.codeDir}plot_variables.py --ftable ${flux_table} --stable ${stats_table} --plot plots/variables.png --all --cores ${task.cpus}
   """
 }
 
 
 process mask_images {
   label 'python'
-  // echo true
 
   input:
-  path(mean_cat) from mean_catalogue_ch2.collect()
-  tuple val(basename), path('*') from warped_images_ch3
+  path mean_cat
+  tuple val(basename), path(warped_images)
 
   output:
-  tuple val("${basename}_masked"), path("*.fits", includeInputs:true) into masked_images_ch
+  tuple val("${basename}_masked"), path("*.fits", includeInputs:true)
 
   script:
   """
@@ -298,24 +303,21 @@ process mask_images {
   """
 }
 
+
 process sfind_masked {
   label 'aegean'
 
-  // echo true
-
   input:
-  tuple val(basename), path('*') from masked_images_ch
-  path('region.mim') from file(params.region_file)
+  tuple val(basename), path(masked_images)
 
   output:
-  path("${basename}_comp.fits") optional true into masked_catalogue_ch
+  path "${basename}_comp.fits" optional true
 
   script:
-  def region = (params.region_file != 'NO_FILE' ? "--region region.mim":'')
   """
   echo ${task.process} on  \${HOSTNAME}
   ls *
-  aegean --cores ${task.cpus} --background *_bkg.fits --noise *_rms.fits --table ${basename}.fits ${basename}.fits ${region}
+  aegean --cores ${task.cpus} --background *_bkg.fits --noise *_rms.fits --table ${basename}.fits ${basename}.fits ${region_command}
   # Don't filter if there is no output
   if [[ -e ${basename}_comp.fits ]]
   then
@@ -329,14 +331,15 @@ process sfind_masked {
   """
 }
 
+
 process compile_transients_candidates {
   label 'python'
 
   input:
-  path(catalogue) from masked_catalogue_ch.collect()
+  path catalogue
 
   output:
-  path('transients.fits') into transients_imported_ch
+  path 'transients.fits'
 
   script:
   """
@@ -346,18 +349,41 @@ process compile_transients_candidates {
   """
 }
 
+
 process transients_plot {
   label 'python'
 
   input:
-  path(transients) from transients_imported_ch
+  path transients
 
   output:
-  path('transients.png') into transients_plot_ch
+  path 'transients.png'
 
   script:
   """
   echo ${task.process} on \${HOSTNAME}
   ${params.codeDir}plot_transients.py --in ${transients} --plot transients.png
   """
+}
+
+
+workflow {
+  bane_raw( image_ch )
+  initial_sfind( bane_raw.out )
+  fits_warp( initial_sfind.out,
+             Channel.fromPath( params.ref_catalogue ) )
+  make_mean_image( fits_warp.out[0].collect() )
+  bane_mean_image( make_mean_image.out )
+  sfind_mean_image( bane_mean_image.out )
+  source_monitor( sfind_mean_image.out,
+                  fits_warp.out[1] )
+  join_fluxes( source_monitor.out[1].collect(),
+               sfind_mean_image.out )
+  compute_stats( join_fluxes.out )
+  plot_lc( compute_stats.out )
+  mask_images( sfind_mean_image.out,
+               fits_warp.out[1] )
+  sfind_masked( mask_images.out )
+  compile_transients_candidates( sfind_masked.out.collect() )
+  transients_plot( compile_transients_candidates.out )
 }
