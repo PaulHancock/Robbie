@@ -3,10 +3,6 @@
 nextflow.enable.dsl=2
 
 author = "Paul Hancock"
-version = "2.2.0"
-prev_git_hash = "7d6c6"
-date = "2022-02-24"
-
 
 params.help = false
 if ( params.help ) {
@@ -45,6 +41,9 @@ if ( params.help ) {
              |Directory arguments:
              |  --output_dir  The directory to output the results to.
              |                [default: ${params.output_dir}]
+             |  -keep_epoch_images
+             |                Keep the epoch images after warping.
+             |                [default: ${params.keep_epoch_images}]
              |  -w            The Nextflow work directory. Delete the directory once the processs
              |                is finished [default: ${workDir}]""".stripMargin()
     println(help)
@@ -139,6 +138,7 @@ process initial_sfind {
 
 process fits_warp {
   label 'warp'
+  publishDir params.output_dir, mode: 'copy', pattern: "*_warped.fits", enabled: params.keep_epoch_images
 
   input:
   tuple val(basename), path(initial_catalogue)
