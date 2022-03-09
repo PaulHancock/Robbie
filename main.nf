@@ -91,13 +91,13 @@ else {
 
 
 process get_version {
-  //echo true
+  publishDir params.output_dir, mode: 'copy'
 
   output:
-  stdout
+  path "version.txt"
 
   """
-  robbie_version.sh
+  robbie_version.sh > version.txt
   """
 }
 
@@ -317,18 +317,19 @@ process compute_stats {
 
 process plot_lc {
   label 'python'
+  publishDir params.output_dir, mode: 'copy'
 
   input:
   tuple path(flux_table), path(stats_table)
 
   output:
-  path 'plots'
+  path 'variables.png'
 
   script:
   """
   echo ${task.process} on \${HOSTNAME}
   mkdir plots
-  plot_variables.py --ftable ${flux_table} --stable ${stats_table} --plot plots/variables.png --all --cores ${task.cpus}
+  plot_variables.py --ftable ${flux_table} --stable ${stats_table} --plot variables.png --all --cores ${task.cpus}
   """
 }
 
@@ -382,6 +383,7 @@ process sfind_masked {
 
 process compile_transients_candidates {
   label 'python'
+  publishDir params.output_dir, mode: 'copy'
 
   input:
   path catalogue
@@ -400,6 +402,7 @@ process compile_transients_candidates {
 
 process transients_plot {
   label 'python'
+  publishDir params.output_dir, mode: 'copy'
 
   input:
   path transients
