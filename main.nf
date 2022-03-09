@@ -173,11 +173,13 @@ process fits_warp {
 
 
 process make_mean_image {
+  publishDir params.output_dir, mode: 'copy'
+
   input:
   path image
 
   output:
-  tuple val('mean'), path('mean.fits')
+  tuple val('mean_image'), path('mean_image.fits')
 
   script:
   """
@@ -204,14 +206,15 @@ process make_mean_image {
   data /= len(files)
 
   hdu[0].data = data
-  hdu.writeto("mean.fits")
-  print("Wrote mean.fits")
+  hdu.writeto("mean_image.fits")
+  print("Wrote mean_image.fits")
   """
 }
 
 
 process bane_mean_image {
   label 'bane'
+  publishDir params.output_dir, mode: 'copy'
 
   input:
   tuple val(basename), path(mean)
@@ -296,6 +299,7 @@ process join_fluxes {
 
 process compute_stats {
   label 'python'
+  publishDir params.output_dir, mode: 'copy'
 
   input:
   path flux_table
@@ -324,12 +328,13 @@ process plot_lc {
 
   output:
   path 'variables.png'
+  path 'light_curve_plots'
 
   script:
   """
   echo ${task.process} on \${HOSTNAME}
-  mkdir plots
-  plot_variables.py --ftable ${flux_table} --stable ${stats_table} --plot variables.png --all --cores ${task.cpus}
+  mkdir light_curve_plots
+  plot_variables.py --ftable ${flux_table} --stable ${stats_table} --plot variables.png --lc_dir light_curve_plots --all --cores ${task.cpus}
   """
 }
 

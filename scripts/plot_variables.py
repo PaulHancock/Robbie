@@ -55,7 +55,7 @@ def plot_summary_table(filename, plotfile):
     return
 
 
-def plot_lc_table(flux_table, stats_table, start=0, stride=1):
+def plot_lc_table(flux_table, stats_table, start=0, stride=1, plot_dir="plots"):
     """
     Create individual light curve plots.
     Each plot is saved to plots/uuid.png
@@ -80,7 +80,7 @@ def plot_lc_table(flux_table, stats_table, start=0, stride=1):
     err_fluxes = [a for a in ftab.colnames if a.startswith('err_peak_flux')]
     epoch = list(range(len(fluxes)))
     for row in ftab[start::stride]:
-        fname = 'plots/{0}.png'.format(row['uuid'])
+        fname = '{0}/{1}.png'.format(plot_dir, row['uuid'])
         print(fname, end='')
         if os.path.exists(fname):
             print(" ... skip")
@@ -95,12 +95,12 @@ def plot_lc_table(flux_table, stats_table, start=0, stride=1):
         pyplot.xlabel('Epoch')
         pyplot.title('{0}'.format(row['uuid']))
         pyplot.legend()
-        pyplot.savefig(fname)
+        pyplot.savefig(fname, bbox_inches='tight')
         print(" ... done")
     return
 
 
-def plot_lc_table_parallel(flux_table, stats_table, nprocs=1):
+def plot_lc_table_parallel(flux_table, stats_table, light_curve_dir, nprocs=1):
     """
     parameters
     ----------
@@ -115,9 +115,18 @@ def plot_lc_table_parallel(flux_table, stats_table, nprocs=1):
     """
     pool = mp.Pool(nprocs)
     for i in range(nprocs):
-        pool.apply_async(plot_lc_table,
-                         args=[flux_table, stats_table],
-                         kwds={'start':i, 'stride':nprocs})
+        pool.apply_async(
+            plot_lc_table,
+            args=[
+                flux_table,
+                stats_table
+            ],
+            kwds={
+                'start':i,
+                'stride':nprocs,
+                'plot_dir':light_curve_dir,
+            }
+        )
     pool.close()
     pool.join()
 
@@ -133,6 +142,8 @@ if __name__ == "__main__":
                         help="output plot")
     group1.add_argument("--all", dest='all', action='store_true', default=False,
                         help="Also plot individual light curves. Default:False")
+    group1.add_argument("--lc_dir", dest='light_curve_dir', type=str, default="plots",
+                        help="The light curve plots output directory")
     group1.add_argument("--dates", dest='dates', action='store_true', default=False,
                         help="Individual plots have date on the horizontal axis. [db only]")
     group1.add_argument("--cores", dest='cores', type=int, default=None,
@@ -148,7 +159,7 @@ if __name__ == "__main__":
             print("ERROR: --stable and --ftable are both required, only one supplied.")
         plot_summary_table(results.stable, results.plotfile)
         if results.all:
-            plot_lc_table_parallel(results.ftable, results.stable, nprocs=results.cores)
+            plot_lc_table_parallel(results.ftable, results.stable, results.light_curve_dir, nprocs=results.cores)
     else:
         parser.print_help()
         sys.exit()
