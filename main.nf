@@ -55,7 +55,6 @@ if ( params.help ) {
 log.info """\
          ROBBIE the Space Detective
          ==========================
-         version      : ${version} (${prev_git_hash}) - ${date}
          images from  : ${params.image_file}
          warp ref cat : ${params.warp} / ${params.ref_catalogue}
          minotor src  : ${params.use_monitoring_src_file} / ${params.monitoring_src_file}
@@ -88,6 +87,18 @@ if ( params.use_region_file ) {
 }
 else {
   region_command = ""
+}
+
+
+process get_version {
+  //echo true
+
+  output:
+  stdout
+
+  """
+  robbie_version.sh
+  """
 }
 
 
@@ -445,6 +456,7 @@ process transients_plot {
 
 
 workflow {
+  get_version( )
   bane_raw( image_ch )
   initial_sfind( bane_raw.out )
   fits_warp( initial_sfind.out,

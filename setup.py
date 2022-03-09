@@ -9,7 +9,7 @@ from subprocess import check_output
 
 # The following two functions were taken from the repo: https://github.com/pyfidelity/setuptools-git-version/blob/master/setuptools_git_version.py
 
-def format_version(version, fmt="{tag}.{commitcount}_{gitsha}"):
+def format_version(version, fmt="{tag}_{gitsha}"):
     parts = version.split("-")
     if len(parts) < 4:
         return parts[0]
@@ -28,8 +28,8 @@ def get_git_version():
 
 robbie_version = get_git_version()
 #m ake a temporary version file to be installed then delete it
-with open("version.py", "a") as the_file:
-    the_file.write('__version__ = "{}"\n'.format(robbie_version))
+with open("robbie_version.sh", "a") as the_file:
+    the_file.write(f"#!/bin/bash -l\necho {robbie_version}")
 
 setup(
     name="Robbie",
@@ -38,7 +38,7 @@ setup(
     url="https://github.com/PaulHancock/Robbie",
     python_requires=">=3.6",
     scripts=[
-        "version.py",
+        "robbie_version.sh",
         # python
         "scripts/auto_corr.py",
         "scripts/calc_var.py",
@@ -52,4 +52,4 @@ setup(
         "main.nf",
     ],
 )
-os.remove("version.py")
+os.remove("robbie_version.sh")
