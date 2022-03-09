@@ -6,10 +6,8 @@ __date__ = '2019/11/21'
 import argparse
 from astropy.io import fits
 from astropy.table import Table
-import sqlite3
 import numpy as np
 import sys
-import os
 
 NPIX = 500
 
@@ -50,42 +48,6 @@ def get_cube_endof(cube):
     return ndof
 
 
-def get_db_endof(db):
-    """
-
-    parameters
-    ----------
-    db : str
-       Database filename.
-
-    return
-    ------
-    endof : int
-       The effective number of degrees of freedom
-    """
-    conn = sqlite3.connect(db)
-    cur = conn.cursor()
-    cur.execute("SELECT count(*) FROM epochs")
-    epochs = cur.fetchone()[0]
-    cur.execute("SELECT DISTINCT uuid FROM sources ORDER BY RANDOM() LIMIT ?", (NPIX,))
-    uuids = [a[0] for a in cur.fetchall()]
-
-    fluxes = np.zeros(shape=(epochs, NPIX))
-
-    for i, uuid in enumerate(uuids):
-        cur.execute("""
-        SELECT s1.peak_flux - s2.mean_peak_flux
-        FROM sources as s1 JOIN (SELECT uuid, AVG(peak_flux) as mean_peak_flux FROM sources WHERE uuid=?) as s2 ON s1.uuid = s2.uuid WHERE s1.uuid = ? """, (uuid,uuid))
-        fluxes[:, i] = list(zip(*cur.fetchall()))[0]
-
-    acorr = np.array([autocorr(fluxes[:,i]) for i in range(NPIX)])
-    mean = np.nanmean(acorr, axis=0)
-    std = np.nanstd(acorr, axis=0)
-    fzero = np.min(np.where(mean-std < 0))
-    ndof = epochs - 1 - fzero
-    return ndof
-
-
 def get_table_endof(filename):
     """
 
@@ -122,8 +84,6 @@ def get_table_endof(filename):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     group1 = parser.add_argument_group("Combine images into a cube")
-    group1.add_argument("--dbname", dest='db', type=str, default=None,
-                        help="Database name. [optional]")
     group1.add_argument('--cubename', dest='cube', type=str, default=None,
                         help='Image cube name. [optional]')
     group1.add_argument('--table', dest='table', type=str, default=None,
@@ -138,10 +98,6 @@ if __name__ == "__main__":
             print("{0} needs to have 3 axes, but it has {1}".format(results.cube, len(cube.shape)))
             sys.exit(1)
         ndof = get_cube_endof(cube)
-
-    elif results.db:
-        print("Reading data from {0}".format(results.db))
-        ndof = get_db_endof(results.db)
 
     elif results.table:
         print("Reading data from {0}".format(results.table))
