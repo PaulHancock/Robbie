@@ -237,7 +237,7 @@ process source_monitor {
          --table ${basename}.fits --priorized 1 --input ${mean_cat} ${basename}.fits
 
   # super hack to get stilts to play nice and add two columns of strings
-  epoch=\$(${params.codeDir}get_epoch.py ${basename}.fits)
+  epoch=\$(get_epoch.py ${basename}.fits)
   epoch="\\\\\\\"\${epoch}\\\\\\\""
   filename="\\\\\\\"${basename}.fits\\\\\\\""
   ${params.stilts} tpipe in=${basename}_comp.fits cmd="addcol image \${filename}" \
@@ -263,7 +263,7 @@ process join_fluxes {
   echo ${task.process} on \${HOSTNAME}
   ls
   ls *_comp.fits > epochs.txt
-  ${params.codeDir}join_catalogues.py --refcat ${reference_fits} --epochs epochs.txt --out flux_table.vot
+  join_catalogues.py --refcat ${reference_fits} --epochs epochs.txt --out flux_table.vot
   """
 }
 
@@ -281,10 +281,10 @@ process compute_stats {
   """
   echo ${task.process} on \${HOSTNAME}
   ls
-  NDOF=(\$(${params.codeDir}auto_corr.py --table ${flux_table}))
+  NDOF=(\$(auto_corr.py --table ${flux_table}))
   echo \${NDOF[@]}
   echo \${NDOF[@]} > NDOF.txt
-  ${params.codeDir}calc_var.py --table flux_table.vot --ndof \${NDOF[-1]} --out stats_table.vot --cores ${task.cpus}
+  calc_var.py --table flux_table.vot --ndof \${NDOF[-1]} --out stats_table.vot --cores ${task.cpus}
   """
 }
 
@@ -302,7 +302,7 @@ process plot_lc {
   """
   echo ${task.process} on \${HOSTNAME}
   mkdir plots
-  ${params.codeDir}plot_variables.py --ftable ${flux_table} --stable ${stats_table} --plot plots/variables.png --all --cores ${task.cpus}
+  plot_variables.py --ftable ${flux_table} --stable ${stats_table} --plot plots/variables.png --all --cores ${task.cpus}
   """
 }
 
@@ -343,7 +343,7 @@ process sfind_masked {
   # Don't filter if there is no output
   if [[ -e ${basename}_comp.fits ]]
   then
-    ${params.codeDir}filter_transients.py --incat ${basename}_comp.fits --image ${basename}.fits --outcat out.fits
+    filter_transients.py --incat ${basename}_comp.fits --image ${basename}.fits --outcat out.fits
     if [[ -e out.fits ]]
     then
       mv out.fits ${basename}_comp.fits
@@ -367,7 +367,7 @@ process compile_transients_candidates {
   """
   echo ${task.process} on \${HOSTNAME}
   ls *_comp.fits > temp.dat
-  ${params.codeDir}collect_transients.py --infile temp.dat --out transients.fits --ignoremissing
+  collect_transients.py --infile temp.dat --out transients.fits --ignoremissing
   """
 }
 
