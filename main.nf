@@ -6,34 +6,50 @@ author = "Paul Hancock"
 version = "2.2.0"
 prev_git_hash = "7d6c6"
 date = "2022-02-24"
-/* CONFIGURATION STAGE */
 
-/* for executing without a container */
-params.codeDir = "${baseDir}/"
-params.stilts = "stilts"
 
-// output directory
-params.output_dir = "${baseDir}/results/"
-
-// input images are listed in this file, one image per line
-params.image_file = "$baseDir/images.txt"
-
-// Warping stage
-params.warp = true
-params.ref_catalogue = "$baseDir/master.fits"
-params.refcat_ra = 'ra'
-params.refcat_dec = 'dec'
-
-// Plotting params
-params.by_epoch = true
-
-// monitoring of a pre-determined source
-params.use_monitoring_src_file = false
-params.monitoring_src_file = ""
-
-// Source finding region file
-params.use_region_file = false
-params.region_file = ""
+params.help = false
+if ( params.help ) {
+    help = """Robbie: A batch processing work-flow for the detection of radio transients and
+             |        variables
+             |Required argurments:
+             |  --image_file  A text file where each line is the location of an image fits file.
+             |                [default: ${params.image_file}]
+             | --stilts       The command required to run stilts.
+             |                Eg. "java -jar ~/Downloads/stilts.jar"
+             |                [default: ${params.stilts}]
+             |
+             |Warping arguments:
+             |  --warp        Include if you want to warp your image files (with fits_warp.py)
+             |                to correct for the ionosphere.
+             |                [default: ${params.warp}]
+             |  --ref_catalogue
+             |                The reference catalogue to warp your images to match.
+             |                [default: ${params.ref_catalogue}]
+             |  --refcat_ra   The label the reference catalogue uses for Right Acension.
+             |                [default: ${params.refcat_ra}]
+             |  --refcat_dec  The label the reference catalogue uses for Declination.
+             |                [default: ${params.refcat_dec}]
+             |
+             |Monitoring arguments:
+             |  --use_monitoring_src_file
+             |                Use the monitoring source file. [default: ${params.use_monitoring_src_file}]
+             |  --monitoring_src_file
+             |                The location of the monitoring source file. [default: ${params.monitoring_src_file}]
+             |
+             |Source finding arguments:
+             | --use_region_file
+             |                Use a source finding file. [default: ${params.use_region_file}]
+             | --region_file  The location of the source finding file. [default: ${params.region_file}]
+             |
+             |Directory arguments:
+             |  --output_dir  The directory to output the results to.
+             |                [default: ${params.output_dir}]
+             |  -w            The Nextflow work directory. Delete the directory once the processs
+             |                is finished [default: ${workDir}]""".stripMargin()
+    println(help)
+    exit(0)
+}
 
 
 log.info """\
@@ -41,8 +57,7 @@ log.info """\
          ==========================
          version      : ${version} (${prev_git_hash}) - ${date}
          images from  : ${params.image_file}
-         do warping   : ${params.warp}
-         warp ref cat : ${params.ref_catalogue}
+         warp ref cat : ${params.warp} / ${params.ref_catalogue}
          minotor src  : ${params.use_monitoring_src_file} / ${params.monitoring_src_file}
          region file  : ${params.use_region_file} / ${params.region_file}
          output to    : ${params.output_dir}
