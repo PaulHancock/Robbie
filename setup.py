@@ -49,7 +49,7 @@ setup(
         "scripts/join_catalogues.py",
         "scripts/plot_variables.py",
         # nextflow
-        "main.nf",
+        "robbie.nf",
     ],
 )
 os.remove("robbie_version.sh")

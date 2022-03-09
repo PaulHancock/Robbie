@@ -6,7 +6,7 @@ author = "Paul Hancock"
 
 params.help = false
 if ( params.help ) {
-    help = """Robbie: A batch processing work-flow for the detection of radio transients and
+    help = """Robbie.nf: A batch processing work-flow for the detection of radio transients and
              |        variables
              |Required argurments:
              |  --image_file  A text file where each line is the location of an image fits file.
