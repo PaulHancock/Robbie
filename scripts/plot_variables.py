@@ -5,12 +5,14 @@ from astropy.table import Table
 import dateutil
 import dateutil.parser
 import numpy as np
-import matplotlib
-from matplotlib import pyplot
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+from matplotlib.cm import viridis_r
 import argparse
 import sys
 import os
 import multiprocessing as mp
+import datetime
 
 __author__ = ["Paul Hancock"]
 __date__ = '2020/05/29'
@@ -33,11 +35,11 @@ def plot_summary_table(filename, plotfile):
     mean_peak_flux = tab['mean_peak_flux']
 
     kwargs = {'fontsize':14}
-    fig = pyplot.figure(figsize=(5,8))
+    fig = plt.figure(figsize=(5,8))
 
 
     ax = fig.add_subplot(1,1,1)
-    cax = ax.scatter(md, np.log10(pval_peak_flux), c = np.log10(mean_peak_flux), cmap=matplotlib.cm.viridis_r)
+    cax = ax.scatter(md, np.log10(pval_peak_flux), c = np.log10(mean_peak_flux), cmap=viridis_r)
     cb = fig.colorbar(cax,ax=ax)
     cb.set_label("log10(Peak flux in epoch 1) (Jy)", **kwargs)
 
@@ -51,7 +53,7 @@ def plot_summary_table(filename, plotfile):
     ax.fill_between([-0.3,0.05],-25, y2=2, color='k', alpha=0.2)
     ax.fill_betweenx([-3,2],0.05, x2=0.3, color='k', alpha=0.2)
     ax.text(-0.25, -5, "not variable", **kwargs)
-    pyplot.savefig(plotfile)
+    plt.savefig(plotfile)
     return
 
 
@@ -76,9 +78,9 @@ def plot_lc_table(flux_table, stats_table, start=0, stride=1, plot_dir="plots"):
     """
     ftab = Table.read(flux_table)
     stab = Table.read(stats_table)
+    epochs = [a for a in ftab.colnames if a.startswith('epoch')]
     fluxes = [a for a in ftab.colnames if a.startswith('peak_flux')]
     err_fluxes = [a for a in ftab.colnames if a.startswith('err_peak_flux')]
-    epoch = list(range(len(fluxes)))
     for row in ftab[start::stride]:
         fname = '{0}/{1}.png'.format(plot_dir, row['uuid'])
         print(fname, end='')
@@ -87,15 +89,30 @@ def plot_lc_table(flux_table, stats_table, start=0, stride=1, plot_dir="plots"):
             continue
         srow = stab[stab['uuid'] == row['uuid']]
 
-        pyplot.clf()
+        # Sort date by date
+        these_epochs = [datetime.datetime.strptime(a, "%Y-%m-%dT%H:%M:%S") for a in list(row[epochs])]
+        zipped_list = list(zip(list(row[epochs]), list(row[fluxes]), list(row[err_fluxes])))
+        sorted_list = sorted(zipped_list, key=lambda t: datetime.datetime.strptime(t[0], "%Y-%m-%dT%H:%M:%S"))
+        sorted_epoch, sorted_flux, sorted_err_flux = list(zip(*sorted_list))
+
+        #print('\n', list(row[epochs]), list(row[fluxes]), list(row[err_fluxes]))
+
+        plt.clf()
         s = 'm={0:5.3f}\nmd={1:4.2f}\nchisq={2:4.1f}'.format(
              srow['m'][0], srow['md'][0], srow['chisq_peak_flux'][0])
-        pyplot.errorbar(epoch, list(row[fluxes]), yerr=list(row[err_fluxes]), label=s)
-        pyplot.ylabel('Flux Density (Jy/Beam)')
-        pyplot.xlabel('Epoch')
-        pyplot.title('{0}'.format(row['uuid']))
-        pyplot.legend()
-        pyplot.savefig(fname, bbox_inches='tight')
+        # convert epochs to datetime objects
+        these_epochs = [datetime.datetime.strptime(a, "%Y-%m-%dT%H:%M:%S") for a in list(row[epochs])]
+        fig, ax = plt.subplots()
+        ax.errorbar(sorted_epoch, sorted_flux, yerr=sorted_err_flux, label=s)
+        ax.set_ylabel('Flux Density (Jy/Beam)')
+        ax.set_xlabel('Epoch')
+        fig.autofmt_xdate()
+        ax.fmt_xdata = mdates.DateFormatter("%Y-%m-%dT%H:%M:%S")
+        #plt.gcf().autofmt_xdate()
+        #plt.gca().xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m-%dT%H:%M:%S"))
+        plt.title('{0}'.format(row['uuid']))
+        plt.legend()
+        plt.savefig(fname, bbox_inches='tight')
         print(" ... done")
     return
 
