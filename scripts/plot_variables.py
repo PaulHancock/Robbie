@@ -95,9 +95,6 @@ def plot_lc_table(flux_table, stats_table, start=0, stride=1, plot_dir="plots"):
         sorted_list = sorted(zipped_list, key=lambda t: datetime.datetime.strptime(t[0], "%Y-%m-%dT%H:%M:%S"))
         sorted_epoch, sorted_flux, sorted_err_flux = list(zip(*sorted_list))
 
-        #print('\n', list(row[epochs]), list(row[fluxes]), list(row[err_fluxes]))
-
-        plt.clf()
         s = 'm={0:5.3f}\nmd={1:4.2f}\nchisq={2:4.1f}'.format(
              srow['m'][0], srow['md'][0], srow['chisq_peak_flux'][0])
         # convert epochs to datetime objects
@@ -113,6 +110,7 @@ def plot_lc_table(flux_table, stats_table, start=0, stride=1, plot_dir="plots"):
         plt.title('{0}'.format(row['uuid']))
         plt.legend()
         plt.savefig(fname, bbox_inches='tight')
+        plt.close(fig)
         print(" ... done")
     return
 
