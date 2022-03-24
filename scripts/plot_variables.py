@@ -15,7 +15,7 @@ import multiprocessing as mp
 import datetime
 
 __author__ = ["Paul Hancock"]
-__date__ = '2020/05/29'
+__date__ = '2022/03/24'
 
 
 def plot_summary_table(filename, plotfile):
@@ -57,7 +57,7 @@ def plot_summary_table(filename, plotfile):
     return
 
 
-def plot_lc_table(flux_table, stats_table, start=0, stride=1, plot_dir="plots"):
+def plot_lc_table(flux_table, stats_table, start=0, stride=1, plot_dir="plots", dates=False):
     """
     Create individual light curve plots.
     Each plot is saved to plots/uuid.png
@@ -75,47 +75,56 @@ def plot_lc_table(flux_table, stats_table, start=0, stride=1, plot_dir="plots"):
 
     stride : int
         Process every Nth row of the table. Default =1
+    
+    dates : bool = False
+        If true then use dates for the x-axis value/format
     """
-    ftab = Table.read(flux_table)
-    stab = Table.read(stats_table)
-    epochs = [a for a in ftab.colnames if a.startswith('epoch')]
-    fluxes = [a for a in ftab.colnames if a.startswith('peak_flux')]
-    err_fluxes = [a for a in ftab.colnames if a.startswith('err_peak_flux')]
-    for row in ftab[start::stride]:
+    flux_tab = Table.read(flux_table)
+    stats_tab = Table.read(stats_table)
+    epochs = [a for a in flux_tab.colnames if a.startswith('epoch')]
+    fluxes = [a for a in flux_tab.colnames if a.startswith('peak_flux')]
+    err_fluxes = [a for a in flux_tab.colnames if a.startswith('err_peak_flux')]
+    for row in flux_tab[start::stride]:
         fname = '{0}/{1}.png'.format(plot_dir, row['uuid'])
         print(fname, end='')
         if os.path.exists(fname):
             print(" ... skip")
             continue
-        srow = stab[stab['uuid'] == row['uuid']]
+        srow = stats_tab[stats_tab['uuid'] == row['uuid']]
 
         # Sort date by date
-        these_epochs = [datetime.datetime.strptime(a, "%Y-%m-%dT%H:%M:%S") for a in list(row[epochs])]
-        zipped_list = list(zip(list(row[epochs]), list(row[fluxes]), list(row[err_fluxes])))
-        sorted_list = sorted(zipped_list, key=lambda t: datetime.datetime.strptime(t[0], "%Y-%m-%dT%H:%M:%S"))
-        sorted_epoch, sorted_flux, sorted_err_flux = list(zip(*sorted_list))
+        mask = np.where(['None' not in row[a] for a in epochs])[0]
+        epoch_mask = list(np.choose(mask, epochs))
+        flux_mask = list(np.choose(mask, fluxes))
+        err_flux_mask = list(np.choose(mask, err_fluxes))
+        if dates:
+            epoch_times = [datetime.datetime.strptime(a, "%Y-%m-%dT%H:%M:%S") for a in list(row[epochs][epoch_mask])]
+        else:
+            epoch_times = list(range(len(epoch_mask)))
+
 
         s = 'm={0:5.3f}\nmd={1:4.2f}\nchisq={2:4.1f}'.format(
              srow['m'][0], srow['md'][0], srow['chisq_peak_flux'][0])
         # convert epochs to datetime objects
-        these_epochs = [datetime.datetime.strptime(a, "%Y-%m-%dT%H:%M:%S") for a in list(row[epochs])]
         fig, ax = plt.subplots()
-        ax.errorbar(sorted_epoch, sorted_flux, yerr=sorted_err_flux, label=s)
+        ax.errorbar(epoch_times,
+                    list(row[fluxes][flux_mask]), 
+                    yerr=row[err_fluxes][err_flux_mask], 
+                    label=s)
         ax.set_ylabel('Flux Density (Jy/Beam)')
         ax.set_xlabel('Epoch')
-        fig.autofmt_xdate()
-        ax.fmt_xdata = mdates.DateFormatter("%Y-%m-%dT%H:%M:%S")
-        #plt.gcf().autofmt_xdate()
-        #plt.gca().xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m-%dT%H:%M:%S"))
-        plt.title('{0}'.format(row['uuid']))
-        plt.legend()
+        ax.set_title('{0}'.format(row['uuid']))
+        ax.legend()
+        if dates:
+            fig.autofmt_xdate()
+            ax.fmt_xdata = mdates.DateFormatter("%Y-%m-%dT%H:%M:%S")
         plt.savefig(fname, bbox_inches='tight')
         plt.close(fig)
         print(" ... done")
     return
 
 
-def plot_lc_table_parallel(flux_table, stats_table, light_curve_dir, nprocs=1):
+def plot_lc_table_parallel(flux_table, stats_table, light_curve_dir, dates, nprocs=1):
     """
     parameters
     ----------
@@ -124,26 +133,38 @@ def plot_lc_table_parallel(flux_table, stats_table, light_curve_dir, nprocs=1):
 
     stats_table : str
         Filename of the stats table
+    
+    light_curve_dir : str
+        Location to store the plots
+
+    dates : bool
+        Whether to use dates for the plot horizontal axis (True) or epochs (False)
 
     nprocs : int
         Number of processes to use simultaneously
     """
     pool = mp.Pool(nprocs)
+    results = []
     for i in range(nprocs):
-        pool.apply_async(
-            plot_lc_table,
-            args=[
-                flux_table,
-                stats_table
-            ],
-            kwds={
-                'start':i,
-                'stride':nprocs,
-                'plot_dir':light_curve_dir,
-            }
+        results.append(pool.apply_async(
+                            plot_lc_table,
+                            args=[
+                                flux_table,
+                                stats_table
+                            ],
+                            kwds={
+                                'start':i,
+                                'stride':nprocs,
+                                'plot_dir':light_curve_dir,
+                                'dates':dates
+                            }
+                       )
         )
     pool.close()
     pool.join()
+    # This forces any raised exceptions within the apply_async to be re-raised here
+    for r in results:
+        r.get()
 
 
 if __name__ == "__main__":
@@ -160,7 +181,7 @@ if __name__ == "__main__":
     group1.add_argument("--lc_dir", dest='light_curve_dir', type=str, default="plots",
                         help="The light curve plots output directory")
     group1.add_argument("--dates", dest='dates', action='store_true', default=False,
-                        help="Individual plots have date on the horizontal axis. [db only]")
+                        help="Individual plots have date on the horizontal axis.")
     group1.add_argument("--cores", dest='cores', type=int, default=None,
                         help="Number of cores to use: Default all")
 
@@ -174,7 +195,11 @@ if __name__ == "__main__":
             print("ERROR: --stable and --ftable are both required, only one supplied.")
         plot_summary_table(results.stable, results.plotfile)
         if results.all:
-            plot_lc_table_parallel(results.ftable, results.stable, results.light_curve_dir, nprocs=results.cores)
+            plot_lc_table_parallel(results.ftable, 
+                                   results.stable, 
+                                   results.light_curve_dir, 
+                                   results.dates,
+                                   nprocs=results.cores)
     else:
         parser.print_help()
         sys.exit()
