@@ -11,7 +11,7 @@ if ( params.help ) {
              |Required argurments:
              |  --image_file  A text file where each line is the location of an image fits file.
              |                [default: ${params.image_file}]
-             | --stilts       The command required to run stilts.
+             |  --stilts      The command required to run stilts.
              |                Eg. "java -jar ~/Downloads/stilts.jar"
              |                [default: ${params.stilts}]
              |
@@ -41,7 +41,7 @@ if ( params.help ) {
              |Directory arguments:
              |  --output_dir  The directory to output the results to.
              |                [default: ${params.output_dir}]
-             |  -keep_epoch_images
+             |  --keep_epoch_images
              |                Keep the epoch images after warping.
              |                [default: ${params.keep_epoch_images}]
              |  -w            The Nextflow work directory. Delete the directory once the processs

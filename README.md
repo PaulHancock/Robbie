@@ -13,7 +13,7 @@ The workflow is described in [Hancock et al. 2018](https://ui.adsabs.harvard.edu
 - Persistent source catalogue creation:
   - Stack the warped images into a cube and form a mean image
   - Source find on the mean image to make a master catalogue
-  - Prioritized fit this catalogue into each of the individual images
+  - Priorized fit this catalogue into each of the individual images
   - Join the catalogues into a single table and calculate variability stats
 - Transient candidate identification:
   - Use the persistent source to mask known sources from the individual images
