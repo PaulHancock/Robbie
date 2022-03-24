@@ -1,8 +1,8 @@
 #! /usr/bin/env bash
+cd ..
+version=$(robbie_version.sh)
 
-version=$(grep "^version" ../main.nf | awk '{print $3}' | sed s:\"::g )
-
-# build the container using
-docker build . -t "paulhancock/robbie-next:${version}"
-# tag this build as latest
+# build the container and update tag
+docker build . -f docker/Dockerfile -t "paulhancock/robbie-next:${version}" && \
 docker tag paulhancock/robbie-next:${version} paulhancock/robbie-next:latest
+cd -
