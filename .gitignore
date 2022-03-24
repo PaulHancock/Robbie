@@ -17,3 +17,5 @@ env/*
 *.dot
 *.html
 trace.txt*
+*.egg-info
+version.txt
