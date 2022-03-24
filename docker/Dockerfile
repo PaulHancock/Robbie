@@ -4,7 +4,7 @@ LABEL maintainer="Paul Hancock <paul.hancock@curtin.edu.au>"
 
 # non-python dependencies
 RUN apt update && \
-    apt install -y openjdk-11-jdk && \
+    apt install -y openjdk-11-jdk swarp && \
     apt-get autoremove -y && \
     apt-get clean
 
