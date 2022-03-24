@@ -187,7 +187,12 @@ process make_mean_image {
 
   ls *.fits > images.txt
   ${params.swarp} -d > swarp.config
-  ${params.swarp} @images.txt -c swarp.config -SUBTRACT_BACK N -PROJECTION_TYPE SIN -COMBINE_TYPE MEDIAN -IMAGEOUT_NAME mean_image.fits -COPY_KEYWORDS BPA,BMAJ,BMIN
+  ${params.swarp} @images.txt -c swarp.config \
+                  -SUBTRACT_BACK N \
+                  -PROJECTION_TYPE SIN \
+                  -COMBINE_TYPE MEDIAN \
+                  -IMAGEOUT_NAME mean_image.fits \
+                  -COPY_KEYWORDS BPA,BMAJ,BMIN,FREQ
   """
 }
 
@@ -314,7 +319,13 @@ process plot_lc {
   """
   echo ${task.process} on \${HOSTNAME}
   mkdir light_curve_plots
-  plot_variables.py --ftable ${flux_table} --stable ${stats_table} --plot variables.png --lc_dir light_curve_plots --all --cores ${task.cpus}
+  plot_variables.py --ftable ${flux_table} \
+                    --stable ${stats_table} \
+                    --plot variables.png \
+                    --lc_dir light_curve_plots \
+                    --all \
+                    --cores ${task.cpus} \
+                    --dates
   """
 }
 
@@ -448,18 +459,18 @@ workflow {
   bane_raw( image_ch )
   initial_sfind( bane_raw.out )
   fits_warp( initial_sfind.out,
-             Channel.fromPath( params.ref_catalogue ) )
+            Channel.fromPath( params.ref_catalogue ) )
   make_mean_image( fits_warp.out[0].collect() )
   bane_mean_image( make_mean_image.out )
   sfind_mean_image( bane_mean_image.out )
   source_monitor( sfind_mean_image.out,
                   fits_warp.out[1] )
   join_fluxes( source_monitor.out[1].collect(),
-               sfind_mean_image.out )
+              sfind_mean_image.out )
   compute_stats( join_fluxes.out )
   plot_lc( compute_stats.out )
   mask_images( sfind_mean_image.out,
-               fits_warp.out[1] )
+              fits_warp.out[1] )
   sfind_masked( mask_images.out )
   compile_transients_candidates( sfind_masked.out.collect() )
   transients_plot( compile_transients_candidates.out )
