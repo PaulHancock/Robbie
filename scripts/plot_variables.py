@@ -94,6 +94,9 @@ def plot_lc_table(flux_table, stats_table, start=0, stride=1, plot_dir="plots", 
 
         # Sort date by date
         mask = np.where(['None' not in row[a] for a in epochs])[0]
+        if len(mask) == 0 :
+            print(" ... no data")
+            continue
         epoch_mask = list(np.choose(mask, epochs))
         flux_mask = list(np.choose(mask, fluxes))
         err_flux_mask = list(np.choose(mask, err_fluxes))
@@ -102,9 +105,9 @@ def plot_lc_table(flux_table, stats_table, start=0, stride=1, plot_dir="plots", 
         else:
             epoch_times = list(range(len(epoch_mask)))
 
+        # Annotate with stats
+        s = f"m={srow['m'][0]:5.3f}\nmd={srow['md'][0]:4.2f}\nchisq={srow['chisq_peak_flux'][0]:4.1f}"
 
-        s = 'm={0:5.3f}\nmd={1:4.2f}\nchisq={2:4.1f}'.format(
-             srow['m'][0], srow['md'][0], srow['chisq_peak_flux'][0])
         # convert epochs to datetime objects
         fig, ax = plt.subplots()
         ax.errorbar(epoch_times,
@@ -124,7 +127,7 @@ def plot_lc_table(flux_table, stats_table, start=0, stride=1, plot_dir="plots", 
     return
 
 
-def plot_lc_table_parallel(flux_table, stats_table, light_curve_dir, dates, nprocs=1):
+def plot_lc_table_parallel(flux_table, stats_table, light_curve_dir, dates, nprocs=1, debug=False):
     """
     parameters
     ----------
@@ -146,7 +149,7 @@ def plot_lc_table_parallel(flux_table, stats_table, light_curve_dir, dates, npro
     pool = mp.Pool(nprocs)
     results = []
     for i in range(nprocs):
-        results.append(pool.apply_async(
+        r=pool.apply_async(
                             plot_lc_table,
                             args=[
                                 flux_table,
@@ -159,12 +162,16 @@ def plot_lc_table_parallel(flux_table, stats_table, light_curve_dir, dates, npro
                                 'dates':dates
                             }
                        )
-        )
+        if debug:
+            r.get()
+        else:
+            results.append(r)
     pool.close()
     pool.join()
-    # This forces any raised exceptions within the apply_async to be re-raised here
-    for r in results:
-        r.get()
+    if not debug:
+        # This forces any raised exceptions within the apply_async to be re-raised here
+        for r in results:
+            r.get()
 
 
 if __name__ == "__main__":
@@ -184,6 +191,8 @@ if __name__ == "__main__":
                         help="Individual plots have date on the horizontal axis.")
     group1.add_argument("--cores", dest='cores', type=int, default=None,
                         help="Number of cores to use: Default all")
+    group1.add_argument("--debug", dest='debug', action='store_true', default=False,
+                        help="Use debug mode")
 
     results = parser.parse_args()
 
@@ -199,7 +208,8 @@ if __name__ == "__main__":
                                    results.stable, 
                                    results.light_curve_dir, 
                                    results.dates,
-                                   nprocs=results.cores)
+                                   nprocs=results.cores,
+                                   debug=results.debug)
     else:
         parser.print_help()
         sys.exit()
