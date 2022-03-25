@@ -15,6 +15,7 @@ RUN cd /usr/local/lib && wget http://www.star.bris.ac.uk/~mbt/stilts/stilts.jar 
 # python dependencies, with specific versions specified for longevity, and Robbie scripts (always)
 WORKDIR /tmp/build
 ADD . /tmp/build
+# using pip install . will break the shebang lines of some scripts so stick with python setup.py install
 RUN pip install -r requirements.txt && \
-    pip install . && \
+    python setup.py install && \
     rm -rf /tmp/build
