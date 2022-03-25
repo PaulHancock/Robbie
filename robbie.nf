@@ -316,7 +316,7 @@ process plot_lc {
   path 'light_curve_plots'
 
   script:
-  dates=(params.dates?"--dates":"")
+  dates=(params.plotdates?"--dates":"")
   """
   echo ${task.process} on \${HOSTNAME}
   mkdir light_curve_plots
