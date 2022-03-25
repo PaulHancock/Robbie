@@ -16,5 +16,5 @@ RUN cd /usr/local/lib && wget http://www.star.bris.ac.uk/~mbt/stilts/stilts.jar 
 WORKDIR /tmp/build
 ADD . /tmp/build
 RUN pip install -r requirements.txt && \
-    python setup.py install && \
+    pip install . && \
     rm -rf /tmp/build

@@ -1,5 +1,4 @@
-#! /usr/bin/env python
-from __future__ import print_function
+#! /usr/bin/env python3
 
 from astropy.table import Table
 import dateutil
@@ -15,7 +14,7 @@ import multiprocessing as mp
 import datetime
 
 __author__ = ["Paul Hancock"]
-__date__ = '2022/03/24'
+__date__ = '2022/03/25'
 
 
 def plot_summary_table(filename, plotfile):
