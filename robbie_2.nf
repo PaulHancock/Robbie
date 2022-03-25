@@ -275,35 +275,6 @@ process source_monitor {
   """
 }
 
-process source_monitor_nowarp {
-  label 'aegean'
-
-  input:
-  path mean_cat
-  tuple val(basename), path(image)
-  path(bkg_rms_fits)
-
-  output:
-  tuple path("${basename}_comp.fits"), path(image, includeInputs:true)
-  path "${basename}_comp.fits"
-
-  script:
-  """
-  echo ${task.process} on \${HOSTNAME}
-  aegean --cores ${task.cpus} --background *_bkg.fits --noise *_rms.fits --noregroup\
-         --table ${basename}.fits --priorized 1 --input ${mean_cat} ${basename}.fits
-
-  # super hack to get stilts to play nice and add two columns of strings
-  epoch=\$(get_epoch.py ${basename}.fits)
-  epoch="\\\\\\\"\${epoch}\\\\\\\""
-  filename="\\\\\\\"${basename}.fits\\\\\\\""
-  ${params.stilts} tpipe in=${basename}_comp.fits cmd="addcol image \${filename}" \
-                                                  cmd="addcol epoch \${epoch}" \
-                                                  ofmt=fits out=temp.fits
-  mv temp.fits ${basename}_comp.fits
-  """
-}
-
 process join_fluxes {
   label 'python'
 
@@ -377,11 +348,18 @@ process mask_images {
   tuple val("${basename}_masked"), path("*.fits", includeInputs:true)
 
   script:
-  """
-  echo ${task.process} on \${HOSTNAME}
-  ls *.fits
-  AeRes -c ${mean_cat} -f ${warped_images.join(" ")} -r ${basename}_masked.fits --mask --sigma 0.1
-  """
+  if (params.warp)
+    """
+    echo ${task.process} on \${HOSTNAME}
+    ls *.fits
+    AeRes -c ${mean_cat} -f *_warped.fits -r ${basename}_masked.fits --mask --sigma 0.1
+    """
+  else
+    """
+    echo ${task.process} on \${HOSTNAME}
+    ls *.fits
+    AeRes -c ${mean_cat} -f *[0-9].fits -r ${basename}_masked.fits --mask --sigma 0.1
+    """
 }
 
 process sfind_masked {
@@ -410,35 +388,6 @@ process sfind_masked {
   ls *.fits
   """
 }
-
-process sfind_masked_nowarp {
-  label 'aegean'
-
-  input:
-  tuple val(basename), path(masked_images)
-  path(bkg_rms_fits)
-
-  output:
-  path "${basename}_comp.fits" optional true
-
-  script:
-  """
-  echo ${task.process} on  \${HOSTNAME}
-  ls *
-  aegean --cores ${task.cpus} --background *_bkg.fits --noise *_rms.fits --table ${basename}.fits ${basename}.fits ${region_command}
-  # Don't filter if there is no output
-  if [[ -e ${basename}_comp.fits ]]
-  then
-    filter_transients.py --incat ${basename}_comp.fits --image ${basename}.fits --outcat out.fits
-    if [[ -e out.fits ]]
-    then
-      mv out.fits ${basename}_comp.fits
-    fi
-  fi
-  ls *.fits
-  """
-}
-
 
 process compile_transients_candidates {
   label 'python'
@@ -523,7 +472,7 @@ workflow {
     bane_raw( image_ch )
     initial_sfind( bane_raw.out )
     fits_warp( initial_sfind.out,
-              Channel.fromPath( params.ref_catalogue ) )
+              Channel.fromPath( params.ref_catalogue ) ) 
     make_mean_image( fits_warp.out[0].collect() )
     bane_mean_image( make_mean_image.out )
     sfind_mean_image( bane_mean_image.out )
@@ -545,16 +494,16 @@ workflow {
     bane_mean_image( make_mean_image.out )
     sfind_mean_image( bane_mean_image.out )
     bane_raw( image_ch )
-    source_monitor_nowarp( sfind_mean_image.out,
-                    image_ch, bane_mean_image.out.map{it -> it[2]}.collect())
-    join_fluxes( source_monitor_nowarp.out[1].collect(),
+    source_monitor(sfind_mean_image.out, 
+                  bane_raw.out.map(it -> [it[0], [it[1], it[2][0], it[2][1]]]))
+    join_fluxes( source_monitor.out[1].collect(),
                 sfind_mean_image.out )
     compute_stats( join_fluxes.out )
     plot_lc( compute_stats.out )
     mask_images( sfind_mean_image.out,
-                image_ch)
-    sfind_masked_nowarp( mask_images.out, bane_mean_image.out.map{it -> it[2]}.collect())
-    compile_transients_candidates( sfind_masked_nowarp.out.collect() )
+                bane_raw.out.map(it -> [it[0], [it[1], it[2][0], it[2][1]]]))
+    sfind_masked( mask_images.out)
+    compile_transients_candidates( sfind_masked.out.collect() )
     transients_plot( compile_transients_candidates.out )  
 
   }
