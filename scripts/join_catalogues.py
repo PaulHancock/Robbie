@@ -59,8 +59,9 @@ def join_catalogues(reference, epochs):
 
     # make the empty columns
     new_cols =[]
-    data = np.zeros(len(ref), dtype=np.float32)
+    data = np.zeros(len(ref), dtype=np.float32)*np.nan
     str_data = np.full(len(ref),Table.read(files[0])['image'][0])
+    str_data[:] = 'None'
 
     for i in range(len(files)):
         for colname in ['peak_flux_{0}','err_peak_flux_{0}', 'local_rms_{0}', 'background_{0}']:
@@ -68,8 +69,11 @@ def join_catalogues(reference, epochs):
         for colname in ['image_{0}', 'epoch_{0}']:
             new_cols.append(Column(data=str_data.copy(), name=colname.format(i)))
     print("ref table is {0} rows".format(len(ref)))
-    ref.add_columns(new_cols)
-
+    
+    # if we add all the columns at once the ordering is borked!
+    for col in new_cols:
+        ref.add_column(col)
+    
     # now put the data into the new big table
     for i,f in enumerate(files):
         print("Joining epoch {0} catalogue {1}".format(i,f))

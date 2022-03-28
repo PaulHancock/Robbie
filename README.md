@@ -26,6 +26,7 @@ Robbie relies on the following software:
 - [fits_warp](https://github.com/nhurleywalker/fits_warp)
 - [Stils/TOPCAT](http://www.star.bris.ac.uk/~mbt/topcat/)
 - [Nextflow](https://www.nextflow.io/)
+- [SWarp](https://www.astromatic.net/software/swarp/)
 
 All dependencies except for Nextflow will be installed in the docker image.
 

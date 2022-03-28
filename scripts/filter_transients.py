@@ -1,4 +1,5 @@
-#!/usr/bin/env python
+#! /usr/bin/env python3
+
 from AegeanTools.regions import Region
 from astropy.table import Table
 from astropy.io import fits
