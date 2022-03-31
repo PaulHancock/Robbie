@@ -183,31 +183,16 @@ process make_mean_image {
 
   script:
   """
-  #!/usr/bin/env python
+  echo ${task.process} on \${HOSTNAME}
 
-  from astropy.io import fits
-  import sys
-  import socket
-
-  print(f"${task.process} on {socket.gethostname()}")
-  files = ["${image.join('","')}"]
-  if len(files) < 2:
-      print("not enough files, need at least 2 to make a mean image")
-      print("given {0}".format(files))
-      sys.exit(1)
-
-  print(f"Reading {files[0]}")
-  hdu = fits.open(files[0])
-  data = hdu[0].data
-
-  for f in files[1:]:
-      print(f"Adding {f}")
-      data += fits.getdata(f)
-  data /= len(files)
-
-  hdu[0].data = data
-  hdu.writeto("mean_image.fits")
-  print("Wrote mean_image.fits")
+  ls *.fits > images.txt
+  ${params.swarp} -d > swarp.config
+  ${params.swarp} @images.txt -c swarp.config \
+                  -SUBTRACT_BACK N \
+                  -PROJECTION_TYPE SIN \
+                  -COMBINE_TYPE MEDIAN \
+                  -IMAGEOUT_NAME mean_image.fits \
+                  -COPY_KEYWORDS BPA,BMAJ,BMIN,FREQ
   """
 }
 
@@ -331,10 +316,16 @@ process plot_lc {
   path 'light_curve_plots'
 
   script:
+  dates=(params.plotdates?"--dates":"")
   """
   echo ${task.process} on \${HOSTNAME}
   mkdir light_curve_plots
-  plot_variables.py --ftable ${flux_table} --stable ${stats_table} --plot variables.png --lc_dir light_curve_plots --all --cores ${task.cpus}
+  plot_variables.py --ftable ${flux_table} \
+                    --stable ${stats_table} \
+                    --plot variables.png \
+                    --lc_dir light_curve_plots \
+                    --all \
+                    --cores ${task.cpus} ${dates}
   """
 }
 

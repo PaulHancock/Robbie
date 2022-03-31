@@ -1,6 +1,6 @@
-#!/usr/bin/env python
+#! /usr/bin/env python3
 
-from __future__ import print_function
+
 __author__ = 'Paul Hancock'
 __date__ = '2019/08/18'
 
