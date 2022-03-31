@@ -350,11 +350,18 @@ process mask_images {
   tuple val("${basename}_masked"), path("*.fits", includeInputs:true)
 
   script:
-  """
-  echo ${task.process} on \${HOSTNAME}
-  ls *.fits
-  AeRes -c ${mean_cat} -f *_warped.fits -r ${basename}_masked.fits --mask --sigma 0.1
-  """
+  if (params.warp)
+    """
+    echo ${task.process} on \${HOSTNAME}
+    ls *.fits
+    AeRes -c ${mean_cat} -f *_warped.fits -r ${basename}_masked.fits --mask --sigma 0.1
+    """
+  else
+    """
+    echo ${task.process} on \${HOSTNAME}
+    ls *.fits
+    AeRes -c ${mean_cat} -f *[0-9].fits -r ${basename}_masked.fits --mask --sigma 0.1
+    """
 }
 
 
@@ -464,23 +471,44 @@ process transients_plot {
 
 
 workflow {
-  get_version( )
-  bane_raw( image_ch )
-  initial_sfind( bane_raw.out )
-  fits_warp( initial_sfind.out,
-             Channel.fromPath( params.ref_catalogue ) )
-  make_mean_image( fits_warp.out[0].collect() )
-  bane_mean_image( make_mean_image.out )
-  sfind_mean_image( bane_mean_image.out )
-  source_monitor( sfind_mean_image.out,
-                  fits_warp.out[1] )
-  join_fluxes( source_monitor.out[1].collect(),
-               sfind_mean_image.out )
-  compute_stats( join_fluxes.out )
-  plot_lc( compute_stats.out )
-  mask_images( sfind_mean_image.out,
-               fits_warp.out[1] )
-  sfind_masked( mask_images.out )
-  compile_transients_candidates( sfind_masked.out.collect() )
-  transients_plot( compile_transients_candidates.out )
+  if ( params.warp ) {
+    get_version( )
+    bane_raw( image_ch )
+    initial_sfind( bane_raw.out )
+    fits_warp( initial_sfind.out,
+              Channel.fromPath( params.ref_catalogue ) ) 
+    make_mean_image( fits_warp.out[0].collect() )
+    bane_mean_image( make_mean_image.out )
+    sfind_mean_image( bane_mean_image.out )
+    source_monitor( sfind_mean_image.out,
+                    fits_warp.out[1] )
+    join_fluxes( source_monitor.out[1].collect(),
+                sfind_mean_image.out )
+    compute_stats( join_fluxes.out )
+    plot_lc( compute_stats.out )
+    mask_images( sfind_mean_image.out,
+                fits_warp.out[1] )
+    sfind_masked( mask_images.out )
+    compile_transients_candidates( sfind_masked.out.collect() )
+    transients_plot( compile_transients_candidates.out )
+  }
+  else {
+    get_version( )
+    make_mean_image( image_ch.map{ it -> it[1] }.collect())
+    bane_mean_image( make_mean_image.out )
+    sfind_mean_image( bane_mean_image.out )
+    bane_raw( image_ch )
+    source_monitor(sfind_mean_image.out, 
+                  bane_raw.out.map(it -> [it[0], [it[1], it[2][0], it[2][1]]]))
+    join_fluxes( source_monitor.out[1].collect(),
+                sfind_mean_image.out )
+    compute_stats( join_fluxes.out )
+    plot_lc( compute_stats.out )
+    mask_images( sfind_mean_image.out,
+                bane_raw.out.map(it -> [it[0], [it[1], it[2][0], it[2][1]]]))
+    sfind_masked( mask_images.out)
+    compile_transients_candidates( sfind_masked.out.collect() )
+    transients_plot( compile_transients_candidates.out )  
+
+  }
 }
