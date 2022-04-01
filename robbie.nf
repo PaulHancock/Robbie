@@ -490,13 +490,13 @@ workflow {
     sfind_mean_image( bane_mean_image.out )
     bane_raw( image_ch )
     source_monitor(sfind_mean_image.out, 
-                  bane_raw.out.map(it -> [it[0], [it[1], it[2][0], it[2][1]]]))
+                  bane_raw.out.map(it -> [it[0], it.flatten()[1..3]]))
     join_fluxes( source_monitor.out[1].collect(),
                 sfind_mean_image.out )
     compute_stats( join_fluxes.out )
     plot_lc( compute_stats.out )
     mask_images( sfind_mean_image.out,
-                bane_raw.out.map(it -> [it[0], [it[1], it[2][0], it[2][1]]]))
+                bane_raw.out.map(it -> [it[0], it.flatten()[1..3]]))
     sfind_masked( mask_images.out)
     compile_transients_candidates( sfind_masked.out.collect() )
     transients_plot( compile_transients_candidates.out )  
