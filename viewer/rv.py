@@ -5,6 +5,11 @@ from astropy.wcs import WCS
 import numpy as np
 from bokeh.plotting import figure, show, output_file
 from bokeh import palettes
+from bokeh.models import ColumnDataSource, Circle
+from bokeh.layouts import gridplot
+import pandas as pd
+import numpy as np
+from astropy.io.votable import parse
 
 
 def load_mean_image(filename):
@@ -30,7 +35,48 @@ def get_imdata(data, ra, dec):
         }
     return imdata
 
-def main():
+
+def get_data(fname):
+    tab = parse(fname).get_first_table().to_table()
+    df = tab.to_pandas()
+    return df
+
+
+def get_joined_table_source():
+    # most likely there is a solution that doesn't involve so many intermediaries!
+    flux_table = get_data("/home/paulhancock/alpha/ADACS/MAP22A-TGalvin/Robbie-ADACS/results/flux_table.vot")
+    stats_table = get_data("/home/paulhancock/alpha/ADACS/MAP22A-TGalvin/Robbie-ADACS/results/stats_table.vot")
+    joined = flux_table.join(stats_table.set_index('uuid'), on='uuid')
+    df = joined
+    source = ColumnDataSource(data=dict( (i,df[i]) for i in df.columns))
+    return source
+
+def get_scatter_plots():
+    selected_circle = Circle(fill_alpha=1, fill_color="firebrick", line_color=None)
+    nonselected_circle = Circle(fill_alpha=0.2, fill_color="blue", line_color=None)
+
+
+    source = get_joined_table_source()
+    TOOLS = "box_select,lasso_select,help,pan,tap,wheel_zoom"
+
+    # create a new plot and add a renderer
+    left = figure(tools=TOOLS, width=300, height=300, title=None)
+    lr = left.circle('ref_ra', 'ref_dec', source=source)
+
+    # create another new plot and add a renderer
+    right = figure(tools=TOOLS, width=300, height=300, title=None)
+    rr = right.circle('md', 'pval_peak_flux_ks', source=source)
+
+    for r in [lr,rr]:
+        r.selection_glyph = selected_circle
+        r.nonselection_glyph = nonselected_circle
+
+    #p = gridplot([[left, right]])
+
+    return left,right
+
+
+def get_mean_image_plot():
     hdu = load_mean_image('results/mean_image.fits')
     data, ra, dec = mean_image_data(hdu)
     imdata = get_imdata(data,ra,dec)
@@ -49,9 +95,15 @@ def main():
             image='image',
             palette=palettes.mpl['Cividis'][256])#, level="image")
     #p.grid.grid_line_width = 0.5
+    return p
 
+def main():
     output_file(filename='viewer/RV.html', title="Robbie Viewer")
+    mean_image = get_mean_image_plot()
+    scatter_plots = get_scatter_plots()
+    p = gridplot([ scatter_plots,[mean_image]])
     show(p)
+
 
 if __name__ == "__main__":
     main()
