@@ -5,7 +5,8 @@ from astropy.wcs import WCS
 import numpy as np
 from bokeh.plotting import figure, show, output_file
 from bokeh import palettes
-from bokeh.models import ColumnDataSource, Circle
+from bokeh.models import (ColumnDataSource, Circle,
+                          DataTable, TableColumn, NumberFormatter)
 from bokeh.layouts import gridplot
 import pandas as pd
 import numpy as np
@@ -72,8 +73,15 @@ def get_scatter_plots():
         r.nonselection_glyph = nonselected_circle
 
     #p = gridplot([[left, right]])
-
-    return left,right
+    columns = [
+        TableColumn(field="uuid", title="UUID"),
+        TableColumn(field="ref_ra", title="RA", formatter=NumberFormatter(format="0.0000")),
+        TableColumn(field="ref_dec", title="DEC", formatter=NumberFormatter(format="0.0000")),
+        TableColumn(field="md", title="Debiased modulation index"),
+        TableColumn(field="pval_peak_flux_ks", title="PVal")
+    ]
+    data_table = DataTable(source=source, columns=columns, scroll_to_selection=True, sortable=True, background='#111111')
+    return left,right,data_table
 
 
 def get_mean_image_plot():
