@@ -70,7 +70,8 @@ def join_catalogues(reference, epochs):
             if 'image' in colname:
                 new_cols.append(Column(data=str_data.copy(), name=colname.format(i)))
             else:
-                new_cols.append(Column(data=str_data.copy(), name=colname.format(i), dtype='S25'))
+                new_cols.append(Column(data=str_data.copy(), name=colname.format(i), dtype='S19'))
+                
     print("ref table is {0} rows".format(len(ref)))
     
     # if we add all the columns at once the ordering is borked!

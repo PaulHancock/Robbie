@@ -100,7 +100,7 @@ def plot_lc_table(flux_table, stats_table, start=0, stride=1, plot_dir="plots", 
         flux_mask = list(np.choose(mask, fluxes))
         err_flux_mask = list(np.choose(mask, err_fluxes))
         if dates:
-            epoch_times = [datetime.datetime.strptime(a.split(".00")[0], "%Y-%m-%dT%H:%M:%S") for a in list(row[epochs][epoch_mask])]
+            epoch_times = [datetime.datetime.strptime(a, "%Y-%m-%dT%H:%M:%S") for a in list(row[epochs][epoch_mask])]
         else:
             epoch_times = list(range(len(epoch_mask)))
 
