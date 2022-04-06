@@ -120,8 +120,9 @@ def main():
     output_file(filename='viewer/RV.html', title="Robbie Viewer")
     source = get_joined_table_source()
     mean_image = get_mean_image_plot(source)
-    scatter_plots = get_scatter_plots(source)
-    p = gridplot([ scatter_plots,[mean_image]])
+    sky, variable, table = get_scatter_plots(source)
+    p = gridplot([ [sky, variable,mean_image, table]],
+                 sizing_mode='scale_width')
     show(p)
 
 
