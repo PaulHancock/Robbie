@@ -12,6 +12,7 @@ import pandas as pd
 import numpy as np
 from astropy.io.votable import parse
 
+TOOLS = "box_select,lasso_select,help,pan,tap,wheel_zoom,reset"
 
 def load_mean_image(filename):
     hdu = fits.open(filename)#'results/mean_image.fits')
@@ -19,11 +20,12 @@ def load_mean_image(filename):
 
 def mean_image_data(hdu):
     wcs = WCS(hdu[0].header)
-    x,y = np.indices(hdu[0].data.shape)
-    sky_map = wcs.pixel_to_world(x.ravel(),y.ravel())
-    ra = sky_map.ra.degree.reshape(x.shape)
-    dec = sky_map.dec.degree.reshape(x.shape)
-    return hdu[0].data, ra, dec
+    data = np.fliplr(hdu[0].data)
+    x,y = np.indices(data.shape[::-1])
+    sky_map = wcs.pixel_to_world(x.reshape(-1),y.reshape(-1))
+    ra = np.fliplr(sky_map.ra.degree.reshape(x.shape).T)
+    dec = sky_map.dec.degree.reshape(y.shape).T
+    return data, ra, dec
 
 def get_imdata(data, ra, dec):
     imdata ={'image':[data],
@@ -31,13 +33,13 @@ def get_imdata(data, ra, dec):
         'dec':[dec],
         'x':[ra[0,0]],
         'y':[dec[0,0]],
-        'dw':[abs(ra[-1,-1]-ra[0,0])],
-        'dh':[abs(dec[-1,-1]-dec[0,0])]
+        'dw':[abs(ra[0,0]-ra[0,-1])],
+        'dh':[abs(dec[0,0]-dec[-1,0])]
         }
     return imdata
 
 
-def get_data(fname):
+def get_tabdata(fname):
     tab = parse(fname).get_first_table().to_table()
     df = tab.to_pandas()
     return df
@@ -45,27 +47,31 @@ def get_data(fname):
 
 def get_joined_table_source():
     # most likely there is a solution that doesn't involve so many intermediaries!
-    flux_table = get_data("/home/paulhancock/alpha/ADACS/MAP22A-TGalvin/Robbie-ADACS/results/flux_table.vot")
-    stats_table = get_data("/home/paulhancock/alpha/ADACS/MAP22A-TGalvin/Robbie-ADACS/results/stats_table.vot")
+    flux_table = get_tabdata("/home/paulhancock/alpha/ADACS/MAP22A-TGalvin/Robbie-ADACS/results/flux_table.vot")
+    stats_table = get_tabdata("/home/paulhancock/alpha/ADACS/MAP22A-TGalvin/Robbie-ADACS/results/stats_table.vot")
     joined = flux_table.join(stats_table.set_index('uuid'), on='uuid')
     df = joined
     source = ColumnDataSource(data=dict( (i,df[i]) for i in df.columns))
     return source
 
-def get_scatter_plots():
+def get_scatter_plots(source):
     selected_circle = Circle(fill_alpha=1, fill_color="firebrick", line_color=None)
     nonselected_circle = Circle(fill_alpha=0.2, fill_color="blue", line_color=None)
 
-
-    source = get_joined_table_source()
-    TOOLS = "box_select,lasso_select,help,pan,tap,wheel_zoom"
+    
 
     # create a new plot and add a renderer
-    left = figure(tools=TOOLS, width=300, height=300, title=None)
+    left = figure(tools=TOOLS, 
+                  #width=300, height=300,
+                  title='Sky Plot',
+                  x_axis_label='RA (deg)', y_axis_label='DEC (deg)')
     lr = left.circle('ref_ra', 'ref_dec', source=source)
 
     # create another new plot and add a renderer
-    right = figure(tools=TOOLS, width=300, height=300, title=None)
+    right = figure(tools=TOOLS, 
+                   #width=300, height=300,
+                   title='Variables Plot',
+                   x_axis_label='md', y_axis_label='pval_peak_flux_ks')
     rr = right.circle('md', 'pval_peak_flux_ks', source=source)
 
     for r in [lr,rr]:
@@ -84,12 +90,13 @@ def get_scatter_plots():
     return left,right,data_table
 
 
-def get_mean_image_plot():
+def get_mean_image_plot(source):
     hdu = load_mean_image('results/mean_image.fits')
     data, ra, dec = mean_image_data(hdu)
     imdata = get_imdata(data,ra,dec)
 
-    p = figure(tooltips=[
+    p = figure(tools=TOOLS,
+               tooltips=[
                             ("value", "@image Jy/beam"),
                             ("RA", "@ra{0.00}°"),
                             ("DEC", "@dec{0.00}°")
@@ -102,13 +109,18 @@ def get_mean_image_plot():
     p.image(source=imdata, 
             image='image',
             palette=palettes.mpl['Cividis'][256])#, level="image")
+    p.circle(source=source, 
+             x='ref_ra', y='ref_dec',
+             radius=0.03, fill_color=None,
+             line_width=1.5, line_color='yellow')
     #p.grid.grid_line_width = 0.5
     return p
 
 def main():
     output_file(filename='viewer/RV.html', title="Robbie Viewer")
-    mean_image = get_mean_image_plot()
-    scatter_plots = get_scatter_plots()
+    source = get_joined_table_source()
+    mean_image = get_mean_image_plot(source)
+    scatter_plots = get_scatter_plots(source)
     p = gridplot([ scatter_plots,[mean_image]])
     show(p)
 
