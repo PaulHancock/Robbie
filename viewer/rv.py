@@ -8,15 +8,21 @@ from bokeh import palettes
 from bokeh.models import (ColumnDataSource, Circle,
                           DataTable, TableColumn, NumberFormatter)
 from bokeh.layouts import gridplot
+from bokeh.io import curdoc
 import pandas as pd
 import numpy as np
 from astropy.io.votable import parse
+from functools import lru_cache
 
 TOOLS = "box_select,lasso_select,help,pan,tap,wheel_zoom,reset"
+selected_circle = Circle(fill_alpha=1, fill_color="firebrick", line_color=None)
+nonselected_circle = Circle(fill_alpha=0.2, fill_color="blue", line_color=None)
 
+@lru_cache
 def load_mean_image(filename):
     hdu = fits.open(filename)#'results/mean_image.fits')
     return hdu
+
 
 def mean_image_data(hdu):
     wcs = WCS(hdu[0].header)
@@ -26,6 +32,7 @@ def mean_image_data(hdu):
     ra = np.fliplr(sky_map.ra.degree.reshape(x.shape).T)
     dec = sky_map.dec.degree.reshape(y.shape).T
     return data, ra, dec
+
 
 def get_imdata(data, ra, dec):
     imdata ={'image':[data],
@@ -44,7 +51,7 @@ def get_tabdata(fname):
     df = tab.to_pandas()
     return df
 
-
+@lru_cache
 def get_joined_table_source():
     # most likely there is a solution that doesn't involve so many intermediaries!
     flux_table = get_tabdata("/home/paulhancock/alpha/ADACS/MAP22A-TGalvin/Robbie-ADACS/results/flux_table.vot")
@@ -52,13 +59,18 @@ def get_joined_table_source():
     joined = flux_table.join(stats_table.set_index('uuid'), on='uuid')
     df = joined
     source = ColumnDataSource(data=dict( (i,df[i]) for i in df.columns))
-    return source
 
-def get_scatter_plots(source):
-    selected_circle = Circle(fill_alpha=1, fill_color="firebrick", line_color=None)
-    nonselected_circle = Circle(fill_alpha=0.2, fill_color="blue", line_color=None)
+    flux_cols = list(sorted([i for i in df.columns if i.startswith('peak_flux_')]))
+    lc = df.set_index('uuid')[flux_cols].T
+    epochs = [int(e.split('_')[-1]) for e in flux_cols]
+    dates = [ df[e].unique()[0] for e in df.columns if e.startswith('epoch_')]
+    data = dict( (i,lc[i]) for i in lc.columns)
+    data.update({'epoch':epochs, 'date':dates})
+    lc_source = ColumnDataSource(data=data)
+    return source, lc_source
 
-    
+
+def get_scatter_plots(source):    
 
     # create a new plot and add a renderer
     left = figure(tools=TOOLS, 
@@ -116,12 +128,31 @@ def get_mean_image_plot(source):
     #p.grid.grid_line_width = 0.5
     return p
 
+def get_light_curve_plot(source):
+    tooltips = [("epoch","@date"),]
+    lc_plot = figure(tools=TOOLS, width=300, height=300, title=None,
+                    tooltips=tooltips,
+                    x_axis_label='Epoch',
+                    y_axis_label='Peak flux (Jy/beam)')
+    lines = lc_plot.line(source=source, y='0eb4f0e4-2e02-4e5e-9b10-1f7107175044', x='epoch')
+    circles = lc_plot.circle(source=source, y='0eb4f0e4-2e02-4e5e-9b10-1f7107175044', x='epoch', size=6)
+
+    for r in [circles,]:
+        r.selection_glyph = selected_circle
+        r.nonselection_glyph = nonselected_circle
+
+    return lc_plot
+
+
 def main():
     output_file(filename='viewer/RV.html', title="Robbie Viewer")
-    source = get_joined_table_source()
+    curdoc().theme = 'dark_minimal'
+    source, lc_source = get_joined_table_source()
     mean_image = get_mean_image_plot(source)
     sky, variable, table = get_scatter_plots(source)
-    p = gridplot([ [sky, variable,mean_image, table]],
+    lc = get_light_curve_plot(lc_source)
+    
+    p = gridplot([ [sky, variable,mean_image, table], [lc,]],
                  sizing_mode='scale_width')
     show(p)
 
