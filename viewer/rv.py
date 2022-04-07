@@ -5,7 +5,7 @@ from astropy.wcs import WCS
 import numpy as np
 from bokeh.plotting import figure, show, output_file
 from bokeh import palettes
-from bokeh.models import (ColumnDataSource, Circle,
+from bokeh.models import (ColumnDataSource, Circle, Whisker,
                           DataTable, TableColumn, NumberFormatter, 
                           CustomJS)
 from bokeh.layouts import gridplot
@@ -62,12 +62,25 @@ def get_joined_table_source():
     source = ColumnDataSource(data=dict( (i,df[i]) for i in df.columns))
 
     flux_cols = list(sorted([i for i in df.columns if i.startswith('peak_flux_')]))
-    lc = df.set_index('uuid')[flux_cols].T
+    err_flux_cols = [f'err_{i}' for i in flux_cols]
+    fluxes = df.set_index('uuid')[flux_cols]
+    err_fluxes = df.set_index('uuid')[err_flux_cols]
+    fluxes = fluxes.T
+    err_fluxes = err_fluxes.fillna(0).T
+
+    lc = dict( (i,fluxes[i].values) for i in fluxes.columns)
+    err_lc = dict( (f'err_{i}',err_fluxes[i].values) for i in err_fluxes.columns)
+    lc.update(err_lc)
+
     epochs = [int(e.split('_')[-1]) for e in flux_cols]
     dates = [ df[e].unique()[0] for e in df.columns if e.startswith('epoch_')]
-    data = dict( (i,lc[i]) for i in lc.columns)
-    data.update({'epoch':epochs, 'date':dates, 'current':data[df['uuid'][0]]})
-    lc_source = ColumnDataSource(data=data)
+    lc.update({'epoch':epochs, 'date':dates, 
+                'current':fluxes[df['uuid'][0]], 
+                'current_upper':fluxes[df['uuid'][0]].values+err_fluxes[df['uuid'][0]].values,
+                'current_lower':fluxes[df['uuid'][0]].values-err_fluxes[df['uuid'][0]].values
+                })
+    
+    lc_source = ColumnDataSource(data=lc)
     return source, lc_source
 
 
@@ -109,13 +122,14 @@ def get_mean_image_plot(source):
     imdata = get_imdata(data,ra,dec)
 
     p = figure(tools=TOOLS,
+               title='Mean Image',
                tooltips=[
                             ("value", "@image Jy/beam"),
                             ("RA", "@ra{0.00}°"),
                             ("DEC", "@dec{0.00}°")
                         ],
-            x_axis_label='RA',
-            y_axis_label='DEC')
+                x_axis_label='RA',
+                y_axis_label='DEC')
     p.x_range.range_padding = p.y_range.range_padding = 0
 
     # must give a vector of image data for image parameter
@@ -134,10 +148,11 @@ def get_light_curve_plot(source):
     lc_plot = figure(tools=TOOLS, width=300, height=300, title='Light curve:',
                     tooltips=tooltips,
                     x_axis_label='Epoch',
-                    y_axis_label='Peak flux (Jy/beam)')
+                    y_axis_label='Peak flux (Jy/beam)',
+                    y_range=(0,1))
     lines = lc_plot.line(source=source, y='current', x='epoch')
     circles = lc_plot.circle(source=source, y='current', x='epoch', size=6)
-
+    whiskers = lc_plot.add_layout(Whisker(source=source, base='epoch', upper='current_upper', lower='current_lower', line_color='gray'))
     for r in [circles,]:
         r.selection_glyph = selected_circle
         r.nonselection_glyph = nonselected_circle
@@ -147,7 +162,7 @@ def get_light_curve_plot(source):
 
 def main():
     output_file(filename='viewer/RV.html', title="Robbie Viewer")
-    curdoc().theme = 'night_sky'
+    #curdoc().theme = 'night_sky'
     source, lc_source = get_joined_table_source()
     mean_image = get_mean_image_plot(source)
     sky, variable, table = get_scatter_plots(source)
@@ -160,19 +175,40 @@ def main():
     source.selected.js_on_change('indices', 
         CustomJS(args=dict(lc_source=lc_source, lc=lc, source=source), 
             code="""
+            if (cb_obj.indices.length == 0)
+                return;
             var idx = cb_obj.indices[0];
             var uuid = source.data['uuid'][idx];
             var data = lc_source.data;
             var plot = lc;
+                
+            var lower = [];
+            var upper = [];
+            var min = 999;
+            var max = -999;
+            for (let i = 0; i<data[uuid].length; i++){
+                lower.push(data[uuid][i]-data['err_'+uuid][i]);
+                upper.push(data[uuid][i]+data['err_'+uuid][i]);
+                if (min>lower[i]){min=lower[i]};
+                if (max<upper[i]){max=upper[i]};
+            }
+
             data['current'] = data[uuid];
+            data['current_lower'] = lower;
+            data['current_upper'] = upper;
+            
+            // update some of the plot visuals
             plot.title.text = ''+uuid;
+            plot.y_range.start = min- Math.abs(min)*0.8;
+            plot.y_range.end = max/0.8;
+
             // emit changes so that we can update all the other
             lc_source.change.emit();
             source.change.emit();
             """
         )
     )
-    p = gridplot([ [sky, variable,mean_image, table], [lc,]],
+    p = gridplot([ [sky, variable,mean_image, lc], [table,]],
                  sizing_mode='scale_width')
     show(p)
 
