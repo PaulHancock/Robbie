@@ -6,7 +6,8 @@ import numpy as np
 from bokeh.plotting import figure, show, output_file
 from bokeh import palettes
 from bokeh.models import (ColumnDataSource, Circle,
-                          DataTable, TableColumn, NumberFormatter)
+                          DataTable, TableColumn, NumberFormatter, 
+                          CustomJS)
 from bokeh.layouts import gridplot
 from bokeh.io import curdoc
 import pandas as pd
@@ -65,7 +66,7 @@ def get_joined_table_source():
     epochs = [int(e.split('_')[-1]) for e in flux_cols]
     dates = [ df[e].unique()[0] for e in df.columns if e.startswith('epoch_')]
     data = dict( (i,lc[i]) for i in lc.columns)
-    data.update({'epoch':epochs, 'date':dates})
+    data.update({'epoch':epochs, 'date':dates, 'current':data[df['uuid'][0]]})
     lc_source = ColumnDataSource(data=data)
     return source, lc_source
 
@@ -130,12 +131,12 @@ def get_mean_image_plot(source):
 
 def get_light_curve_plot(source):
     tooltips = [("epoch","@date"),]
-    lc_plot = figure(tools=TOOLS, width=300, height=300, title=None,
+    lc_plot = figure(tools=TOOLS, width=300, height=300, title='Light curve:',
                     tooltips=tooltips,
                     x_axis_label='Epoch',
                     y_axis_label='Peak flux (Jy/beam)')
-    lines = lc_plot.line(source=source, y='0eb4f0e4-2e02-4e5e-9b10-1f7107175044', x='epoch')
-    circles = lc_plot.circle(source=source, y='0eb4f0e4-2e02-4e5e-9b10-1f7107175044', x='epoch', size=6)
+    lines = lc_plot.line(source=source, y='current', x='epoch')
+    circles = lc_plot.circle(source=source, y='current', x='epoch', size=6)
 
     for r in [circles,]:
         r.selection_glyph = selected_circle
@@ -146,12 +147,31 @@ def get_light_curve_plot(source):
 
 def main():
     output_file(filename='viewer/RV.html', title="Robbie Viewer")
-    curdoc().theme = 'dark_minimal'
+    curdoc().theme = 'night_sky'
     source, lc_source = get_joined_table_source()
     mean_image = get_mean_image_plot(source)
     sky, variable, table = get_scatter_plots(source)
     lc = get_light_curve_plot(lc_source)
-    
+
+    # Make the sky plot and mean image zoom/pan together
+    sky.x_range = mean_image.x_range
+    sky.y_range = mean_image.y_range
+
+    source.selected.js_on_change('indices', 
+        CustomJS(args=dict(lc_source=lc_source, lc=lc, source=source), 
+            code="""
+            var idx = cb_obj.indices[0];
+            var uuid = source.data['uuid'][idx];
+            var data = lc_source.data;
+            var plot = lc;
+            data['current'] = data[uuid];
+            plot.title.text = ''+uuid;
+            // emit changes so that we can update all the other
+            lc_source.change.emit();
+            source.change.emit();
+            """
+        )
+    )
     p = gridplot([ [sky, variable,mean_image, table], [lc,]],
                  sizing_mode='scale_width')
     show(p)
