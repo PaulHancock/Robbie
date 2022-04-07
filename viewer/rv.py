@@ -8,7 +8,7 @@ from bokeh import palettes
 from bokeh.models import (ColumnDataSource, Circle, Whisker,
                           DataTable, TableColumn, NumberFormatter, 
                           CustomJS)
-from bokeh.layouts import gridplot
+from bokeh.layouts import gridplot, layout
 from bokeh.io import curdoc
 import pandas as pd
 import numpy as np
@@ -104,11 +104,12 @@ def get_scatter_plots(source):
         r.selection_glyph = selected_circle
         r.nonselection_glyph = nonselected_circle
 
-    #p = gridplot([[left, right]])
     columns = [
         TableColumn(field="uuid", title="UUID"),
         TableColumn(field="ref_ra", title="RA", formatter=NumberFormatter(format="0.0000")),
         TableColumn(field="ref_dec", title="DEC", formatter=NumberFormatter(format="0.0000")),
+        TableColumn(field="mean_peak_flux", title="μ(flux)"),
+        TableColumn(field="std_peak_flux", title="σ(flux)"),
         TableColumn(field="md", title="Debiased modulation index"),
         TableColumn(field="pval_peak_flux_ks", title="PVal")
     ]
@@ -208,7 +209,7 @@ def main():
             """
         )
     )
-    p = gridplot([ [sky, variable,mean_image, lc], [table,]],
+    p = layout([ [sky, variable,mean_image, lc], [table]],
                  sizing_mode='scale_width')
     show(p)
 
