@@ -20,3 +20,4 @@ trace.txt*
 *.egg-info
 version.txt
 dist/*
+profiling.md
