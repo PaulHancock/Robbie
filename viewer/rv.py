@@ -38,6 +38,20 @@ def mean_image_data(hdu):
 
 
 def get_imdata(data, ra, dec, ei=None):
+    if ra[0][0] > ra[0][-1]:
+        # needs inverting
+        ra_new = []
+        for ra_row in ra:
+            ra_row = list(ra_row)
+            ra_row.reverse()
+            ra_new.append(ra_row)
+        ra = np.array(ra_new)
+        data_new = []
+        for data_row in data:
+            data_row = list(data_row)
+            data_row.reverse()
+            data_new.append(data_row)
+        data = np.array(data_new)
     if ei is None:
         imdata ={
             'image':[data],
@@ -135,6 +149,7 @@ def get_mean_image_plot(source):
     hdu = load_mean_image('results/mean_image.fits')
     data, ra, dec = mean_image_data(hdu)
     imdata = get_imdata(data,ra,dec)
+    print(ra)
 
     p = figure(tools=TOOLS,
                title='Mean Image',
@@ -174,26 +189,8 @@ def get_light_curve_plot(source):
 
     return lc_plot
 
-def get_epoch_image_plots(epoch_files):
-    # Make a data dictionary of each epoch with the _(int) format keys
-    data_dict = {}
-    for ei, epoch_file in enumerate(epoch_files):
-        print(epoch_file)
-        hdu = load_mean_image(epoch_file)
-        data, ra, dec = mean_image_data(hdu)
-        imdata = get_imdata(data, ra, dec, ei=ei)
-        data_dict.update(imdata)
-    # Point to first image first
-    data_dict.update({
-            'image':data_dict["image_0"],
-            'ra':data_dict["ra_0"],
-            'dec':data_dict["dec_0"],
-            'x':data_dict["x_0"],
-            'y':data_dict["y_0"],
-            'dw':data_dict["dw_0"],
-            'dh':data_dict["dh_0"]})
-    source = ColumnDataSource(data=data_dict)
-
+def get_epoch_image_plots(epoch_files, mean_source):
+    # Set up the figure
     p = figure(
         tools=TOOLS,
         title="Epoch_0",
@@ -206,10 +203,36 @@ def get_epoch_image_plots(epoch_files):
         y_axis_label='DEC')
     p.x_range.range_padding = p.y_range.range_padding = 0
 
+    # Make a data dictionary of each epoch with the _(int) format keys
+    data_dict = {}
+    for ei, epoch_file in enumerate(epoch_files):
+        print(epoch_file)
+        hdu = load_mean_image(epoch_file)
+        data, ra, dec = mean_image_data(hdu)
+        imdata = get_imdata(data, ra, dec, ei=ei)
+        print(ra[0])
+        data_dict.update(imdata)
+    # Point to first image first
+    data_dict.update({
+            'image':data_dict["image_0"],
+            'ra':data_dict["ra_0"],
+            'dec':data_dict["dec_0"],
+            'x':data_dict["x_0"],
+            'y':data_dict["y_0"],
+            'dw':data_dict["dw_0"],
+            'dh':data_dict["dh_0"]})
+    source = ColumnDataSource(data=data_dict)
+
     # must give a vector of image data for image parameter
     p.image(source=source,
             palette=palettes.mpl['Cividis'][256])
     slider = Slider(start=0, end=len(epoch_files)-1, value=0, step=1, title="Epoch")
+    # Add the source circles
+    p.circle(source=mean_source,
+             x='ref_ra', y='ref_dec',
+             radius=0.03, fill_color=None,
+             line_width=1.5, line_color='yellow')
+
     callback = CustomJS(args=dict(source=source, slider=slider, p=p),
                         code="""
         const data = source.data;
@@ -230,7 +253,7 @@ def main():
     mean_image = get_mean_image_plot(source)
     sky, variable, table = get_scatter_plots(source)
     lc = get_light_curve_plot(lc_source)
-    epochs, epoch_slider = get_epoch_image_plots(glob.glob("../SIMRobbie/data/E*[0-9].fits"))
+    epochs, epoch_slider = get_epoch_image_plots(glob.glob("results/E*.fits"), source)
 
     # Make the sky plot and mean image zoom/pan together
     sky.x_range = mean_image.x_range
