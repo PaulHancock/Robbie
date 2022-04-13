@@ -3,17 +3,19 @@
 from astropy.io import fits
 from astropy.wcs import WCS
 import numpy as np
-from bokeh.plotting import figure, show, output_file
-from bokeh import palettes
-from bokeh.models import (ColumnDataSource, Circle, Whisker,
-                          DataTable, TableColumn, NumberFormatter, 
-                          CustomJS)
-from bokeh.layouts import gridplot, layout
-from bokeh.io import curdoc
+import glob
 import pandas as pd
-import numpy as np
 from astropy.io.votable import parse
 from functools import lru_cache
+
+from bokeh.plotting import figure, show, output_file
+from bokeh import palettes
+from bokeh.layouts import gridplot, layout
+from bokeh.io import curdoc
+from bokeh.models import (ColumnDataSource, Circle, Whisker,
+                          DataTable, TableColumn, NumberFormatter,
+                          CustomJS, Slider)
+
 
 TOOLS = "box_select,lasso_select,help,pan,tap,wheel_zoom,reset"
 selected_circle = Circle(fill_alpha=1, fill_color="firebrick", line_color=None)
@@ -35,14 +37,26 @@ def mean_image_data(hdu):
     return data, ra, dec
 
 
-def get_imdata(data, ra, dec):
-    imdata ={'image':[data],
-        'ra':[ra],
-        'dec':[dec],
-        'x':[ra[0,0]],
-        'y':[dec[0,0]],
-        'dw':[abs(ra[0,0]-ra[0,-1])],
-        'dh':[abs(dec[0,0]-dec[-1,0])]
+def get_imdata(data, ra, dec, ei=None):
+    if ei is None:
+        imdata ={
+            'image':[data],
+            'ra':[ra],
+            'dec':[dec],
+            'x':[ra[0,0]],
+            'y':[dec[0,0]],
+            'dw':[abs(ra[0,0]-ra[0,-1])],
+            'dh':[abs(dec[0,0]-dec[-1,0])]
+        }
+    else:
+        imdata ={
+            f'image_{ei}':[data],
+            f'ra_{ei}':[ra],
+            f'dec_{ei}':[dec],
+            f'x_{ei}':[ra[0,0]],
+            f'y_{ei}':[dec[0,0]],
+            f'dw_{ei}':[abs(ra[0,0]-ra[0,-1])],
+            f'dh_{ei}':[abs(dec[0,0]-dec[-1,0])]
         }
     return imdata
 
@@ -55,8 +69,8 @@ def get_tabdata(fname):
 @lru_cache
 def get_joined_table_source():
     # most likely there is a solution that doesn't involve so many intermediaries!
-    flux_table = get_tabdata("/home/paulhancock/alpha/ADACS/MAP22A-TGalvin/Robbie-ADACS/results/flux_table.vot")
-    stats_table = get_tabdata("/home/paulhancock/alpha/ADACS/MAP22A-TGalvin/Robbie-ADACS/results/stats_table.vot")
+    flux_table = get_tabdata("results/flux_table.vot")
+    stats_table = get_tabdata("results/stats_table.vot")
     joined = flux_table.join(stats_table.set_index('uuid'), on='uuid')
     df = joined
     source = ColumnDataSource(data=dict( (i,df[i]) for i in df.columns))
@@ -74,27 +88,27 @@ def get_joined_table_source():
 
     epochs = [int(e.split('_')[-1]) for e in flux_cols]
     dates = [ df[e].unique()[0] for e in df.columns if e.startswith('epoch_')]
-    lc.update({'epoch':epochs, 'date':dates, 
-                'current':fluxes[df['uuid'][0]], 
+    lc.update({'epoch':epochs, 'date':dates,
+                'current':fluxes[df['uuid'][0]],
                 'current_upper':fluxes[df['uuid'][0]].values+err_fluxes[df['uuid'][0]].values,
                 'current_lower':fluxes[df['uuid'][0]].values-err_fluxes[df['uuid'][0]].values
                 })
-    
+
     lc_source = ColumnDataSource(data=lc)
     return source, lc_source
 
 
-def get_scatter_plots(source):    
+def get_scatter_plots(source):
 
     # create a new plot and add a renderer
-    left = figure(tools=TOOLS, 
+    left = figure(tools=TOOLS,
                   #width=300, height=300,
                   title='Sky Plot',
                   x_axis_label='RA (deg)', y_axis_label='DEC (deg)')
     lr = left.circle('ref_ra', 'ref_dec', source=source)
 
     # create another new plot and add a renderer
-    right = figure(tools=TOOLS, 
+    right = figure(tools=TOOLS,
                    #width=300, height=300,
                    title='Variables Plot',
                    x_axis_label='md', y_axis_label='pval_peak_flux_ks')
@@ -134,10 +148,10 @@ def get_mean_image_plot(source):
     p.x_range.range_padding = p.y_range.range_padding = 0
 
     # must give a vector of image data for image parameter
-    p.image(source=imdata, 
+    p.image(source=imdata,
             image='image',
             palette=palettes.mpl['Cividis'][256])#, level="image")
-    p.circle(source=source, 
+    p.circle(source=source,
              x='ref_ra', y='ref_dec',
              radius=0.03, fill_color=None,
              line_width=1.5, line_color='yellow')
@@ -160,6 +174,54 @@ def get_light_curve_plot(source):
 
     return lc_plot
 
+def get_epoch_image_plots(epoch_files):
+    # Make a data dictionary of each epoch with the _(int) format keys
+    data_dict = {}
+    for ei, epoch_file in enumerate(epoch_files):
+        print(epoch_file)
+        hdu = load_mean_image(epoch_file)
+        data, ra, dec = mean_image_data(hdu)
+        imdata = get_imdata(data, ra, dec, ei=ei)
+        data_dict.update(imdata)
+    # Point to first image first
+    data_dict.update({
+            'image':data_dict["image_0"],
+            'ra':data_dict["ra_0"],
+            'dec':data_dict["dec_0"],
+            'x':data_dict["x_0"],
+            'y':data_dict["y_0"],
+            'dw':data_dict["dw_0"],
+            'dh':data_dict["dh_0"]})
+    source = ColumnDataSource(data=data_dict)
+
+    p = figure(
+        tools=TOOLS,
+        title="Epoch_0",
+        tooltips=[
+            ("value", "@image Jy/beam"),
+            ("RA", "@ra{0.00}°"),
+            ("DEC", "@dec{0.00}°")
+        ],
+        x_axis_label='RA',
+        y_axis_label='DEC')
+    p.x_range.range_padding = p.y_range.range_padding = 0
+
+    # must give a vector of image data for image parameter
+    p.image(source=source,
+            palette=palettes.mpl['Cividis'][256])
+    slider = Slider(start=0, end=len(epoch_files)-1, value=0, step=1, title="Epoch")
+    callback = CustomJS(args=dict(source=source, slider=slider, p=p),
+                        code="""
+        const data = source.data;
+        const i = slider.value;
+        p.title.text = 'Epoch_'+i.toString(10);
+        const image = data['image_'+i.toString(10)];
+        data['image'] = image;
+        source.change.emit();
+    """)
+    slider.js_on_change("value", callback)
+    return p, slider
+
 
 def main():
     output_file(filename='viewer/RV.html', title="Robbie Viewer")
@@ -168,13 +230,14 @@ def main():
     mean_image = get_mean_image_plot(source)
     sky, variable, table = get_scatter_plots(source)
     lc = get_light_curve_plot(lc_source)
+    epochs, epoch_slider = get_epoch_image_plots(glob.glob("../SIMRobbie/data/E*[0-9].fits"))
 
     # Make the sky plot and mean image zoom/pan together
     sky.x_range = mean_image.x_range
     sky.y_range = mean_image.y_range
 
-    source.selected.js_on_change('indices', 
-        CustomJS(args=dict(lc_source=lc_source, lc=lc, source=source), 
+    source.selected.js_on_change('indices',
+        CustomJS(args=dict(lc_source=lc_source, lc=lc, source=source),
             code="""
             if (cb_obj.indices.length == 0)
                 return;
@@ -182,7 +245,7 @@ def main():
             var uuid = source.data['uuid'][idx];
             var data = lc_source.data;
             var plot = lc;
-                
+
             var lower = [];
             var upper = [];
             var min = 999;
@@ -197,7 +260,7 @@ def main():
             data['current'] = data[uuid];
             data['current_lower'] = lower;
             data['current_upper'] = upper;
-            
+
             // update some of the plot visuals
             plot.title.text = ''+uuid;
             plot.y_range.start = min- Math.abs(min)*0.8;
@@ -209,7 +272,7 @@ def main():
             """
         )
     )
-    p = layout([ [sky, variable,mean_image, lc], [table]],
+    p = layout([ [sky, variable,mean_image,[epochs, epoch_slider], lc], [table]],
                  sizing_mode='scale_width')
     show(p)
 
