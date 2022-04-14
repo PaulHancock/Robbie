@@ -7,6 +7,7 @@ import glob
 import pandas as pd
 from astropy.io.votable import parse
 from functools import lru_cache
+import datetime
 
 from bokeh.plotting import figure, show, output_file
 from bokeh import palettes
@@ -14,7 +15,7 @@ from bokeh.layouts import gridplot, layout
 from bokeh.io import curdoc
 from bokeh.models import (ColumnDataSource, Circle, Whisker,
                           DataTable, TableColumn, NumberFormatter,
-                          CustomJS, Slider)
+                          CustomJS, Slider, DatetimeTickFormatter)
 
 
 TOOLS = "box_select,lasso_select,help,pan,tap,wheel_zoom,reset"
@@ -102,11 +103,17 @@ def get_joined_table_source():
 
     epochs = [int(e.split('_')[-1]) for e in flux_cols]
     dates = [ df[e].unique()[0] for e in df.columns if e.startswith('epoch_')]
-    lc.update({'epoch':epochs, 'date':dates,
-                'current':fluxes[df['uuid'][0]],
-                'current_upper':fluxes[df['uuid'][0]].values+err_fluxes[df['uuid'][0]].values,
-                'current_lower':fluxes[df['uuid'][0]].values-err_fluxes[df['uuid'][0]].values
-                })
+    datetimes = [datetime.datetime.strptime(a, "%Y-%m-%dT%H:%M:%S") for a in dates]
+    print(f"epochs:{epochs}")
+    print(f"dates:{dates}")
+    lc.update({
+        'epoch':epochs,
+        'date':dates,
+        'datetimes':datetimes,
+        'current':fluxes[df['uuid'][0]],
+        'current_upper':fluxes[df['uuid'][0]].values+err_fluxes[df['uuid'][0]].values,
+        'current_lower':fluxes[df['uuid'][0]].values-err_fluxes[df['uuid'][0]].values
+    })
 
     lc_source = ColumnDataSource(data=lc)
     return source, lc_source
@@ -149,7 +156,6 @@ def get_mean_image_plot(source):
     hdu = load_mean_image('results/mean_image.fits')
     data, ra, dec = mean_image_data(hdu)
     imdata = get_imdata(data,ra,dec)
-    print(ra)
 
     p = figure(tools=TOOLS,
                title='Mean Image',
@@ -177,12 +183,23 @@ def get_light_curve_plot(source):
     tooltips = [("epoch","@date"),]
     lc_plot = figure(tools=TOOLS, width=300, height=300, title='Light curve:',
                     tooltips=tooltips,
+                    x_axis_type="datetime",
                     x_axis_label='Epoch',
                     y_axis_label='Peak flux (Jy/beam)',
                     y_range=(0,1))
-    lines = lc_plot.line(source=source, y='current', x='epoch')
-    circles = lc_plot.circle(source=source, y='current', x='epoch', size=6)
-    whiskers = lc_plot.add_layout(Whisker(source=source, base='epoch', upper='current_upper', lower='current_lower', line_color='gray'))
+    lc_plot.xaxis[0].formatter = DatetimeTickFormatter(
+        years = ["%Yy"],
+        months = ["%b"],
+        days = ["%dd"],
+        hours=["%Hh"],
+        hourmin=['%Hh %Mmin'],
+        minutes=["%Mmin"],
+        minsec = ['%Mmin %Ss'],
+        seconds=["%Ss"],
+    )
+    lines = lc_plot.line(source=source, y='current', x='datetimes')
+    circles = lc_plot.circle(source=source, y='current', x='datetimes', size=6)
+    whiskers = lc_plot.add_layout(Whisker(source=source, base='datetimes', upper='current_upper', lower='current_lower', line_color='gray'))
     for r in [circles,]:
         r.selection_glyph = selected_circle
         r.nonselection_glyph = nonselected_circle
@@ -206,11 +223,9 @@ def get_epoch_image_plots(epoch_files, mean_source):
     # Make a data dictionary of each epoch with the _(int) format keys
     data_dict = {}
     for ei, epoch_file in enumerate(epoch_files):
-        print(epoch_file)
         hdu = load_mean_image(epoch_file)
         data, ra, dec = mean_image_data(hdu)
         imdata = get_imdata(data, ra, dec, ei=ei)
-        print(ra[0])
         data_dict.update(imdata)
     # Point to first image first
     data_dict.update({
@@ -256,8 +271,8 @@ def main():
     epochs, epoch_slider = get_epoch_image_plots(glob.glob("results/E*.fits"), source)
 
     # Make the sky plot and mean image zoom/pan together
-    sky.x_range = mean_image.x_range
-    sky.y_range = mean_image.y_range
+    sky.x_range = mean_image.x_range = epochs.x_range
+    sky.y_range = mean_image.y_range = epochs.y_range
 
     source.selected.js_on_change('indices',
         CustomJS(args=dict(lc_source=lc_source, lc=lc, source=source),
