@@ -145,8 +145,7 @@ process fits_warp {
   each ref_catalogue
 
   output:
-  path "*_warped.fits"
-  tuple val("${basename}_warped"), path("*.fits", includeInputs:true)
+  tuple val(basename), path("*_warped.fits")
 
   script:
   suff1=(params.refcat_ra=='ra' ? '_1':'')
@@ -238,26 +237,26 @@ process source_monitor {
 
   input:
   path mean_cat
-  tuple val(basename), path(image)
+  tuple val(basename), path(image), path(bkg_rms)
 
   output:
-  tuple path("${basename}_comp.fits"), path(image, includeInputs:true)
-  path "${basename}_comp.fits"
+  tuple path("${image.baseName}_comp.fits"), path(image, includeInputs:true)
+  path "${image.baseName}_comp.fits"
 
   script:
   """
   echo ${task.process} on \${HOSTNAME}
   aegean --cores ${task.cpus} --background *_bkg.fits --noise *_rms.fits --noregroup\
-         --table ${basename}.fits --priorized 1 --input ${mean_cat} ${basename}.fits
+         --table ${image} --priorized 1 --input ${mean_cat} ${image}
 
   # super hack to get stilts to play nice and add two columns of strings
-  epoch=\$(get_epoch.py ${basename}.fits)
+  epoch=\$(get_epoch.py ${image})
   epoch="\\\\\\\"\${epoch}\\\\\\\""
-  filename="\\\\\\\"${basename}.fits\\\\\\\""
-  ${params.stilts} tpipe in=${basename}_comp.fits cmd="addcol image \${filename}" \
+  filename="\\\\\\\"${image}\\\\\\\""
+  ${params.stilts} tpipe in=${image.baseName}_comp.fits cmd="addcol image \${filename}" \
                                                   cmd="addcol epoch \${epoch}" \
                                                   ofmt=fits out=temp.fits
-  mv temp.fits ${basename}_comp.fits
+  mv temp.fits ${image.baseName}_comp.fits
   """
 }
 
@@ -335,16 +334,16 @@ process mask_images {
 
   input:
   path mean_cat
-  tuple val(basename), path(warped_images)
+  tuple val(basename), path(image), path(bkg_rms)
 
   output:
-  tuple val("${basename}_masked"), path("*.fits", includeInputs:true)
+  tuple val(basename), path("${basename}_masked.fits"), path(bkg_rms)
 
   script:
   """
   echo ${task.process} on \${HOSTNAME}
   ls *.fits
-  AeRes -c ${mean_cat} -f *_warped.fits -r ${basename}_masked.fits --mask --sigma 0.1
+  AeRes -c ${mean_cat} -f ${image} -r ${basename}_masked.fits --mask --sigma 0.1
   """
 }
 
@@ -353,23 +352,23 @@ process sfind_masked {
   label 'aegean'
 
   input:
-  tuple val(basename), path(masked_images)
+  tuple val(basename), path(masked_images), path(bkg_rms)
 
   output:
-  path "${basename}_comp.fits" optional true
+  path "${masked_images.baseName}_comp.fits" optional true
 
   script:
   """
   echo ${task.process} on  \${HOSTNAME}
   ls *
-  aegean --cores ${task.cpus} --background *_bkg.fits --noise *_rms.fits --table ${basename}.fits ${basename}.fits ${region_command}
+  aegean --cores ${task.cpus} --background *_bkg.fits --noise *_rms.fits --table ${masked_images} ${masked_images} ${region_command}
   # Don't filter if there is no output
-  if [[ -e ${basename}_comp.fits ]]
+  if [[ -e ${masked_images.baseName}_comp.fits ]]
   then
-    filter_transients.py --incat ${basename}_comp.fits --image ${basename}.fits --outcat out.fits
+    filter_transients.py --incat ${masked_images.baseName}_comp.fits --image ${masked_images} --outcat out.fits
     if [[ -e out.fits ]]
     then
-      mv out.fits ${basename}_comp.fits
+      mv out.fits ${masked_images.baseName}_comp.fits
     fi
   fi
   ls *.fits
@@ -456,21 +455,36 @@ process transients_plot {
 
 workflow {
   get_version( )
+  // image_ch = epoch_label, image_fits
   bane_raw( image_ch )
-  initial_sfind( bane_raw.out )
-  fits_warp( initial_sfind.out,
-            Channel.fromPath( params.ref_catalogue ) )
-  make_mean_image( fits_warp.out[0].collect() )
+  // image_bkg_rms = epoch_label, image_fits, [bkg_fits, rms_fits]
+  image_bkg_rms = bane_raw.out
+  if ( params.warp ) {
+    initial_sfind( image_bkg_rms )
+    fits_warp(
+      initial_sfind.out,
+      Channel.fromPath( params.ref_catalogue ),
+    )
+    image_ch = fits_warp.out
+    image_bkg_rms = fits_warp.out.concat(bane_raw.out.map{ it -> [it[0], [it[1..2]]]}).groupTuple().map{ it -> [ it[0], it[1][0], it[1][1][0][1]]}
+  }
+  make_mean_image( image_ch.map{ it -> it[1] }.collect() )
   bane_mean_image( make_mean_image.out )
   sfind_mean_image( bane_mean_image.out )
-  source_monitor( sfind_mean_image.out,
-                  fits_warp.out[1] )
-  join_fluxes( source_monitor.out[1].collect(),
-              sfind_mean_image.out )
+  source_monitor(
+    sfind_mean_image.out,
+    image_bkg_rms,
+  )
+  join_fluxes(
+    source_monitor.out[1].collect(),
+    sfind_mean_image.out,
+  )
   compute_stats( join_fluxes.out )
   plot_lc( compute_stats.out )
-  mask_images( sfind_mean_image.out,
-              fits_warp.out[1] )
+  mask_images(
+    sfind_mean_image.out,
+    image_bkg_rms,
+  )
   sfind_masked( mask_images.out )
   compile_transients_candidates( sfind_masked.out.collect() )
   transients_plot( compile_transients_candidates.out )
