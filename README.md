@@ -79,7 +79,7 @@ The `-C my.config` directs Nextflow to use *only* the configuration described in
 
 ### `-profile`
 
-If you're running Robbie on your local machine, you should use the `-profile local` option to use the Robbie docker image. For example,
+If you're running Robbie on your local machine, you should use the `-profile local` option to use the Robbie docker image. For example:
 
 ```
 nextflow -C my.config run robbie.nf -profile local
