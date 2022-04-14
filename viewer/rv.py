@@ -104,15 +104,13 @@ def get_joined_table_source():
     epochs = [int(e.split('_')[-1]) for e in flux_cols]
     dates = [ df[e].unique()[0] for e in df.columns if e.startswith('epoch_')]
     datetimes = [datetime.datetime.strptime(a, "%Y-%m-%dT%H:%M:%S") for a in dates]
-    print(f"epochs:{epochs}")
-    print(f"dates:{dates}")
     lc.update({
         'epoch':epochs,
         'date':dates,
         'datetimes':datetimes,
         'current':fluxes[df['uuid'][0]],
         'current_upper':fluxes[df['uuid'][0]].values+err_fluxes[df['uuid'][0]].values,
-        'current_lower':fluxes[df['uuid'][0]].values-err_fluxes[df['uuid'][0]].values
+        'current_lower':fluxes[df['uuid'][0]].values-err_fluxes[df['uuid'][0]].values,
     })
 
     lc_source = ColumnDataSource(data=lc)
@@ -122,17 +120,21 @@ def get_joined_table_source():
 def get_scatter_plots(source):
 
     # create a new plot and add a renderer
-    left = figure(tools=TOOLS,
-                  #width=300, height=300,
-                  title='Sky Plot',
-                  x_axis_label='RA (deg)', y_axis_label='DEC (deg)')
+    left = figure(
+        tools=TOOLS,
+        title='Sky Plot',
+        x_axis_label='RA (deg)', y_axis_label='DEC (deg)',
+        x_range=(0,1),
+        y_range=(0,1),
+    )
     lr = left.circle('ref_ra', 'ref_dec', source=source)
 
     # create another new plot and add a renderer
-    right = figure(tools=TOOLS,
-                   #width=300, height=300,
-                   title='Variables Plot',
-                   x_axis_label='md', y_axis_label='pval_peak_flux_ks')
+    right = figure(
+        tools=TOOLS,
+        title='Variables Plot',
+        x_axis_label='md', y_axis_label='pval_peak_flux_ks',
+    )
     rr = right.circle('md', 'pval_peak_flux_ks', source=source)
 
     for r in [lr,rr]:
@@ -157,16 +159,20 @@ def get_mean_image_plot(source):
     data, ra, dec = mean_image_data(hdu)
     imdata = get_imdata(data,ra,dec)
 
-    p = figure(tools=TOOLS,
-               title='Mean Image',
-               tooltips=[
-                            ("value", "@image Jy/beam"),
-                            ("RA", "@ra{0.00}°"),
-                            ("DEC", "@dec{0.00}°")
-                        ],
-                x_axis_label='RA',
-                y_axis_label='DEC')
-    p.x_range.range_padding = p.y_range.range_padding = 0
+    p = figure(
+        tools=TOOLS,
+        title='Mean Image',
+        tooltips=[
+            ("value", "@image Jy/beam"),
+            ("RA", "@ra{0.00}°"),
+            ("DEC", "@dec{0.00}°")
+        ],
+        x_axis_label='RA',
+        y_axis_label='DEC',
+        x_range=(min(source.data['ref_ra']),  max(source.data['ref_ra'])),
+        y_range=(min(source.data['ref_dec']), max(source.data['ref_dec'])),
+    )
+    #p.x_range.range_padding = p.y_range.range_padding = 0
 
     # must give a vector of image data for image parameter
     p.image(source=imdata,
@@ -181,12 +187,15 @@ def get_mean_image_plot(source):
 
 def get_light_curve_plot(source):
     tooltips = [("epoch","@date"),]
-    lc_plot = figure(tools=TOOLS, width=300, height=300, title='Light curve:',
-                    tooltips=tooltips,
-                    x_axis_type="datetime",
-                    x_axis_label='Epoch',
-                    y_axis_label='Peak flux (Jy/beam)',
-                    y_range=(0,1))
+    lc_plot = figure(
+        tools=TOOLS,
+        title='Light curve:',
+        tooltips=tooltips,
+        x_axis_type="datetime",
+        x_axis_label='Epoch',
+        y_axis_label='Peak flux (Jy/beam)',
+        y_range=(0,1),
+    )
     lc_plot.xaxis[0].formatter = DatetimeTickFormatter(
         years = ["%Yy"],
         months = ["%b"],
@@ -217,8 +226,11 @@ def get_epoch_image_plots(epoch_files, mean_source):
             ("DEC", "@dec{0.00}°")
         ],
         x_axis_label='RA',
-        y_axis_label='DEC')
-    p.x_range.range_padding = p.y_range.range_padding = 0
+        y_axis_label='DEC',
+        x_range=(min(mean_source.data['ref_ra']),  max(mean_source.data['ref_ra'])),
+        y_range=(min(mean_source.data['ref_dec']), max(mean_source.data['ref_dec'])),
+    )
+    #p.x_range.range_padding = p.y_range.range_padding = 0
 
     # Make a data dictionary of each epoch with the _(int) format keys
     data_dict = {}
@@ -276,7 +288,7 @@ def main():
 
     # When a tranisent is selected
     source.selected.js_on_change('indices',
-        CustomJS(args=dict(lc_source=lc_source, lc=lc, source=source),
+        CustomJS(args=dict(lc_source=lc_source, lc=lc, source=source, mean_image=mean_image),
             code="""
             if (cb_obj.indices.length == 0)
                 return;
@@ -284,6 +296,7 @@ def main():
             var uuid = source.data['uuid'][idx];
             var data = lc_source.data;
             var plot = lc;
+            var image_plot = mean_image;
 
             var lower = [];
             var upper = [];
@@ -308,6 +321,22 @@ def main():
             // emit changes so that we can update all the other
             lc_source.change.emit();
             source.change.emit();
+            """
+        )
+    )
+    # When a tranisent is selected
+    source.selected.js_on_change('indices',
+        CustomJS(args=dict(source=source, xr=mean_image.x_range, yr=mean_image.y_range, mean_image=mean_image),
+            code="""
+            if (cb_obj.indices.length == 0)
+                return;
+            var idx = cb_obj.indices[0];
+
+            // zoom into the selected tranisent
+            xr.start = source.data['ref_ra'][idx] - 0.2;
+            xr.end = source.data['ref_ra'][idx] + 0.2;
+            yr.start = source.data['ref_dec'][idx] - 0.2;
+            yr.end = source.data['ref_dec'][idx] + 0.2;
             """
         )
     )
