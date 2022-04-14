@@ -179,6 +179,8 @@ process make_mean_image {
 
   output:
   tuple val('mean_image'), path('mean_image.fits')
+  // This is just to publish the (warped) image
+  path(image)
 
   script:
   """
@@ -469,7 +471,7 @@ workflow {
     image_bkg_rms = fits_warp.out.concat(bane_raw.out.map{ it -> [it[0], [it[1..2]]]}).groupTuple().map{ it -> [ it[0], it[1][0], it[1][1][0][1]]}
   }
   make_mean_image( image_ch.map{ it -> it[1] }.collect() )
-  bane_mean_image( make_mean_image.out )
+  bane_mean_image( make_mean_image.out[0] )
   sfind_mean_image( bane_mean_image.out )
   source_monitor(
     sfind_mean_image.out,

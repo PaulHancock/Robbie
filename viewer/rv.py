@@ -8,6 +8,7 @@ import pandas as pd
 from astropy.io.votable import parse
 from functools import lru_cache
 import datetime
+import argparse
 
 from bokeh.plotting import figure, show, output_file
 from bokeh import palettes
@@ -82,10 +83,10 @@ def get_tabdata(fname):
     return df
 
 @lru_cache
-def get_joined_table_source():
+def get_joined_table_source(result_dir):
     # most likely there is a solution that doesn't involve so many intermediaries!
-    flux_table = get_tabdata("results/flux_table.vot")
-    stats_table = get_tabdata("results/stats_table.vot")
+    flux_table = get_tabdata(f"{result_dir}/flux_table.vot")
+    stats_table = get_tabdata(f"{result_dir}/stats_table.vot")
     joined = flux_table.join(stats_table.set_index('uuid'), on='uuid')
     df = joined
     source = ColumnDataSource(data=dict( (i,df[i]) for i in df.columns))
@@ -154,8 +155,8 @@ def get_scatter_plots(source):
     return left,right,data_table
 
 
-def get_mean_image_plot(source):
-    hdu = load_mean_image('results/mean_image.fits')
+def get_mean_image_plot(source, result_dir):
+    hdu = load_mean_image(f"{result_dir}/mean_image.fits")
     data, ra, dec = mean_image_data(hdu)
     imdata = get_imdata(data,ra,dec)
 
@@ -273,14 +274,21 @@ def get_epoch_image_plots(epoch_files, mean_source):
     return p, slider
 
 
-def main():
-    output_file(filename='viewer/RV.html', title="Robbie Viewer")
+def main(result_dir):
+    # Find input fits files
+    all_fits = glob.glob(f"{result_dir}/*.fits")
+    epoch_fits = []
+    for fits in all_fits:
+        if not ("mean" in fits or "transients" in fits):
+            epoch_fits.append(fits)
+
+    output_file(filename='RV.html', title="Robbie Viewer")
     #curdoc().theme = 'night_sky'
-    source, lc_source = get_joined_table_source()
-    mean_image = get_mean_image_plot(source)
+    source, lc_source = get_joined_table_source(result_dir)
+    mean_image = get_mean_image_plot(source, result_dir)
     sky, variable, table = get_scatter_plots(source)
     lc = get_light_curve_plot(lc_source)
-    epochs, epoch_slider = get_epoch_image_plots(glob.glob("results/E*.fits"), source)
+    epochs, epoch_slider = get_epoch_image_plots(epoch_fits, source)
 
     # Make the sky plot and mean image zoom/pan together
     sky.x_range = mean_image.x_range = epochs.x_range
@@ -363,4 +371,8 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="Create interactive transient result viewer.")
+    parser.add_argument("-r", "--result_dir", type=str,
+                        help="The output directory of robbie.nf that contains the results.")
+    args = parser.parse_args()
+    main(args.result_dir)
