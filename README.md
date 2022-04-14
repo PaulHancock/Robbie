@@ -31,7 +31,7 @@ Robbie relies on the following software:
 All dependencies except for Nextflow will be installed in the docker image.
 
 ## Installation
-The best way to use Robbie is via a docker container that has all the software dependencies installed. Such a container can be built using
+The best way to use Robbie is via a docker container that has all the software dependencies installed. Ensure docker is running, then build the container using:
 ```
 docker build -t paulhancock/robbie-next -f docker/Dockerfile .
 ```
@@ -41,13 +41,28 @@ or by pulling the latest build from [DockerHub](https://hub.docker.com/r/paulhan
 docker pull paulhancock/robbie-next
 ```
 
-Make sure Nextflow is installed, and then add robbie.nf to your path with
+Then, install Nextflow with a package management system such as Conda:
+
+```
+conda install -c bioconda nextflow
+```
+
+Once Nextflow is installed, add robbie.nf to your path with
 ```
 python setup.py install
 ```
 
 ## Quickstart
 Robbie now uses Nextflow to manage the workflow and can be run on a local system or a supercomputing cluster. You can use a container via singularity, docker, or the host's software. The current development cycle tests Robbie using singularity on an HPC with the Slurm executor - other setups *should* work but haven't been extensively tested.
+
+### `images.txt`
+Before running Robbie, you will need to create a text file that contains the paths to each image to be processed. For example, if within the "Robbie" parent directory there exists a folder named "images" containing the `.fits` files:
+
+```
+ls images/* > images.txt
+```
+
+will populate `images.txt` with the image paths relative to the parent directory.
 
 ### `robbie.nf`
 This file describes the workflow and can be inspected but shouldn't be edited directly. To describe the command line arguments, use
@@ -64,7 +79,11 @@ The `-C my.config` directs Nextflow to use *only* the configuration described in
 
 ### `-profile`
 
-If you're running Robbie on your local machine, you should use the `-profile local` option to use the Robbie docker image.
+If you're running Robbie on your local machine, you should use the `-profile local` option to use the Robbie docker image. For example,
+
+```
+nextflow -C my.config run robbie.nf -profile local
+```
 
 If you're running Robbie on a supercomputing cluster (HPC), you should use the relevant cluster profile (`-profile zeus` or `-profile magnus`) to assure you're using the cluster's job queue (such as Slurm). If there isn't a profile for your cluster (check in `nextflow.config`), you may have to make your own.
 
