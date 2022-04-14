@@ -62,7 +62,7 @@ Before running Robbie, you will need to create a text file that contains the pat
 ls images/* > images.txt
 ```
 
-will populate `images.txt` with the image paths relative to the parent directory. A 
+will populate `images.txt` with the image paths relative to the parent directory.
 
 ### `robbie.nf`
 This file describes the workflow and can be inspected but shouldn't be edited directly. To describe the command line arguments, use
