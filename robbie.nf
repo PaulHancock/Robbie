@@ -21,7 +21,7 @@ if ( params.help ) {
              |                [default: ${params.warp}]
              |  --ref_catalogue
              |                The reference catalogue to warp your images to match.
-             |                [default: ${params.ref_catalogue}]
+             |                [default: will download and use GLEAM catalogue]
              |  --refcat_ra   The label the reference catalogue uses for Right Acension.
              |                [default: ${params.refcat_ra}]
              |  --refcat_dec  The label the reference catalogue uses for Declination.
@@ -132,6 +132,33 @@ process initial_sfind {
   echo ${task.process} on \${HOSTNAME}
   aegean --cores ${task.cpus} --background *_bkg.fits --noise *_rms.fits --table ${image} ${region_command} ${image}
   ls *.fits
+  """
+}
+
+process download_gleam_catalogue {
+  output:
+  path("*fits")
+
+  script:
+  """
+  #! /usr/bin/env python
+
+  import os
+  from robbie import data_load
+  from astroquery.vizier import Vizier
+
+  if os.path.exists(data_load.REF_CAT):
+    # Already exists so just sym link
+    os.symlink(data_load.REF_CAT, "GLEAM_ref_cat.fits")
+  else:
+    # Download it from Vizier
+    cat = Vizier(catalog="VIII/100/gleamegc", columns=['GLEAM', 'RAJ2000', 'DEJ2000', 'Fpwide', 'Fintwide'], row_limit=-1).query_constraints()[0]
+    try:
+      cat.write(data_load.REF_CAT, format='fits')
+      os.symlink(data_load.REF_CAT, "GLEAM_ref_cat.fits")
+    except PermissionError:
+      # No permission so dump it here
+      cat.write("GLEAM_ref_cat.fits", format='fits')
   """
 }
 
@@ -460,10 +487,18 @@ workflow {
   // image_bkg_rms = epoch_label, image_fits, [bkg_fits, rms_fits]
   image_bkg_rms = bane_raw.out
   if ( params.warp ) {
+    if ( params.ref_catalogue == null ) {
+      // No ref catalogue supplied so download default one
+      download_gleam_catalogue()
+      ref_cat = download_gleam_catalogue.out
+    }
+    else {
+      ref_cat = Channel.fromPath( params.ref_catalogue )
+    }
     initial_sfind( image_bkg_rms )
     fits_warp(
       initial_sfind.out,
-      Channel.fromPath( params.ref_catalogue ),
+      ref_cat,
     )
     image_ch = fits_warp.out
     image_bkg_rms = fits_warp.out.concat(bane_raw.out.map{ it -> [it[0], [it[1..2]]]}).groupTuple().map{ it -> [ it[0], it[1][0], it[1][1][0][1]]}
