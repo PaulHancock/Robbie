@@ -274,6 +274,7 @@ def main():
     sky.x_range = mean_image.x_range = epochs.x_range
     sky.y_range = mean_image.y_range = epochs.y_range
 
+    # When a tranisent is selected
     source.selected.js_on_change('indices',
         CustomJS(args=dict(lc_source=lc_source, lc=lc, source=source),
             code="""
@@ -307,6 +308,23 @@ def main():
             // emit changes so that we can update all the other
             lc_source.change.emit();
             source.change.emit();
+            """
+        )
+    )
+    # When an epoch is selected
+    lc_source.selected.js_on_change('indices',
+        CustomJS(args=dict(lc_source=lc_source, epoch_slider=epoch_slider, source=source),
+            code="""
+            if (cb_obj.indices.length == 0)
+                return;
+            var idx = cb_obj.indices[0];
+            console.log(idx);
+            var slider = epoch_slider;
+
+            slider.value = Number(idx);
+
+            // emit changes so that we can update all the other
+            epoch_slider.change.emit();
             """
         )
     )
