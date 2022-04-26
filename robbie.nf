@@ -68,9 +68,9 @@ log.info """\
 
 // Read the image names from a text file
 image_ch = Channel
-  .fromPath(params.image_file)
-  .splitText()
-  .map{ it -> tuple(file(it).baseName, file(it.trim()))}
+  .fromPath( params.image_file )
+  .splitCsv()
+  .map{ it -> tuple(file(it[0]).baseName, file(it[0])) }
 
 // Set up optional commands
 if ( params.use_monitoring_src_file ) {

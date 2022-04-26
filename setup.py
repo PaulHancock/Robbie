@@ -51,6 +51,7 @@ setup(
         "scripts/plot_variables.py",
         # nextflow
         "robbie.nf",
+        "nextflow.config",
     ],
 )
 os.remove("robbie_version.sh")
