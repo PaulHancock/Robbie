@@ -37,6 +37,7 @@ setup(
     description="A batch processing work-flow for the detection of radio transients and variables",
     url="https://github.com/PaulHancock/Robbie",
     python_requires=">=3.6",
+    packages=['robbie'],
     scripts=[
         "robbie_version.sh",
         # python
@@ -50,6 +51,7 @@ setup(
         "scripts/plot_variables.py",
         # nextflow
         "robbie.nf",
+        "nextflow.config",
     ],
 )
 os.remove("robbie_version.sh")

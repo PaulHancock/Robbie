@@ -19,3 +19,5 @@ ADD . /tmp/build
 RUN pip install -r requirements.txt && \
     python setup.py install && \
     rm -rf /tmp/build
+
+ENV HOME=/tmp
