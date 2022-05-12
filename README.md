@@ -89,6 +89,14 @@ If you're running Robbie on a supercomputing cluster (HPC), you should use the r
 
 Additional configuration files are stored in the `./config` directory and may be useful templates for your work.
 
+## Visualisation
+
+To open the viewer in a Bokeh server:
+
+```
+bokeh serve robbie_viewer_server --dev --args ./results/
+```
+where the results folder is the output from the Robbie Nextflow workflow.
 ## Credit
 If you use Robbie as part of your work, please cite [Hancock et al. 2018](http://adsabs.harvard.edu/abs/2019A%26C....27...23H), and link to this repository.
 
