@@ -12,9 +12,8 @@ import sys
 from bokeh.layouts import layout
 from bokeh.io import curdoc
 from bokeh.models import CustomJS
-from .utils import load_mean_image, mean_image_data, get_imdata, get_tabdata,\
-    get_joined_table_source, get_scatter_plots, get_mean_image_plot, get_light_curve_plot,\
-    get_light_curve_plot, get_epoch_image_plots
+from .utils import get_joined_table_source, get_scatter_plots, get_mean_image_plot,\
+    get_light_curve_plot, get_light_curve_plot, get_epoch_image_plots
 
 
 def main(result_dir):
