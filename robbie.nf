@@ -196,6 +196,33 @@ process make_mean_image {
   """
 }
 
+process make_sky_coverage {
+  publishDir params.output_dir, mode: 'copy'
+
+  input:
+  path image
+
+  output:
+  path('sky_coverage.fits')
+
+  script:
+  """
+  echo ${task.process} on \${HOSTNAME}
+
+  ls *.fits > images.txt
+
+  for f in \$(ls *.fits); do make_weights.py \${f}; done
+
+  ${params.swarp} -d > swarp.config
+  ${params.swarp} @images.txt -c swarp.config \
+                  -SUBTRACT_BACK N \
+                  -PROJECTION_TYPE SIN \
+                  -COMBINE_TYPE WEIGHTED \
+                  -WEIGHTOUT_NAME sky_coverage.fits \
+                  -WEIGHT_TYPE MAP_WEIGHT \
+                  -RESCALE_WEIGHTS N 
+  """
+}
 
 process bane_mean_image {
   label 'bane'
@@ -461,6 +488,8 @@ workflow {
   fits_warp( initial_sfind.out,
             Channel.fromPath( params.ref_catalogue ) )
   make_mean_image( fits_warp.out[0].collect() )
+  //make_sky_coverage( image_ch.map(it-> it[1]).collect() )
+  make_sky_coverage( fits_warp.out[0].collect() )
   bane_mean_image( make_mean_image.out )
   sfind_mean_image( bane_mean_image.out )
   source_monitor( sfind_mean_image.out,
