@@ -249,6 +249,15 @@ process make_sky_coverage {
                   -WEIGHTOUT_NAME sky_coverage.fits \
                   -WEIGHT_TYPE MAP_WEIGHT \
                   -RESCALE_WEIGHTS N 
+  rm *.weight.fits
+
+  python - <<EOF
+  from astropy.io import fits 
+  import numpy as np 
+  hdu = fits.open('sky_coverage.fits') 
+  hdu[0].data = np.array(np.round(hdu[0].data), dtype=np.int8) 
+  hdu.writeto('sky_coverage.fits', overwrite=True) 
+  EOF
   """
 }
 
