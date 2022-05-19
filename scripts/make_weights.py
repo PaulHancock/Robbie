@@ -1,6 +1,7 @@
 #! /usr/bin/env python
 
 from astropy.io import fits
+import numpy as np
 import os
 import argparse
 
@@ -11,6 +12,7 @@ def make_weight(fname, val, outfile=None):
     hdu = fits.open(fname)
     hdu[0].data *= 0
     hdu[0].data += val
+    hdu[0].data = np.array(np.round(hdu[0].data), dtype=np.int8)
     
     if outfile is None:
         outfile = os.path.basename(fname)
