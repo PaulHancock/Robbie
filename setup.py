@@ -49,6 +49,7 @@ setup(
         "scripts/get_lc_from_vot.py",
         "scripts/join_catalogues.py",
         "scripts/plot_variables.py",
+        "scripts/make_weights.py",
         # nextflow
         "robbie.nf",
         "nextflow.config",
