@@ -14,4 +14,4 @@ RUN pip install -r requirements.txt
 # EXPOSE PORTS
 EXPOSE 5006
 
-CMD bokeh serve . --dev --args ./results/ 
+CMD bokeh serve . --dev --args ./results
