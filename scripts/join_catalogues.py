@@ -67,7 +67,11 @@ def join_catalogues(reference, epochs):
         for colname in ['peak_flux_{0}','err_peak_flux_{0}', 'local_rms_{0}', 'background_{0}']:
             new_cols.append(Column(data=data.copy(), name=colname.format(i)))
         for colname in ['image_{0}', 'epoch_{0}']:
-            new_cols.append(Column(data=str_data.copy(), name=colname.format(i)))
+            if 'image' in colname:
+                new_cols.append(Column(data=str_data.copy(), name=colname.format(i)))
+            else:
+                new_cols.append(Column(data=str_data.copy(), name=colname.format(i), dtype='S19'))
+                
     print("ref table is {0} rows".format(len(ref)))
     
     # if we add all the columns at once the ordering is borked!

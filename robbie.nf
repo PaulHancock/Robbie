@@ -21,7 +21,7 @@ if ( params.help ) {
              |                [default: ${params.warp}]
              |  --ref_catalogue
              |                The reference catalogue to warp your images to match.
-             |                [default: ${params.ref_catalogue}]
+             |                [default: will download and use GLEAM catalogue]
              |  --refcat_ra   The label the reference catalogue uses for Right Acension.
              |                [default: ${params.refcat_ra}]
              |  --refcat_dec  The label the reference catalogue uses for Declination.
@@ -68,9 +68,9 @@ log.info """\
 
 // Read the image names from a text file
 image_ch = Channel
-  .fromPath(params.image_file)
-  .splitText()
-  .map{ it -> tuple(file(it).baseName, file(it.trim()))}
+  .fromPath( params.image_file )
+  .splitCsv()
+  .map{ it -> tuple(file(it[0]).baseName, file(it[0])) }
 
 // Set up optional commands
 if ( params.use_monitoring_src_file ) {
@@ -135,6 +135,33 @@ process initial_sfind {
   """
 }
 
+process download_gleam_catalogue {
+  output:
+  path("*fits")
+
+  script:
+  """
+  #! /usr/bin/env python
+
+  import os
+  from robbie import data_load
+  from astroquery.vizier import Vizier
+
+  if os.path.exists(data_load.REF_CAT):
+    # Already exists so just sym link
+    os.symlink(data_load.REF_CAT, "GLEAM_ref_cat.fits")
+  else:
+    # Download it from Vizier
+    cat = Vizier(catalog="VIII/100/gleamegc", columns=['GLEAM', 'RAJ2000', 'DEJ2000', 'Fpwide', 'Fintwide'], row_limit=-1).query_constraints()[0]
+    try:
+      cat.write(data_load.REF_CAT, format='fits')
+      os.symlink(data_load.REF_CAT, "GLEAM_ref_cat.fits")
+    except PermissionError:
+      # No permission so dump it here
+      cat.write("GLEAM_ref_cat.fits", format='fits')
+  """
+}
+
 
 process fits_warp {
   label 'warp'
@@ -145,8 +172,7 @@ process fits_warp {
   each ref_catalogue
 
   output:
-  path "*_warped.fits"
-  tuple val("${basename}_warped"), path("*.fits", includeInputs:true)
+  tuple val(basename), path("*_warped.fits")
 
   script:
   suff1=(params.refcat_ra=='ra' ? '_1':'')
@@ -180,6 +206,8 @@ process make_mean_image {
 
   output:
   tuple val('mean_image'), path('mean_image.fits')
+  // This is just to publish the (warped) image
+  path(image)
 
   script:
   """
@@ -265,26 +293,26 @@ process source_monitor {
 
   input:
   path mean_cat
-  tuple val(basename), path(image)
+  tuple val(basename), path(image), path(bkg_rms)
 
   output:
-  tuple path("${basename}_comp.fits"), path(image, includeInputs:true)
-  path "${basename}_comp.fits"
+  tuple path("${image.baseName}_comp.fits"), path(image, includeInputs:true)
+  path "${image.baseName}_comp.fits"
 
   script:
   """
   echo ${task.process} on \${HOSTNAME}
   aegean --cores ${task.cpus} --background *_bkg.fits --noise *_rms.fits --noregroup\
-         --table ${basename}.fits --priorized 1 --input ${mean_cat} ${basename}.fits
+         --table ${image} --priorized 1 --input ${mean_cat} ${image}
 
   # super hack to get stilts to play nice and add two columns of strings
-  epoch=\$(get_epoch.py ${basename}.fits)
+  epoch=\$(get_epoch.py ${image})
   epoch="\\\\\\\"\${epoch}\\\\\\\""
-  filename="\\\\\\\"${basename}.fits\\\\\\\""
-  ${params.stilts} tpipe in=${basename}_comp.fits cmd="addcol image \${filename}" \
+  filename="\\\\\\\"${image}\\\\\\\""
+  ${params.stilts} tpipe in=${image.baseName}_comp.fits cmd="addcol image \${filename}" \
                                                   cmd="addcol epoch \${epoch}" \
                                                   ofmt=fits out=temp.fits
-  mv temp.fits ${basename}_comp.fits
+  mv temp.fits ${image.baseName}_comp.fits
   """
 }
 
@@ -362,16 +390,16 @@ process mask_images {
 
   input:
   path mean_cat
-  tuple val(basename), path(warped_images)
+  tuple val(basename), path(image), path(bkg_rms)
 
   output:
-  tuple val("${basename}_masked"), path("*.fits", includeInputs:true)
+  tuple val(basename), path("${basename}_masked.fits"), path(bkg_rms)
 
   script:
   """
   echo ${task.process} on \${HOSTNAME}
   ls *.fits
-  AeRes -c ${mean_cat} -f *_warped.fits -r ${basename}_masked.fits --mask --sigma 0.1
+  AeRes -c ${mean_cat} -f ${image} -r ${basename}_masked.fits --mask --sigma 0.1
   """
 }
 
@@ -380,23 +408,23 @@ process sfind_masked {
   label 'aegean'
 
   input:
-  tuple val(basename), path(masked_images)
+  tuple val(basename), path(masked_images), path(bkg_rms)
 
   output:
-  path "${basename}_comp.fits" optional true
+  path "${masked_images.baseName}_comp.fits" optional true
 
   script:
   """
   echo ${task.process} on  \${HOSTNAME}
   ls *
-  aegean --cores ${task.cpus} --background *_bkg.fits --noise *_rms.fits --table ${basename}.fits ${basename}.fits ${region_command}
+  aegean --cores ${task.cpus} --background *_bkg.fits --noise *_rms.fits --table ${masked_images} ${masked_images} ${region_command}
   # Don't filter if there is no output
-  if [[ -e ${basename}_comp.fits ]]
+  if [[ -e ${masked_images.baseName}_comp.fits ]]
   then
-    filter_transients.py --incat ${basename}_comp.fits --image ${basename}.fits --outcat out.fits
+    filter_transients.py --incat ${masked_images.baseName}_comp.fits --image ${masked_images} --outcat out.fits
     if [[ -e out.fits ]]
     then
-      mv out.fits ${basename}_comp.fits
+      mv out.fits ${masked_images.baseName}_comp.fits
     fi
   fi
   ls *.fits
@@ -483,23 +511,45 @@ process transients_plot {
 
 workflow {
   get_version( )
+  // image_ch = epoch_label, image_fits
   bane_raw( image_ch )
-  initial_sfind( bane_raw.out )
-  fits_warp( initial_sfind.out,
-            Channel.fromPath( params.ref_catalogue ) )
-  make_mean_image( fits_warp.out[0].collect() )
-  //make_sky_coverage( image_ch.map(it-> it[1]).collect() )
-  make_sky_coverage( fits_warp.out[0].collect() )
-  bane_mean_image( make_mean_image.out )
+  // image_bkg_rms = epoch_label, image_fits, [bkg_fits, rms_fits]
+  image_bkg_rms = bane_raw.out
+  if ( params.warp ) {
+    if ( params.ref_catalogue == null ) {
+      // No ref catalogue supplied so download default one
+      download_gleam_catalogue()
+      ref_cat = download_gleam_catalogue.out
+    }
+    else {
+      ref_cat = Channel.fromPath( params.ref_catalogue )
+    }
+    initial_sfind( image_bkg_rms )
+    fits_warp(
+      initial_sfind.out,
+      ref_cat,
+    )
+    image_ch = fits_warp.out
+    image_bkg_rms = fits_warp.out.concat(bane_raw.out.map{ it -> [it[0], [it[1..2]]]}).groupTuple().map{ it -> [ it[0], it[1][0], it[1][1][0][1]]}
+  }
+  make_mean_image( image_ch.map{ it -> it[1] }.collect() )
+  make_sky_coverage( image_ch.map{ it -> it[1] }.collect() )
+  bane_mean_image( make_mean_image.out[0] )
   sfind_mean_image( bane_mean_image.out )
-  source_monitor( sfind_mean_image.out,
-                  fits_warp.out[1] )
-  join_fluxes( source_monitor.out[1].collect(),
-              sfind_mean_image.out )
+  source_monitor(
+    sfind_mean_image.out,
+    image_bkg_rms,
+  )
+  join_fluxes(
+    source_monitor.out[1].collect(),
+    sfind_mean_image.out,
+  )
   compute_stats( join_fluxes.out )
   plot_lc( compute_stats.out )
-  mask_images( sfind_mean_image.out,
-              fits_warp.out[1] )
+  mask_images(
+    sfind_mean_image.out,
+    image_bkg_rms,
+  )
   sfind_masked( mask_images.out )
   compile_transients_candidates( sfind_masked.out.collect() )
   transients_plot( compile_transients_candidates.out )
