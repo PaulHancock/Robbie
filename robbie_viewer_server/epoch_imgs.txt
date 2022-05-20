@@ -1,0 +1,5 @@
+../results/Epoch00.fits
+../results/Epoch01.fits
+../results/Epoch02.fits
+../results/Epoch03.fits
+../results/Epoch04.fits
