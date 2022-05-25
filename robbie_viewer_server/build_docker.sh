@@ -3,7 +3,7 @@
 # if directory doesn't exist, copy from parent Robbie results
 if [ ! -d "$results" ]; then
     cp -r ../results/ .
-    cp *.vot* .results/ ./results/reprojected_images/
+    cp ./results/*.vot* ./results/reprojected_images/
 fi
 
 # build the container and add a tage
