@@ -27,7 +27,7 @@ def get_epoch_catalogues(epochs_file):
     return files
 
 
-def fits_file_reprojection(epoch_files, mean_file):
+def fits_file_reprojection(epoch_files, mean_file, output_dir):
 
     # Get list of Epoch's and then mean image
     fits_files = epoch_files
@@ -60,7 +60,7 @@ def fits_file_reprojection(epoch_files, mean_file):
         # Write out file 
         f_fileout_name = f_file.replace('.fits', '_reprojected.fits').split('/')[-1]
       
-        fits.writeto(f'{f_fileout_name}', new_image, new_header, overwrite=True)
+        fits.writeto(f'{output_dir}/{f_fileout_name}', new_image, new_header, overwrite=True)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -69,6 +69,8 @@ if __name__ == "__main__":
                         help="A file containing the list of epoch catalogues")
     group1.add_argument("--mean", dest='mean', type=str, default=None,
                         help="The mean image file")
+    group1.add_argument("--reproj_dir", dest='reproject_img_dir', type=str, default="plots",
+                        help="The reprojected image output directory")    
     args = parser.parse_args()
 
     if None in (args.epochs, args.mean):
@@ -78,4 +80,4 @@ if __name__ == "__main__":
     files = get_epoch_catalogues(args.epochs)
     mean = get_epoch_catalogues(args.mean)
 
-    fits_file_reprojection(files, mean)
+    fits_file_reprojection(files, mean, args.reproject_img_dir)

@@ -490,13 +490,15 @@ process reproject_images {
   path fits
 
   output:
-  path '*.fits'
+  path 'reprojected_images'
 
   script:
   """
+  echo ${task.process} on \${HOSTNAME}
+  mkdir reprojected_images
   ls *Epoch* > temp_epochs.txt
   ls *mean_image.* > temp_mean.txt
-  reprojection.py --epochs temp_epochs.txt --mean temp_mean.txt
+  reprojection.py --epochs temp_epochs.txt --mean temp_mean.txt --reproj_dir reprojected_images
   """
 
 }
