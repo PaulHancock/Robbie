@@ -13,5 +13,5 @@ else
     cp ../results/*.vot* ./results/
 fi
 
-# build the container and add a tage
-docker build . -f ./Dockerfile -t "robbie/robbie-viewer"
+# build the container and add a target
+docker buildx build . --platform linux/amd64 -f ./Dockerfile -t "robbie/robbie-viewer"

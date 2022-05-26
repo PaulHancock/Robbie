@@ -12,7 +12,8 @@ from bokeh.layouts import gridplot, layout
 from bokeh.io import curdoc
 from bokeh.models import (ColumnDataSource, Circle, Whisker,
                           DataTable, TableColumn, NumberFormatter,
-                          CustomJS, Slider, DatetimeTickFormatter)
+                          CustomJS, Slider, DatetimeTickFormatter,
+                          HoverTool)
 TOOLS = "box_select,lasso_select,help,pan,tap,wheel_zoom,reset"
 selected_circle = Circle(fill_alpha=1, fill_color="firebrick", line_color=None)
 nonselected_circle = Circle(fill_alpha=0.2, fill_color="blue", line_color=None)
@@ -150,7 +151,7 @@ def get_scatter_plots(source):
     return left,right,data_table
 
 def get_mean_image_plot(source, result_dir):
-    hdu = load_mean_image(f"{result_dir}/mean_image.fits")
+    hdu = load_mean_image(f"{result_dir}/mean_image_reprojected.fits")
     data, ra, dec = mean_image_data(hdu)
     imdata = get_imdata(data,ra,dec)
 
@@ -167,12 +168,15 @@ def get_mean_image_plot(source, result_dir):
         x_range=(min(source.data['ref_ra']),  max(source.data['ref_ra'])),
         y_range=(min(source.data['ref_dec']), max(source.data['ref_dec'])),
     )
-    #p.x_range.range_padding = p.y_range.range_padding = 0
+
+    # Adjust hover tool to only work on image data
+    hover_tool = p.select(type=HoverTool)
+    hover_tool.names = ["mean_image"]
 
     # must give a vector of image data for image parameter
     p.image(source=imdata,
             image='image',
-            palette=palettes.mpl['Cividis'][256])#, level="image")
+            palette=palettes.mpl['Cividis'][256], name="mean_image")#, level="image")
     p.circle(source=source,
              x='ref_ra', y='ref_dec',
              radius=0.03, fill_color=None,
@@ -225,7 +229,10 @@ def get_epoch_image_plots(epoch_files, mean_source):
         x_range=(min(mean_source.data['ref_ra']),  max(mean_source.data['ref_ra'])),
         y_range=(min(mean_source.data['ref_dec']), max(mean_source.data['ref_dec'])),
     )
-    #p.x_range.range_padding = p.y_range.range_padding = 0
+
+    # Adjust hover tool to only work on image data
+    hover_tool = p.select(type=HoverTool)
+    hover_tool.names = ["epoch_image"]
 
     # Make a data dictionary of each epoch with the _(int) format keys
     data_dict = {}
@@ -247,7 +254,7 @@ def get_epoch_image_plots(epoch_files, mean_source):
 
     # must give a vector of image data for image parameter
     p.image(source=source,
-            palette=palettes.mpl['Cividis'][256])
+            palette=palettes.mpl['Cividis'][256], name="epoch_image")
     slider = Slider(start=0, end=len(epoch_files)-1, value=0, step=1, title="Epoch")
     # Add the source circles
     p.circle(source=mean_source,

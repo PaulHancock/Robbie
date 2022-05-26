@@ -14,4 +14,4 @@ RUN pip install -r requirements.txt
 # EXPOSE PORTS
 EXPOSE 5006
 
-CMD bokeh serve . --dev --args ./results/reprojected_images
+CMD bokeh serve . --args ./results/
