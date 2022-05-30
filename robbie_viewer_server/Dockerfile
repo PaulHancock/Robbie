@@ -9,7 +9,6 @@ WORKDIR /robbie_viewer
 COPY main.py .
 COPY utils.py .
 COPY requirements.txt .
-COPY __init__.py .
 
 # Run pip install for requirements
 RUN pip install -r requirements.txt
