@@ -6,7 +6,10 @@ LABEL maintainer="Paul Hancock <paul.hancock@curtin.edu.au>"
 WORKDIR /robbie_viewer
 
 # Copy the viewer
-COPY . .
+COPY main.py .
+COPY utils.py .
+COPY requirements.txt .
+COPY __init__.py .
 
 # Run pip install for requirements
 RUN pip install -r requirements.txt
@@ -14,4 +17,4 @@ RUN pip install -r requirements.txt
 # EXPOSE PORTS
 EXPOSE 5006
 
-CMD bokeh serve . --args ./results/
+CMD bokeh serve . --args /data 

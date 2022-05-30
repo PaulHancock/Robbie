@@ -19,14 +19,15 @@ from .utils import get_joined_table_source, get_scatter_plots, get_mean_image_pl
 def main(result_dir):
  
     # Find input fits files
-    all_fits = glob.glob(f"{result_dir}/*.fits")
+    reproject_img_dir = f"{result_dir}/reprojected_images"
+    all_fits = glob.glob(f"{reproject_img_dir}/*.fits")
     epoch_fits = []
     for fits in all_fits:
         if not ("mean" in fits or "transients" in fits):
             epoch_fits.append(fits)
 
     source, lc_source = get_joined_table_source(result_dir)
-    mean_image = get_mean_image_plot(source, result_dir)
+    mean_image = get_mean_image_plot(source, reproject_img_dir)
     sky, variable, table = get_scatter_plots(source)
     lc = get_light_curve_plot(lc_source)
     epochs, epoch_slider = get_epoch_image_plots(epoch_fits, source)

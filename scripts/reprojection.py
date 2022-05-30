@@ -69,8 +69,8 @@ if __name__ == "__main__":
                         help="A file containing the list of epoch catalogues")
     group1.add_argument("--mean", dest='mean', type=str, default=None,
                         help="The mean image file")
-    group1.add_argument("--reproj_dir", dest='reproject_img_dir', type=str, default="plots",
-                        help="The reprojected image output directory")    
+    group1.add_argument("--reproj_dir", dest='reproject_img_dir', type=str, default=None,
+                        help="The reprojected image output directory")                         
     args = parser.parse_args()
 
     if None in (args.epochs, args.mean):
