@@ -91,12 +91,18 @@ Additional configuration files are stored in the `./config` directory and may be
 
 ## Visualisation
 
-To open the viewer in a Bokeh server:
+Firstly, build the Docker image located in the robbie_viewer_server directory:
 
 ```
-bokeh serve robbie_viewer_server --dev --args ./results/
+./build_docker.sh
 ```
-where the results folder is the output from the Robbie Nextflow workflow.
+
+once this is complete, run the viewer in the main Nextflow directory via:
+
+```
+run_robbie_viewer.sh
+```
+
 ## Credit
 If you use Robbie as part of your work, please cite [Hancock et al. 2018](http://adsabs.harvard.edu/abs/2019A%26C....27...23H), and link to this repository.
 
