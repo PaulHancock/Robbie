@@ -121,11 +121,3 @@ p = main(result_dir)
 
 # Add plots to the current document root
 curdoc().add_root(p)
-
-
-# if __name__ == "__main__":
-#     parser = argparse.ArgumentParser(description="Create interactive transient result viewer.")
-#     parser.add_argument("-r", "--result_dir", type=str,
-#                         help="The output directory of robbie.nf that contains the results.")
-#     args = parser.parse_args()
-#     main(args.result_dir)
