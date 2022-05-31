@@ -1,1 +1,0 @@
-../results/mean_image.fits
