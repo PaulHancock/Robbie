@@ -224,6 +224,42 @@ process make_mean_image {
   """
 }
 
+process make_sky_coverage {
+  publishDir params.output_dir, mode: 'copy'
+
+  input:
+  path image
+
+  output:
+  path('sky_coverage.fits')
+
+  script:
+  """
+  echo ${task.process} on \${HOSTNAME}
+
+  ls *.fits > images.txt
+
+  for f in \$(ls *.fits); do make_weights.py \${f}; done
+
+  ${params.swarp} -d > swarp.config
+  ${params.swarp} @images.txt -c swarp.config \
+                  -SUBTRACT_BACK N \
+                  -PROJECTION_TYPE SIN \
+                  -COMBINE_TYPE WEIGHTED \
+                  -WEIGHTOUT_NAME sky_coverage.fits \
+                  -WEIGHT_TYPE MAP_WEIGHT \
+                  -RESCALE_WEIGHTS N 
+  rm *.weight.fits
+
+  python - <<EOF
+  from astropy.io import fits 
+  import numpy as np 
+  hdu = fits.open('sky_coverage.fits') 
+  hdu[0].data = np.array(np.round(hdu[0].data), dtype=np.int8) 
+  hdu.writeto('sky_coverage.fits', overwrite=True) 
+  EOF
+  """
+}
 
 process bane_mean_image {
   label 'bane'
@@ -527,6 +563,7 @@ workflow {
     image_bkg_rms = fits_warp.out.concat(bane_raw.out.map{ it -> [it[0], [it[1..2]]]}).groupTuple().map{ it -> [ it[0], it[1][0], it[1][1][0][1]]}
   }
   make_mean_image( image_ch.map{ it -> it[1] }.collect() )
+  make_sky_coverage( image_ch.map{ it -> it[1] }.collect() )
   bane_mean_image( make_mean_image.out[0] )
   sfind_mean_image( bane_mean_image.out )
   source_monitor(
