@@ -1,5 +1,6 @@
 # Robbie: A batch processing workflow for the detection of radio transients and variables
 
+[![Documentation Status](https://readthedocs.org/projects/robbie/badge/?version=latest)](https://robbie.readthedocs.io/en/latest/?badge=latest)
 ## Description
 
 Robbie automates the process of cataloguing sources, finding variables, and identifying transients.
