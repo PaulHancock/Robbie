@@ -101,6 +101,21 @@ process get_version {
 }
 
 
+process convolve_beams {
+  input:
+  path image
+
+  output:
+  path("*_convolved.fits")
+
+  script:
+  """
+  echo ${task.process} on \${HOSTNAME}
+
+  
+  """
+}
+
 process bane_raw {
   label 'bane'
 
