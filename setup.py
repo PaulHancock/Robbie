@@ -50,6 +50,7 @@ setup(
         "scripts/join_catalogues.py",
         "scripts/plot_variables.py",
         "scripts/make_weights.py",
+        "scripts/reprojection.py",
         # nextflow
         "robbie.nf",
         "nextflow.config",

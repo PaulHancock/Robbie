@@ -21,3 +21,5 @@ trace.txt*
 version.txt
 dist/*
 profiling.md
+*.ipynb
+build

@@ -90,6 +90,26 @@ If you're running Robbie on a supercomputing cluster (HPC), you should use the r
 
 Additional configuration files are stored in the `./config` directory and may be useful templates for your work.
 
+## Visualisation
+
+Firstly, build the Docker image located in the robbie_viewer_server directory:
+
+```
+./build_docker.sh
+```
+
+once this is complete, run the viewer in the main Nextflow directory via:
+
+```
+./run_robbie_viewer.sh
+```
+
+This will run the viewer using the images within the default ``results`` directory. If your directory is different to the default, you can add either the relative or absolute path as an optional argument:
+
+```
+./run_robbie_viewer.sh path_to_dir
+```
+
 ## Credit
 If you use Robbie as part of your work, please cite [Hancock et al. 2018](http://adsabs.harvard.edu/abs/2019A%26C....27...23H), and link to this repository.
 
