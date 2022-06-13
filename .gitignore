@@ -24,3 +24,4 @@ profiling.md
 *.swp
 /docs/_build
 /docs/doctrees
+example_data/

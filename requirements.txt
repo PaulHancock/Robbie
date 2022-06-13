@@ -9,3 +9,4 @@ git+https://github.com/PaulHancock/Aegean.git@v2.2.5
 git+https://github.com/nhurleywalker/fits_warp.git
 git+https://gitlab.com/Sunmish/flux_warp.git
 bokeh>=2.4.2
+reproject>=0.7.1

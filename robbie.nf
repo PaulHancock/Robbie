@@ -517,6 +517,27 @@ process transients_plot {
   """
 }
 
+process reproject_images {
+  label 'python'
+  publishDir params.output_dir, mode: 'copy'
+
+  input:
+  tuple val(basename), path(mean_img)
+  path fits
+
+  output:
+  path 'reprojected_images'
+
+  script:
+  """
+  echo ${task.process} on \${HOSTNAME}
+  mkdir reprojected_images
+  ls *Epoch* > temp_epochs.txt
+  ls *mean_image.* > temp_mean.txt
+  reprojection.py --epochs temp_epochs.txt --mean temp_mean.txt --reproj_dir reprojected_images
+  """
+
+}
 
 workflow {
   get_version( )
@@ -562,4 +583,5 @@ workflow {
   sfind_masked( mask_images.out )
   compile_transients_candidates( sfind_masked.out.collect() )
   transients_plot( compile_transients_candidates.out )
+  reproject_images(make_mean_image.out)
 }
