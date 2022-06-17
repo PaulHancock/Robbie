@@ -56,7 +56,10 @@ def fits_file_reprojection(epoch_files, mean_file, output_dir):
 
         # Change dtype to float32 for visualisation
         new_image = new_image.astype(np.float32)
-     
+
+        # Squeeze to remove extra dimensions
+        new_image = np.squeeze(new_image)
+
         # Write out file 
         f_fileout_name = f_file.replace('.fits', '_reprojected.fits').split('/')[-1]
       

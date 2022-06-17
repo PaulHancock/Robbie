@@ -532,7 +532,7 @@ process reproject_images {
   """
   echo ${task.process} on \${HOSTNAME}
   mkdir reprojected_images
-  ls *Epoch* > temp_epochs.txt
+  ls *.fits | grep -v "mean_image" > temp_epochs.txt
   ls *mean_image.* > temp_mean.txt
   reprojection.py --epochs temp_epochs.txt --mean temp_mean.txt --reproj_dir reprojected_images
   """

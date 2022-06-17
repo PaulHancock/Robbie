@@ -25,3 +25,4 @@ profiling.md
 /docs/_build
 /docs/doctrees
 example_data/
+build/
