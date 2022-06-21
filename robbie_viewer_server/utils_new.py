@@ -27,7 +27,10 @@ nonselected_circle = Circle(fill_alpha=0.2, fill_color="blue", line_color=None)
 # ref_ra_min, ref_ra_max = 335, 340
 # ref_dec_min, ref_dec_max = -35, -30
 
-cutout_position = SkyCoord(335*u.deg, -15*u.deg, frame='icrs')
+degrees_around_cutout = 10
+ra_ref = 335
+dec_ref = -15
+cutout_position = SkyCoord(ra_ref*u.deg, dec_ref*u.deg, frame='icrs')
 
 # x_lim, y_lim = ((ref_ra_min, ref_ra_max), (ref_dec_min, ref_dec_max))
 
@@ -40,7 +43,7 @@ def load_mean_image(filename):
 
 def mean_image_data(hdu):
     wcs = WCS(hdu[0].header)
-    cutout = Cutout2D(hdu[0].data, cutout_position, 20*u.deg, wcs=wcs)
+    cutout = Cutout2D(hdu[0].data, cutout_position, degrees_around_cutout*u.deg, wcs=wcs, mode='partial')
     wcs = cutout.wcs
     data = np.fliplr(cutout.data)   
     x,y = np.indices(data.shape[::-1])
@@ -128,8 +131,10 @@ def get_joined_table_source(result_dir):
     # stats_table = stats_table[::10]
 
     # # Mask data based on provided RA and DEC ranges
-    # flux_table = flux_table.drop(flux_table[(flux_table['ref_ra'] > x_lim[-1]) + (flux_table['ref_ra'] < x_lim[0])].index)
-    # flux_table = flux_table.drop(flux_table[(flux_table['ref_dec'] > y_lim[-1]) + (flux_table['ref_dec'] < y_lim[0])].index)
+    dec_min, dec_max = dec_ref - degrees_around_cutout/2, dec_ref + degrees_around_cutout/2
+    ra_min, ra_max = ra_ref - degrees_around_cutout/2, ra_ref + degrees_around_cutout/2
+    flux_table = flux_table.drop(flux_table[(flux_table['ref_ra'] > ra_max) + (flux_table['ref_ra'] < ra_min)].index)
+    flux_table = flux_table.drop(flux_table[(flux_table['ref_dec'] > dec_max) + (flux_table['ref_dec'] < dec_min)].index)
    
     # # Drop NaN
     flux_table = flux_table.dropna()
