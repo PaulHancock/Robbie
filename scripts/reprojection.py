@@ -1,4 +1,4 @@
-#! /usr/bin/env python3
+#! /usr/bin/env python
 
 import glob
 import os
@@ -36,6 +36,13 @@ def fits_file_reprojection(epoch_files, mean_file, output_dir):
     # Iterate through FITS files
     for f_file in fits_files:
         hdu = fits.open(f_file)[0]
+
+        # Remove n>2 dimension in the header
+        if len(hdu.data.shape) > 2:
+            for dim in range(3, len(hdu.data.shape)+1):
+                for head in [f'CRPIX{dim}', f'CRVAL{dim}', f'CDELT{dim}', f'CTYPE{dim}', f'CUNIT{dim}']:
+                    hdu.header.remove(head)
+
         # Edit header
         new_header = hdu.header.copy()
         new_header['CTYPE1'] = 'RA---CAR'
@@ -45,13 +52,17 @@ def fits_file_reprojection(epoch_files, mean_file, output_dir):
             new_header['CRPIX2'] -= new_header['CRVAL2'] / new_header['CDELT2']
             new_header['CRPIX1'] -= new_header['CRVAL1'] / new_header['CDELT1']
         else:
-            new_header['CRPIX2'] -= new_header['CRVAL2'] / new_header['CD2_2']
-            new_header['CRPIX1'] -= new_header['CRVAL1'] / new_header['CD1_1']
+            # new_header['CRPIX2'] -= new_header['CRVAL2'] / new_header['CD2_2']
+            # new_header['CRPIX1'] -= new_header['CRVAL1'] / new_header['CD1_1']
+
+            # Get first non-mean reprojected epoch and use that to reproject the mean
+            epoch_fname = fits_files[0].replace('.fits', '_reprojected.fits').split('/')[-1]
+            epoch_path = f'{output_dir}/{epoch_fname}'
+            new_header = fits.open(epoch_path)[0].header
 
         new_header['CRVAL1'] = 0.0
         new_header['CRVAL2'] = 0.0
             
-
         new_image, footprint = reproject_interp(hdu, new_header) 
 
         # Change dtype to float32 for visualisation
