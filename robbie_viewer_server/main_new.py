@@ -34,7 +34,14 @@ selected_circle = Circle(fill_alpha=1, fill_color="firebrick", line_color=None)
 nonselected_circle = Circle(fill_alpha=0.2, fill_color="blue", line_color=None)
     
 # Get results from the command line args
-result_dir = sys.argv[-1]
+
+if len(sys.argv) > 2:
+    result_dir = sys.argv[-4]
+    ra_loc_centre = float(sys.argv[-3])
+    dec_loc_centre = float(sys.argv[-2])
+    degrees_around_centre = float(sys.argv[-1])
+else:
+    result_dir = sys.argv[-1]
 
 # Find input fits files
 reproject_img_dir = f"{result_dir}/reprojected_images"
@@ -45,10 +52,15 @@ for fits in all_fits:
         epoch_fits.append(fits)
 
 # Get data
-source, lc_source = get_joined_table_source(result_dir)
+if len(sys.argv) > 2:
+    source, lc_source = get_joined_table_source(result_dir, ra_loc_centre, dec_loc_centre, degrees_around_centre)
+    mean_image = get_mean_image_plot(source, reproject_img_dir, ra_loc_centre, dec_loc_centre, degrees_around_centre)
+else:
+    source, lc_source = get_joined_table_source(result_dir)
+    mean_image = get_mean_image_plot(source, reproject_img_dir)
+
 sky, variable, table = get_scatter_plots(source)
 lc = get_light_curve_plot(lc_source)
-mean_image = get_mean_image_plot(source, reproject_img_dir)
 
 # Initialise empty CDS for Epochs
 epochs_cds = ColumnDataSource()
@@ -67,7 +79,10 @@ def update_epochs():
     data_dict = {}
     for ei, epoch_file in enumerate([epoch_fits[epoch_slider.value]]):
         hdu = load_mean_image(epoch_file)
-        data, ra, dec = mean_image_data(hdu)
+        if len(sys.argv) > 2:
+            data, ra, dec = mean_image_data(hdu, ra_loc_centre, dec_loc_centre, degrees_around_centre)
+        else:
+            data, ra, dec = mean_image_data(hdu)
         imdata = get_imdata(data, ra, dec, ei=ei)
         data_dict.update(imdata)
 
