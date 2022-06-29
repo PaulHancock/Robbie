@@ -110,7 +110,7 @@ This will run the viewer using the images within the default ``results`` directo
 ./run_robbie_viewer.sh path_to_dir
 ```
 
-When plotting large images, it is recommended to also specify a RA and DEC position, as well as a size in coordinate units, to cutout a portion of the image for plotting.
+When plotting large images, it is recommended to also specify an RA and DEC position, as well as a size in coordinate units, to cutout a portion of the image for plotting.
 For example, if we want to plot an image with centre position of RA 335&deg;, DEC -15&deg; and size of 5&deg;:
 
 ```
