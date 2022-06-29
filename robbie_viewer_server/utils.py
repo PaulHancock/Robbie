@@ -36,7 +36,7 @@ def mean_image_data(hdu, ra_ref=None, dec_ref=None, degrees_around_ref_coords=No
         cutout_position = SkyCoord(ra_ref*u.deg, dec_ref*u.deg, frame='icrs')
         cutout = Cutout2D(hdu[0].data, cutout_position, degrees_around_ref_coords*u.deg, wcs=wcs, mode='partial')
         wcs = cutout.wcs
-        data = np.fliplr(cutout.data).astype(np.float16)
+        data = np.fliplr(cutout.data)
         
     x,y = np.indices(data.shape[::-1])
     sky_map = wcs.pixel_to_world(x.reshape(-1),y.reshape(-1))
@@ -50,11 +50,10 @@ def get_imdata(data, ra_dec, ei=None):
     if ra_dec[0][0] > ra_dec[0][-1]:
         # needs inverting
         ra_new = []
-        for ra_row in ra:
-            ra_row = list(ra_row)
-            ra_row.reverse()
-            ra_new.append(ra_row)
-        ra = np.array(ra_new)
+        ra_dec_row = list(ra_dec[0])
+        ra_dec_row.reverse()
+        ra_new.append(ra_dec_row)
+        ra_dec[0] = np.array(ra_new)
         data_new = []
         for data_row in data:
             data_row = list(data_row)

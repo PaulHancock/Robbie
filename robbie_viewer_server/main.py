@@ -27,7 +27,7 @@ nonselected_circle = Circle(fill_alpha=0.2, fill_color="blue", line_color=None)
 # Get results from the command line args
 # os.environ['RA'] = '330'
 # os.environ['DEC'] = '-20'
-# os.environ['CUT'] = '25'
+# os.environ['CUT'] = '35'
 
 if 'RA' in os.environ:
     result_dir = sys.argv[-1]
@@ -75,7 +75,6 @@ def update_epochs():
         hdu = load_mean_image(epoch_file)
         if 'RA' in os.environ:
             data, ra_dec = mean_image_data(hdu, ra_loc_centre, dec_loc_centre, degrees_around_centre)
-
         else:
             data, ra_dec = mean_image_data(hdu)
 
