@@ -1,3 +1,4 @@
+from copy import copy
 from functools import lru_cache
 from os import stat
 from astropy.io import fits
@@ -25,27 +26,28 @@ nonselected_circle = Circle(fill_alpha=0.2, fill_color="blue", line_color=None)
 
 @lru_cache
 def load_mean_image(filename):
-    hdu = fits.open(filename)#'results/mean_image.fits')
-    hdu[0].data = hdu[0].data
+    hdu = fits.open(filename)#'results/mean_image.fits')    
     return hdu
 
 def mean_image_data(hdu, ra_ref=None, dec_ref=None, degrees_around_ref_coords=None):
-    wcs = WCS(hdu[0].header)   
+    wcs = WCS(hdu[0].header)  
     data = np.fliplr(hdu[0].data)
     if ra_ref is not None:
         cutout_position = SkyCoord(ra_ref*u.deg, dec_ref*u.deg, frame='icrs')
         cutout = Cutout2D(hdu[0].data, cutout_position, degrees_around_ref_coords*u.deg, wcs=wcs, mode='partial')
         wcs = cutout.wcs
-        data = np.fliplr(cutout.data)   
+        data = np.fliplr(cutout.data).astype(np.float16)
         
     x,y = np.indices(data.shape[::-1])
     sky_map = wcs.pixel_to_world(x.reshape(-1),y.reshape(-1))
     ra = np.fliplr(sky_map.ra.degree.reshape(x.shape).T)
     dec = sky_map.dec.degree.reshape(y.shape).T
-    return data, ra, dec
+    # As we have reprojected we only need ra and dec extents
+    ra_dec = np.array([[ra[0,0], ra[0,-1]], [dec[0][0], dec[-1][0]]])
+    return data, ra_dec
 
-def get_imdata(data, ra, dec, ei=None):
-    if ra[0][0] > ra[0][-1]:
+def get_imdata(data, ra_dec, ei=None):
+    if ra_dec[0][0] > ra_dec[0][-1]:
         # needs inverting
         ra_new = []
         for ra_row in ra:
@@ -62,22 +64,22 @@ def get_imdata(data, ra, dec, ei=None):
     if ei is None:
         imdata ={
             'image':[data],
-            'ra':[ra],
-            'dec':[dec],
-            'x':[ra[0,0]],
-            'y':[dec[0,0]],
-            'dw':[abs(ra[0,0]-ra[0,-1])],
-            'dh':[abs(dec[0,0]-dec[-1,0])]
+            # 'ra':[ra],
+            # 'dec':[dec],
+            'x':[ra_dec[0,0]],
+            'y':[ra_dec[-1,0]],
+            'dw':[abs(ra_dec[0,0]-ra_dec[0,-1])],
+            'dh':[abs(ra_dec[-1,0]-ra_dec[-1,-1])]
         }
     else:
         imdata ={
             f'image_{ei}':[data],
-            f'ra_{ei}':[ra],
-            f'dec_{ei}':[dec],
-            f'x_{ei}':[ra[0,0]],
-            f'y_{ei}':[dec[0,0]],
-            f'dw_{ei}':[abs(ra[0,0]-ra[0,-1])],
-            f'dh_{ei}':[abs(dec[0,0]-dec[-1,0])]
+            # f'ra_{ei}':[ra],
+            # f'dec_{ei}':[dec],
+            f'x_{ei}':[ra_dec[0,0]],
+            f'y_{ei}':[ra_dec[-1,0]],
+            f'dw_{ei}':[abs(ra_dec[0,0]-ra_dec[0,-1])],
+            f'dh_{ei}':[abs(ra_dec[-1,0]-ra_dec[-1,-1])]
         }
     return imdata
 
@@ -102,7 +104,6 @@ def get_joined_table_source(result_dir, ra_ref=None, dec_ref=None, degrees_aroun
     # # Drop NaN
     flux_table = flux_table.dropna()
     stats_table = stats_table.dropna()
-
     joined = flux_table.join(stats_table.set_index('uuid'), on='uuid')    
     df = joined
     source = ColumnDataSource(data=dict( (i,df[i]) for i in df.columns))
@@ -172,18 +173,19 @@ def get_scatter_plots(source):
 def get_mean_image_plot(source, result_dir, ra_ref=None, dec_ref=None, degrees_around_ref_coords=None):
     hdu = load_mean_image(f"{result_dir}/mean_image_reprojected.fits")
     if ra_ref:
-        data, ra, dec = mean_image_data(hdu, ra_ref, dec_ref, degrees_around_ref_coords)
+        data, ra_dec = mean_image_data(hdu, ra_ref, dec_ref, degrees_around_ref_coords)
     else:
-        data, ra, dec = mean_image_data(hdu)
-    imdata = get_imdata(data,ra,dec)
+        data, ra_dec = mean_image_data(hdu)
+
+    imdata = get_imdata(data,ra_dec)
 
     p = figure(
         tools=TOOLS,
         title='Mean Image',
         tooltips=[
             ("value", "@image Jy/beam"),
-            ("RA", "@ra{0.00}°"),
-            ("DEC", "@dec{0.00}°")
+            ("RA", "$x{0.00}°"),
+            ("DEC", "$y{0.00}°")
         ],
         x_axis_label='RA',
         y_axis_label='DEC',
@@ -213,8 +215,8 @@ def get_epoch_image_plots(source, epoch_source, num_epochs):
         title="Epoch_0",
         tooltips=[
             ("value", "@image Jy/beam"),
-            ("RA", "@ra{0.00}°"),
-            ("DEC", "@dec{0.00}°")
+            ("RA", "$x{0.00}°"),
+            ("DEC", "$y{0.00}°")
         ],
         x_axis_label='RA',
         y_axis_label='DEC',
