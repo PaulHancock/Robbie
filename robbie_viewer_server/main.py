@@ -3,8 +3,6 @@
 from astropy.io import fits
 from astropy.io.votable import parse
 from astropy.wcs import WCS
-from functools import lru_cache
-from os import stat
 import numpy as np
 import glob
 import pandas as pd
@@ -14,14 +12,9 @@ import sys
 import os
 import numpy as np
 
-from bokeh.plotting import figure, show, output_file, save
-from bokeh import palettes
-from bokeh.layouts import gridplot, layout
+from bokeh.layouts import layout
 from bokeh.io import curdoc
-from bokeh.models import (ColumnDataSource, Circle, Whisker,
-                          DataTable, TableColumn, NumberFormatter,
-                          CustomJS, Slider, DatetimeTickFormatter,
-                          HoverTool)
+from bokeh.models import ColumnDataSource, Circle, CustomJS
 from utils import get_joined_table_source, get_scatter_plots, get_mean_image_plot,\
     get_light_curve_plot, get_light_curve_plot, get_epoch_image_plots, load_mean_image, mean_image_data, get_imdata
 
@@ -32,6 +25,10 @@ selected_circle = Circle(fill_alpha=1, fill_color="firebrick", line_color=None)
 nonselected_circle = Circle(fill_alpha=0.2, fill_color="blue", line_color=None)
     
 # Get results from the command line args
+# os.environ['RA'] = '330'
+# os.environ['DEC'] = '-20'
+# os.environ['CUT'] = '25'
+
 if 'RA' in os.environ:
     result_dir = sys.argv[-1]
     ra_loc_centre = float(os.environ['RA'])
@@ -77,21 +74,26 @@ def update_epochs():
     for ei, epoch_file in enumerate([epoch_fits[epoch_slider.value]]):
         hdu = load_mean_image(epoch_file)
         if 'RA' in os.environ:
-            data, ra, dec = mean_image_data(hdu, ra_loc_centre, dec_loc_centre, degrees_around_centre)
+            data, ra_dec = mean_image_data(hdu, ra_loc_centre, dec_loc_centre, degrees_around_centre)
+
         else:
-            data, ra, dec = mean_image_data(hdu)
-        imdata = get_imdata(data, ra, dec, ei=ei)
+            data, ra_dec = mean_image_data(hdu)
+
+        imdata = get_imdata(data, ra_dec, ei=ei)
+
         data_dict.update(imdata)
 
     # Point to first image first
     data_dict.update({
             'image':data_dict["image_0"],
-            'ra':data_dict["ra_0"],
-            'dec':data_dict["dec_0"],
+            # 'ra':data_dict["ra_0"],
+            # 'dec':data_dict["dec_0"],
             'x':data_dict["x_0"],
             'y':data_dict["y_0"],
             'dw':data_dict["dw_0"],
-            'dh':data_dict["dh_0"]})
+            'dh':data_dict["dh_0"]
+            }
+            )
 
     epochs_cds.data = data_dict
   
