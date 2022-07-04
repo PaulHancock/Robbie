@@ -207,41 +207,105 @@ def get_mean_image_plot(source, result_dir, ra_ref=None, dec_ref=None, degrees_a
     #p.grid.grid_line_width = 0.5
     return p
 
-def get_epoch_image_plots(source, epoch_source, num_epochs):
+
+def get_epoch_image_plots(epoch_files, mean_source, ra_ref=None, dec_ref=None, degrees_around_ref_coords=None):
     # Set up the figure
-    epochs = figure(
+    p = figure(
         tools=TOOLS,
         title="Epoch_0",
         tooltips=[
             ("value", "@image Jy/beam"),
-            ("RA", "$x{0.00}°"),
-            ("DEC", "$y{0.00}°")
+            ("RA", "@ra{0.00}°"),
+            ("DEC", "@dec{0.00}°")
         ],
         x_axis_label='RA',
         y_axis_label='DEC',
-        x_range=(min(source.data['ref_ra']),  max(source.data['ref_ra'])),
-        y_range=(min(source.data['ref_dec']), max(source.data['ref_dec'])),
+        x_range=(min(mean_source.data['ref_ra']),  max(mean_source.data['ref_ra'])),
+        y_range=(min(mean_source.data['ref_dec']), max(mean_source.data['ref_dec'])),
     )
 
-
-
     # Adjust hover tool to only work on image data
-    hover_tool = epochs.select(type=HoverTool)
+    hover_tool = p.select(type=HoverTool)
     hover_tool.names = ["epoch_image"]
-    epoch_slider = Slider(start=0, end=num_epochs-1, value=0, step=1, title="Epoch")
+
+    # Make a data dictionary of each epoch with the _(int) format keys
+    data_dict = {}
+    for ei, epoch_file in enumerate(epoch_files):
+        hdu = load_mean_image(epoch_file)
+        if ra_ref:
+            data, ra_dec = mean_image_data(hdu, ra_ref, dec_ref, degrees_around_ref_coords)
+        else:
+            data, ra_dec = mean_image_data(hdu)
+        imdata = get_imdata(data, ra_dec, ei=ei)
+        data_dict.update(imdata)
+
+    # Point to first image first
+    data_dict.update({
+            'image':data_dict["image_0"],
+            # 'ra':data_dict["ra_0"],
+            # 'dec':data_dict["dec_0"],
+            'x':data_dict["x_0"],
+            'y':data_dict["y_0"],
+            'dw':data_dict["dw_0"],
+            'dh':data_dict["dh_0"]})
+    source = ColumnDataSource(data=data_dict)
 
     # must give a vector of image data for image parameter
-    epochs.image(source=epoch_source,
+    p.image(source=source,
             palette=palettes.mpl['Cividis'][256], name="epoch_image")
-
-
+    slider = Slider(start=0, end=len(epoch_files)-1, value=0, step=1, title="Epoch")
     # Add the source circles
-    epochs.circle(source=source,
-                x='ref_ra', y='ref_dec',
-                radius=0.03, fill_color=None,
-                line_width=1.5, line_color='yellow')
+    p.circle(source=mean_source,
+             x='ref_ra', y='ref_dec',
+             radius=0.03, fill_color=None,
+             line_width=1.5, line_color='yellow')
 
-    return epochs, epoch_slider
+    callback = CustomJS(args=dict(source=source, slider=slider, p=p),
+                        code="""
+        const data = source.data;
+        const i = slider.value;
+        p.title.text = 'Epoch_'+i.toString(10);
+        const image = data['image_'+i.toString(10)];
+        data['image'] = image;
+        source.change.emit();
+    """)
+    slider.js_on_change("value", callback)
+    return p, slider
+# def get_epoch_image_plots(source, epoch_source, num_epochs):
+#     # Set up the figure
+#     epochs = figure(
+#         tools=TOOLS,
+#         title="Epoch_0",
+#         tooltips=[
+#             ("value", "@image Jy/beam"),
+#             ("RA", "$x{0.00}°"),
+#             ("DEC", "$y{0.00}°")
+#         ],
+#         x_axis_label='RA',
+#         y_axis_label='DEC',
+#         x_range=(min(source.data['ref_ra']),  max(source.data['ref_ra'])),
+#         y_range=(min(source.data['ref_dec']), max(source.data['ref_dec'])),
+#     )
+
+
+
+#     # Adjust hover tool to only work on image data
+#     hover_tool = epochs.select(type=HoverTool)
+#     hover_tool.names = ["epoch_image"]
+#     epoch_slider = Slider(start=0, end=num_epochs-1, value=0, step=1, title="Epoch")
+
+#     # must give a vector of image data for image parameter
+#     epochs.image(source=epoch_source,
+#             palette=palettes.mpl['Cividis'][256], name="epoch_image")
+
+
+#     # Add the source circles
+#     epochs.circle(source=source,
+#                 x='ref_ra', y='ref_dec',
+#                 radius=0.03, fill_color=None,
+#                 line_width=1.5, line_color='yellow')
+
+#     return epochs, epoch_slider
 
 def get_light_curve_plot(source):
     tooltips = [("epoch","@date"),]

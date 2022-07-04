@@ -25,15 +25,14 @@ selected_circle = Circle(fill_alpha=1, fill_color="firebrick", line_color=None)
 nonselected_circle = Circle(fill_alpha=0.2, fill_color="blue", line_color=None)
     
 # Get results from the command line args
-# os.environ['RA'] = '330'
-# os.environ['DEC'] = '-20'
-# os.environ['CUT'] = '35'
 
-if 'RA' in os.environ:
-    result_dir = sys.argv[-1]
-    ra_loc_centre = float(os.environ['RA'])
-    dec_loc_centre = float(os.environ['DEC'])
-    degrees_around_centre = float(os.environ['CUT'])
+
+
+if len(sys.argv) > 2:
+    result_dir = sys.argv[1]
+    ra_loc_centre = float(sys.argv[2])
+    dec_loc_centre = float(sys.argv[3])
+    degrees_around_centre = float(sys.argv[-1])
 else:
     result_dir = sys.argv[-1]
 
@@ -46,7 +45,7 @@ for fits in all_fits:
         epoch_fits.append(fits)
 
 # Get data
-if 'RA' in os.environ:
+if len(sys.argv) > 2:
     source, lc_source = get_joined_table_source(result_dir, ra_loc_centre, dec_loc_centre, degrees_around_centre)
     mean_image = get_mean_image_plot(source, reproject_img_dir, ra_loc_centre, dec_loc_centre, degrees_around_centre)
 else:
@@ -60,45 +59,50 @@ lc = get_light_curve_plot(lc_source)
 epochs_cds = ColumnDataSource()
 
 # Get Epoch and slider
-epochs, epoch_slider = get_epoch_image_plots(source, epochs_cds, len(epoch_fits))
+#epochs, epoch_slider = get_epoch_image_plots(source, epochs_cds, len(epoch_fits)) # New
+if len(sys.argv) > 2:
+    epochs, epoch_slider = get_epoch_image_plots(epoch_fits, source, ra_loc_centre, dec_loc_centre, degrees_around_centre)
+else:
+    epochs, epoch_slider = get_epoch_image_plots(epoch_fits, source)
 
 # Make the sky plot and mean image zoom/pan together
 sky.x_range = mean_image.x_range = epochs.x_range
 sky.y_range = mean_image.y_range = epochs.y_range
 
-# Callback to update epochs
-def update_epochs():
+# # Callback to update epochs
+# def update_epochs():
 
-    # Make a data dictionary of each epoch with the _(int) format keys
-    data_dict = {}
-    for ei, epoch_file in enumerate([epoch_fits[epoch_slider.value]]):
-        hdu = load_mean_image(epoch_file)
-        if 'RA' in os.environ:
-            data, ra_dec = mean_image_data(hdu, ra_loc_centre, dec_loc_centre, degrees_around_centre)
-        else:
-            data, ra_dec = mean_image_data(hdu)
+#     # Make a data dictionary of each epoch with the _(int) format keys
+#     data_dict = {}
+#     for ei, epoch_file in enumerate([epoch_fits[epoch_slider.value]]):
+#         print(ei, epoch_file)
+#         hdu = load_mean_image(epoch_file)
+#         if 'RA' in os.environ:
+#             data, ra_dec = mean_image_data(hdu, ra_loc_centre, dec_loc_centre, degrees_around_centre)
+#         else:
+#             data, ra_dec = mean_image_data(hdu)
 
-        imdata = get_imdata(data, ra_dec, ei=ei)
+#         imdata = get_imdata(data, ra_dec, ei=ei)
 
-        data_dict.update(imdata)
+#         data_dict.update(imdata)
 
-    # Point to first image first
-    data_dict.update({
-            'image':data_dict["image_0"],
-            # 'ra':data_dict["ra_0"],
-            # 'dec':data_dict["dec_0"],
-            'x':data_dict["x_0"],
-            'y':data_dict["y_0"],
-            'dw':data_dict["dw_0"],
-            'dh':data_dict["dh_0"]
-            }
-            )
+#     # Point to first image first
+#     data_dict.update({
+#             'image':data_dict["image_0"],
+#             # 'ra':data_dict["ra_0"],
+#             # 'dec':data_dict["dec_0"],
+#             'x':data_dict["x_0"],
+#             'y':data_dict["y_0"],
+#             'dw':data_dict["dw_0"],
+#             'dh':data_dict["dh_0"]
+#             }
+#             )
 
-    epochs_cds.data = data_dict
+#     epochs_cds.data = data_dict
   
   
-# Add on change to epoch slider
-epoch_slider.on_change('value', lambda attr, old, new: update_epochs())
+# # Add on change to epoch slider
+# epoch_slider.on_change('value', lambda attr, old, new: update_epochs())
 
 # Epoch slider callback
 callback = CustomJS(args=dict(source=source, slider=epoch_slider, p=epochs),
@@ -182,7 +186,7 @@ lc_source.selected.js_on_change('indices',
 )
 
 # Initial data load
-update_epochs() 
+#update_epochs() 
 
 # Add plots to the current document root
 p = layout([ [sky, variable,mean_image,[epochs, epoch_slider], lc], [table]],
