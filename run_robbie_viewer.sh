@@ -14,8 +14,8 @@ usage() {
 while getopts ":c:p:h" opt; do
 case ${opt} in
     c )
-        #IFS=',' array=($OPTARG)
-        array=$OPTARG
+        IFS=',' array=($OPTARG)
+        #array=$OPTARG
         ;;
     p )
         FILEPATH=$OPTARG
@@ -40,8 +40,8 @@ fi
 if [ -z "${array}" ]; then
     pos_command=""
 else
-    pos_command=${array}
+    pos_command=(${array[@]})
 fi
 
-echo docker run -it -v $abs_path:/data -p 5006:5006 robbie/robbie-viewer:latest bokeh serve . --args /data ${pos_command}
-docker run -it -v $abs_path:/data -p 5006:5006 robbie/robbie-viewer:latest bokeh serve . --args /data ${pos_command}
+# echo docker run -it -v $abs_path:/data -p 5006:5006 robbie/robbie-viewer:latest bokeh serve . --args /data ${pos_command}
+docker run -it -v $abs_path:/data -p 5006:5006 robbie/robbie-viewer:latest bokeh serve . --args /data ${pos_command[@]}
