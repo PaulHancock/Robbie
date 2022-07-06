@@ -32,7 +32,7 @@ case ${opt} in
 done
 
 if [ -z "${FILEPATH}" ]; then
-    abs_path=${PWD}
+    abs_path=${PWD}/results/
 else
     abs_path=$(readlink -f ${FILEPATH})
 fi
@@ -43,5 +43,4 @@ else
     pos_command=(${array[@]})
 fi
 
-# echo docker run -it -v $abs_path:/data -p 5006:5006 robbie/robbie-viewer:latest bokeh serve . --args /data ${pos_command}
 docker run -it -v $abs_path:/data -p 5006:5006 robbie/robbie-viewer:latest bokeh serve . --args /data ${pos_command[@]}
