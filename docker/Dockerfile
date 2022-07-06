@@ -20,9 +20,5 @@ RUN pip install -r requirements.txt && \
     python setup.py install && \
     rm -rf /tmp/build
 
-
-WORKDIR /astropy/astropy
-
+#  set env
 ENV HOME=/tmp
-ENV XDG_CONFIG_HOME=/astropy
-ENV XDG_CACHE_HOME=/astropy

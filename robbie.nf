@@ -156,7 +156,7 @@ process download_gleam_catalogue {
     try:
       cat.write(data_load.REF_CAT, format='fits')
       os.symlink(data_load.REF_CAT, "GLEAM_ref_cat.fits")
-    except PermissionError:
+    except OSError:
       # No permission so dump it here
       cat.write("GLEAM_ref_cat.fits", format='fits')
   """
