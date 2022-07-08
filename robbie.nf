@@ -562,6 +562,7 @@ workflow {
     image_ch = fits_warp.out
     image_bkg_rms = fits_warp.out.concat(bane_raw.out.map{ it -> [it[0], [it[1..2]]]}).groupTuple().map{ it -> [ it[0], it[1][0], it[1][1][0][1]]}
   }
+
   make_mean_image( image_ch.map{ it -> it[1] }.collect() )
   make_sky_coverage( image_ch.map{ it -> it[1] }.collect() )
   bane_mean_image( make_mean_image.out[0] )
