@@ -38,6 +38,11 @@ if ( params.help ) {
              |                Use a source finding file. [default: ${params.use_region_file}]
              | --region_file  The location of the source finding file. [default: ${params.region_file}]
              |
+             |Convolution arguments:
+             | --convolve
+             |                Determine the smallest psf common to all input images and then convolve all images
+             |                to this psf prior to any other processing [default: ${params.convol}]
+             |
              |Directory arguments:
              |  --output_dir  The directory to output the results to.
              |                [default: ${params.output_dir}]
@@ -558,7 +563,7 @@ process reproject_images {
 workflow {
   get_version( )
   // image_ch = epoch_label, image_fits
-  if (params.convol) {
+  if (params.convolve) {
     convolve_beams(image_ch.map{it->it[1]}.collect())
     image_ch = convolve_beams.out.flatten().map{it -> tuple(it.baseName.split('_')[0], it)}
     //image_ch.view()
