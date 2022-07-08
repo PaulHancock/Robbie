@@ -103,7 +103,7 @@ process get_version {
 
 process convolve_beams {
   input:
-  path image
+  path(image)
 
   output:
   path("*_convolved.fits")
@@ -112,9 +112,10 @@ process convolve_beams {
   """
   echo ${task.process} on \${HOSTNAME}
 
-  
+  convol_common_resolution.py --in ${image}
   """
 }
+
 
 process bane_raw {
   label 'bane'
@@ -557,6 +558,11 @@ process reproject_images {
 workflow {
   get_version( )
   // image_ch = epoch_label, image_fits
+  if (params.convol) {
+    convolve_beams(image_ch.map{it->it[1]}.collect())
+    image_ch = convolve_beams.out.flatten().map{it -> tuple(it.baseName.split('_')[0], it)}
+    //image_ch.view()
+  }
   bane_raw( image_ch )
   // image_bkg_rms = epoch_label, image_fits, [bkg_fits, rms_fits]
   image_bkg_rms = bane_raw.out
