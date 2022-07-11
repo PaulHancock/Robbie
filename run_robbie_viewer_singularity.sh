@@ -43,5 +43,4 @@ else
     pos_command=(${array[@]})
 fi
 
-# docker run -it -v $abs_path:/data -p 5006:5006 robbie/robbie-viewer:latest bokeh serve . --args /data ${pos_command[@]}
-singularity exec --bind $abs_path:/data robbie_viewer.sif bokeh serve . --args /data ${pos_command[@]}
+singularity exec --bind adacs_robbie/results_pawsey_nowarp/results/:/data robbie_viewer.sif bokeh serve /robbie_viewer/ --args /data ${pos_command[@]}

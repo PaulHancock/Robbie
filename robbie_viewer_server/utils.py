@@ -215,8 +215,8 @@ def get_epoch_image_plots(epoch_files, mean_source, ra_ref=None, dec_ref=None, d
         title="Epoch_0",
         tooltips=[
             ("value", "@image Jy/beam"),
-            ("RA", "@ra{0.00}°"),
-            ("DEC", "@dec{0.00}°")
+            ("RA", "$x{0.00}°"),
+            ("DEC", "$y{0.00}°")
         ],
         x_axis_label='RA',
         y_axis_label='DEC',
