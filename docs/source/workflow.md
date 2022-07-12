@@ -1,7 +1,5 @@
-## Description
-
-Robbie automates the process of cataloguing sources, finding variables, and identifying transients.
-
+(workflow)=
+## Workflow
 The workflow was described initially in [Hancock et al. 2018](https://ui.adsabs.harvard.edu/abs/2019A%26C....27...23H/abstract) however the current workflow is shown below:
 - Preprocessing:
   - Convolve all images to a common psf (optional)
@@ -18,22 +16,30 @@ The workflow was described initially in [Hancock et al. 2018](https://ui.adsabs.
   - Source find on the masked images to find transients
   - Concatenate transients into a single catalogue, identifying the epoch of each detection
 
-See [workflow](workflow) for a diagram of how Robbie works.
 
-## Dependencies
-Robbie relies on the following software:
-- [AegeanTools](https://github.com/PaulHancock/Aegean)
-- [fits_warp](https://github.com/nhurleywalker/fits_warp)
-- [Stils/TOPCAT](http://www.star.bris.ac.uk/~mbt/topcat/)
-- [Nextflow](https://www.nextflow.io/)
-- [SWarp](https://www.astromatic.net/software/swarp/)
-- [Astropy](https://www.astropy.org/)
-- [reproject](https://reproject.readthedocs.io/en/stable/)
+```mermaid
+flowchart TD
+  subgraph Preprocessing
+    direction LR
+    img[Raw images] --> psf["PSF correction (?)"]
+    psf --> bkg[Create background/noise maps]
+    bkg --> warp["Fits warping (?)"]
+    warp --> epim[Epoch images]
+  end
+  subgraph Persistent sources
+    epim --> mean[Mean image]
+    mean --> pscat[Persistent sources]
+    epim --> pscat
+    pscat --> vout[(Flux table, variability table, light curves, variabiltiy plot)]
+  end
+  subgraph Transients
+    mean --> mask[Masked epoch images]
+    epim --> mask
+    pscat --> mask
+    mask --> trans[Transient candidates]
+    trans --> tout[(Filtered candidates, transients plot)]
+  end
+```
 
-All dependencies except for Nextflow will be installed in the docker image.
-
-## Credit
-If you use Robbie as part of your work, please cite [Hancock et al. 2018](http://adsabs.harvard.edu/abs/2019A%26C....27...23H), and link to this repository.
-
-## Links
-You can obtain a docker image with the Robbie dependencies installed at [DockerHub](https://hub.docker.com/r/paulhancock/robbie-next/)
+Items with a (?) are optional processing steps that can be turned on/off.
+Items in a cylinder are the final outputs of the processing workflow.
