@@ -107,7 +107,7 @@ once this is complete, run the viewer in the main Nextflow directory via:
 This will run the viewer using the images within the default ``results`` directory. If your directory is different to the default, you can add either the relative or absolute path as an optional argument:
 
 ```
-./run_robbie_viewer.sh path_to_dir
+./run_robbie_viewer.sh -p path_to_dir
 ```
 
 When plotting large images, it is recommended to also specify an RA and DEC position, as well as a size in coordinate units, to cutout a portion of the image for plotting.
