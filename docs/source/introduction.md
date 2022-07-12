@@ -1,4 +1,4 @@
-## Description
+# Description
 
 Robbie automates the process of cataloguing sources, finding variables, and identifying transients.
 
