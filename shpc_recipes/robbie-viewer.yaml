@@ -1,0 +1,15 @@
+docker: paulhancock/robbie-viewer
+ 
+latest:
+  "latest": "sha256:a9b95c1a8cc13a6ba78966cfff0566822b299d3a07bd683decf873dff9555f68"
+tags:
+  "latest": "sha256:a9b95c1a8cc13a6ba78966cfff0566822b299d3a07bd683decf873dff9555f68"
+  
+maintainer: "@paulhancock"
+ 
+# these are optional
+description: "Viewer for Robbie variable and transients workflow"
+url: "https://hub.docker.com/r/paulhancock/robbie-viewer"
+ 
+singularity_scripts:
+  robbie_viewer: robbie_viewer_singularity.sh
