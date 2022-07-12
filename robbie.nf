@@ -177,7 +177,7 @@ process download_gleam_catalogue {
     try:
       cat.write(data_load.REF_CAT, format='fits')
       os.symlink(data_load.REF_CAT, "GLEAM_ref_cat.fits")
-    except PermissionError:
+    except OSError:
       # No permission so dump it here
       cat.write("GLEAM_ref_cat.fits", format='fits')
   """
@@ -553,7 +553,7 @@ process reproject_images {
   """
   echo ${task.process} on \${HOSTNAME}
   mkdir reprojected_images
-  ls *Epoch* > temp_epochs.txt
+  ls *.fits | grep -v "mean_image" > temp_epochs.txt
   ls *mean_image.* > temp_mean.txt
   reprojection.py --epochs temp_epochs.txt --mean temp_mean.txt --reproj_dir reprojected_images
   """
@@ -588,6 +588,7 @@ workflow {
     image_ch = fits_warp.out
     image_bkg_rms = fits_warp.out.concat(bane_raw.out.map{ it -> [it[0], [it[1..2]]]}).groupTuple().map{ it -> [ it[0], it[1][0], it[1][1][0][1]]}
   }
+
   make_mean_image( image_ch.map{ it -> it[1] }.collect() )
   make_sky_coverage( image_ch.map{ it -> it[1] }.collect() )
   bane_mean_image( make_mean_image.out[0] )

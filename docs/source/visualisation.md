@@ -1,6 +1,7 @@
 (visualisation)=
 ## Visualisation
 
+### Running locally with Docker
 To start the Docker container containing the Bokeh server, run the following script in the main Nextflow directory:
 
 ``` bash
@@ -10,8 +11,31 @@ To start the Docker container containing the Bokeh server, run the following scr
 This will run the viewer using the images output from Robbie within the default ``results`` directory. If your output directory is different to the default, you can add either the relative or absolute path as an optional argument:
 
 ``` bash
-./run_robbie_viewer.sh path_to_dir
+./run_robbie_viewer.sh -p path_to_dir
 ```
+
+When plotting large images, it is recommended to also specify an RA and DEC position, as well as a size in coordinate units, to cutout a portion of the image for plotting. For example, if we want to plot an image with centre position of RA 335°, DEC -15° and size of 5°:
+
+``` bash
+./run_robbie_viewer.sh -p path_to_dir -c 335,-15,5
+```
+
+### Running on a cluster with Singularity
+
+The Robbie Viewer is available on Pawsey as a part of the SHPC (Singularity Recipe HPC). To install it, we will load the SHPC module, install the viewer as a module and then load it:
+
+``` bash
+module load shpc/0.0.53
+shpc install cjproud/robbie_viewer
+module load cjproud/robbie_viewer/latest/module
+```
+
+Now, the viewer will be available on our path and we can run it as normal:
+
+``` bash
+./run_robbie_viewer.sh -p path_to_dir -c RA,DEC,PAD
+```
+
 
 ### Visualising transients 
 

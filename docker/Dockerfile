@@ -20,4 +20,5 @@ RUN pip install -r requirements.txt && \
     python setup.py install && \
     rm -rf /tmp/build
 
+#  set env
 ENV HOME=/tmp

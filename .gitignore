@@ -26,3 +26,6 @@ profiling.md
 /docs/build
 /docs/doctrees
 example_data/
+build/
+scripts/epochs.txt
+scripts/mean.txt
