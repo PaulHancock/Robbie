@@ -23,6 +23,7 @@ dist/*
 profiling.md
 *.swp
 /docs/_build
+/docs/build
 /docs/doctrees
 example_data/
 build/

@@ -18,3 +18,4 @@ Robbie - A batch processing workflow for the detection of radio transients and v
    installation
    quickstart
    visualisation
+   workflow

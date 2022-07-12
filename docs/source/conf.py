@@ -31,12 +31,17 @@ release = '2.2.0'
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    'myst_parser'
+    'myst_parser',
+    'sphinxcontrib.mermaid'
 ]
 # mappings for parsing files
 source_suffix = {'.rst':'restructuredtext',
                  '.md':'markdown'}
-                 
+
+# mermaid config
+mermaid_output_format = "raw"
+mermaid_version = "latest"
+
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
 
