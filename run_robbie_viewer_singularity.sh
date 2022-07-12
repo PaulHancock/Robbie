@@ -43,4 +43,4 @@ else
     pos_command=(${array[@]})
 fi
 
-singularity exec --bind adacs_robbie/results_pawsey_nowarp/results/:/data robbie_viewer.sif bokeh serve /robbie_viewer/ --args /data ${pos_command[@]}
+singularity exec --bind $abs_path:/data robbie_viewer.sif bokeh serve /robbie_viewer/ --args /data ${pos_command[@]}
