@@ -51,6 +51,7 @@ setup(
         "scripts/plot_variables.py",
         "scripts/make_weights.py",
         "scripts/reprojection.py",
+        "scripts/convol_common_resolution.py",
         # nextflow
         "robbie.nf",
         "nextflow.config",
