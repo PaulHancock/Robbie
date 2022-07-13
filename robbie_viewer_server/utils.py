@@ -139,7 +139,7 @@ def get_scatter_plots(source):
     left = figure(
         tools=TOOLS,
         title='Sky Plot',
-        x_axis_label='RA (deg)', y_axis_label='DEC (deg)',
+        x_axis_label='RA (hour)', y_axis_label='DEC (deg)',
         x_range=(0,1),
         y_range=(0,1),
     )
@@ -186,8 +186,7 @@ def get_mean_image_plot(source, result_dir, ra_ref=None, dec_ref=None, degrees_a
             ("RA", "$x{0.00}°"),
             ("DEC", "$y{0.00}°")
         ],
-        x_axis_label='RA',
-        y_axis_label='DEC',
+        x_axis_label='RA (hour)', y_axis_label='DEC (deg)',
         x_range=(min(source.data['ref_ra']),  max(source.data['ref_ra'])),
         y_range=(min(source.data['ref_dec']), max(source.data['ref_dec'])),
     )
@@ -218,8 +217,7 @@ def get_epoch_image_plots(epoch_files, mean_source, ra_ref=None, dec_ref=None, d
             ("RA", "$x{0.00}°"),
             ("DEC", "$y{0.00}°")
         ],
-        x_axis_label='RA',
-        y_axis_label='DEC',
+        x_axis_label='RA (hour)', y_axis_label='DEC (deg)',
         x_range=(min(mean_source.data['ref_ra']),  max(mean_source.data['ref_ra'])),
         y_range=(min(mean_source.data['ref_dec']), max(mean_source.data['ref_dec'])),
     )

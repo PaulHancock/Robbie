@@ -3,6 +3,8 @@
 from astropy.io import fits
 from astropy.io.votable import parse
 from astropy.wcs import WCS
+from astropy.coordinates import Angle
+import astropy.units as u
 import numpy as np
 import glob
 import pandas as pd
@@ -15,6 +17,7 @@ import numpy as np
 from bokeh.layouts import layout
 from bokeh.io import curdoc
 from bokeh.models import ColumnDataSource, Circle, CustomJS
+from bokeh.models.formatters import FuncTickFormatter
 from utils import get_joined_table_source, get_scatter_plots, get_mean_image_plot,\
     get_light_curve_plot, get_light_curve_plot, get_epoch_image_plots, load_mean_image, mean_image_data, get_imdata
 
@@ -68,6 +71,42 @@ else:
 # Make the sky plot and mean image zoom/pan together
 sky.x_range = mean_image.x_range = epochs.x_range
 sky.y_range = mean_image.y_range = epochs.y_range
+
+# make the plot coords be in hms/dms format
+dms = """
+var s = Math.sign(tick);
+var t = Math.abs(tick);
+var deg = Math.floor(t);
+t = (t -deg)*60;
+var min = Math.floor(t);
+t = (t-min)*60;
+var sec = Math.floor(t);
+var tk = ""
+if (s < 0) {
+  tk = String(s)[0]
+}
+tk = tk + String(deg).padStart(2,'0') + ":"+String(min).padStart(2,'0')+":"+String(sec).padStart(2,'0');
+return tk;
+"""
+hms = """
+var s = Math.sign(tick);
+var t = Math.abs(tick/15);
+var deg = Math.floor(t);
+t = (t -deg)*60;
+var min = Math.floor(t);
+t = (t-min)*60;
+var sec = Math.floor(t);
+var tk = ""
+if (s < 0) {
+  tk = String(s)[0]
+}
+tk = tk + String(deg).padStart(2,'0') + ":"+String(min).padStart(2,'0')+":"+String(sec).padStart(2,'0');
+return tk;
+"""
+
+sky.yaxis.formatter = mean_image.yaxis.formatter = epochs.yaxis.formatter = FuncTickFormatter(code=dms)
+sky.xaxis.formatter = mean_image.xaxis.formatter = epochs.xaxis.formatter = FuncTickFormatter(code=hms)
+
 
 # # Callback to update epochs
 # def update_epochs():
