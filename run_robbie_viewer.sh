@@ -43,4 +43,4 @@ else
     pos_command=(${array[@]})
 fi
 
-docker run -it -v $abs_path:/data -p 5006:5006 robbie/robbie-viewer:latest bokeh serve . --args /data ${pos_command[@]}
+docker run -it -v $abs_path:/data -p 5006:5006 paulhancock/robbie-viewer:latest bokeh serve . --args /data ${pos_command[@]}
