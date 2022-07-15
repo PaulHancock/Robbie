@@ -24,6 +24,7 @@ Using Conda: `conda install git pip` (and then run the above)
 
 ### Docker containers
 
+#### Robbie base container
 The best way to use Robbie is via a docker container that has all the software dependencies installed. Ensure docker is running, then build the container using:
 
 ``` bash
@@ -38,7 +39,7 @@ docker pull paulhancock/robbie-next
 
 Please see [Quickstart](quickstart) on how to run Robbie once the setup is complete.
 
-### Robbie visualisation
+#### Robbie visualisation container
 
 To construct the Docker image for visualisation of the Robbie results, run the following:
 
@@ -47,3 +48,27 @@ To construct the Docker image for visualisation of the Robbie results, run the f
 ``` 
 
 within the ``robbie_viewer_server`` directory. Please see [Visualisation](visualisation) on how to visualise the results of Robbie using the aforementioned Docker image.
+
+### Alternative when not using containers
+If cannot, or chose not to, use containers then you will need to ensure that the Robbie scripts are available on your local machine.
+
+Python dependencies can be installed via:
+```
+pip install -r requirements.txt
+```
+
+[Stils/TOPCAT](http://www.star.bris.ac.uk/~mbt/topcat/) needs to be downloaded and available on your machine.
+Once the `.jar` file has been copied to your machine you need to edit `nextflow.config` and set the following parameter so that Robbie knows how to invoke stilts:
+```
+params.stilts = java -jar /path/to/topcat-full.jar -stilts
+```
+Alternatively the above can be set from the command line using the `--stilts` argument.
+
+
+[SWarp](https://www.astromatic.net/software/swarp/) can be installed via source or rpm as per the website description.
+After installing you should be able to invoke SWarp using the command line `SWarp`.
+If this is not the case, and you need a different command to use SWarp then edit the following parameter so that Robbie knows how to invoke SWarp:
+```
+params.swarp = <swarp command>
+```
+Alternatively the above can be set from the command line using the `--swarp` argument.
