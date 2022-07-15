@@ -72,3 +72,19 @@ If this is not the case, and you need a different command to use SWarp then edit
 params.swarp = <swarp command>
 ```
 Alternatively the above can be set from the command line using the `--swarp` argument.
+
+## Setting up robbie on a new hpc or cluster
+The file `nextflow.config` contains all the information about how to run on different environments which are referred to as executors.
+The default executor is `local` which means to run on the current machine, which is what you would do on your desktop/laptop.
+In order to work on an hpc cluster you'll need to set the `executor` to be `slurm` or `pbs` or whatever it is your hpc uses to schedule jobs.
+The Pawsey hpc clusters all use `slurm`.
+
+Nextflow allows you to set 'profiles' within the `nextflow.config` which will let a user easily choose a whole bunch of settings without needing to update the configuration file.
+These profiles can be selected by using `-profile <name>` from the command line when invoking your `Robbie.nf` script.
+
+Currently, Robbie has been set up with profiles for Magnus, Zeus, and Garrawarla.
+The Magnus and Zeus profiles need to be selected manually using `-profile Mangus` or `-profile Zeus`.
+The Garrawarla profile doesn't need to be specified as it will automatically be set if Robbie sees that you are running on a machine with a hostname that starts with `garrawarla` (eg, one of the login nodes).
+
+If you want to use Robbie on a different cluster or hpc, you'll need to create a profile in the `nextflow.config` file.
+The best way to do this is to copy/paste from a different profile, and then refer to the [Nextflow documentation](https://www.nextflow.io/docs/latest/config.html) to understand what each parameter is doing, and what needs to be changed for your system.
