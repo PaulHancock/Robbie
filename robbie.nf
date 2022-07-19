@@ -8,12 +8,15 @@ params.help = false
 if ( params.help ) {
     help = """Robbie.nf: A batch processing work-flow for the detection of radio transients and
              |        variables
-             |Required argurments:
+             |Standard argurments:
              |  --image_file  A text file where each line is the location of an image fits file.
              |                [default: ${params.image_file}]
              |  --stilts      The command required to run stilts.
              |                Eg. "java -jar ~/Downloads/stilts.jar"
              |                [default: ${params.stilts}]
+             |  --convolve
+             |                Determine the smallest psf common to all input images and then convolve all images
+             |                to this psf prior to any other processing [default: ${params.convol}]
              |
              |Warping arguments:
              |  --warp        Include if you want to warp your image files (with fits_warp.py)
@@ -37,11 +40,6 @@ if ( params.help ) {
              | --use_region_file
              |                Use a source finding file. [default: ${params.use_region_file}]
              | --region_file  The location of the source finding file. [default: ${params.region_file}]
-             |
-             |Convolution arguments:
-             | --convolve
-             |                Determine the smallest psf common to all input images and then convolve all images
-             |                to this psf prior to any other processing [default: ${params.convol}]
              |
              |Directory arguments:
              |  --output_dir  The directory to output the results to.

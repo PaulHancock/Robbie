@@ -27,8 +27,6 @@ Robbie relies on the following software:
 - [Stils/TOPCAT](http://www.star.bris.ac.uk/~mbt/topcat/)
 - [Nextflow](https://www.nextflow.io/)
 - [SWarp](https://www.astromatic.net/software/swarp/)
-- [Astropy](https://www.astropy.org/)
-- [reproject](https://reproject.readthedocs.io/en/stable/)
 
 All dependencies except for Nextflow will be installed in the docker image.
 

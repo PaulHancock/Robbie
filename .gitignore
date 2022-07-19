@@ -4,7 +4,6 @@
 *.db
 .idea
 *.mim
-*.png
 *images.txt
 work
 .nextflow*
@@ -29,3 +28,4 @@ example_data/
 build/
 scripts/epochs.txt
 scripts/mean.txt
+results/*

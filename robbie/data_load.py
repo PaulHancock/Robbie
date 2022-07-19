@@ -1,5 +1,5 @@
 """
-Loads all the data required by robbi from the data directory.
+Loads all the data required by robbie from the data directory.
 """
 
 import os
