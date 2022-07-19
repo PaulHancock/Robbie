@@ -65,6 +65,4 @@ html_logo = "images/Robbie.png"
 html_static_path = ['_static']
 
 # Adding path to custom CSS
-html_css_files = [
-    'css/my_theme.css',
-]
+html_css_files = []
