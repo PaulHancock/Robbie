@@ -120,5 +120,7 @@ For example, if we want to plot an image with centre position of RA 335&deg;, DE
 ## Credit
 If you use Robbie as part of your work, please cite [Hancock et al. 2018](http://adsabs.harvard.edu/abs/2019A%26C....27...23H), and link to this repository.
 
+This project relies in part on software development provided by the [ADACS](https://adacs.org.au) merit allocation program for 2022A.
+
 ## Links
 You can obtain a docker image with the Robbie dependencies installed at [DockerHub](https://hub.docker.com/r/paulhancock/robbie-next/)
