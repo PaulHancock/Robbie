@@ -58,6 +58,7 @@ log.info """\
          ROBBIE the Space Detective
          ==========================
          images from  : ${params.image_file}
+         convolve img : ${params.convol}
          warp ref cat : ${params.warp} / ${params.ref_catalogue}
          minotor src  : ${params.use_monitoring_src_file} / ${params.monitoring_src_file}
          region file  : ${params.use_region_file} / ${params.region_file}
