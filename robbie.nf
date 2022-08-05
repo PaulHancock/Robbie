@@ -15,12 +15,13 @@ if ( params.help ) {
              |                [default: ${params.stilts}]
              |  --convolve
              |                Determine the smallest psf common to all input images and then convolve all images
-             |                to this psf prior to any other processing [default: ${params.convol}]
+             |                to this psf prior to any other processing [default: ${params.convolve}]
              |
              |Warping arguments:
-             |  --warp        Include if you want to warp your image files (with fits_warp.py)
-             |                to correct for the ionosphere.
-             |                [default: ${params.warp}]
+             |  --fits_warp   Use astrometric correction via fits_warp.py.
+             |                [default: ${params.fits_warp}]
+             |  --flux_warp   Use flux density correction via flux_warp.
+             |                [default: ${params.flux_warp}]
              |  --ref_catalogue
              |                The reference catalogue to warp your images to match.
              |                [default: will download and use GLEAM catalogue]
@@ -57,8 +58,10 @@ log.info """\
          ROBBIE the Space Detective
          ==========================
          images from  : ${params.image_file}
-         convolve img : ${params.convol}
-         warp ref cat : ${params.warp} / ${params.ref_catalogue}
+         convolve img : ${params.convolve}
+         fits warp    : ${params.fits_warp}
+         flux warp    : ${params.flux_warp}
+         warp ref cat : ${params.ref_catalogue}
          minotor src  : ${params.use_monitoring_src_file} / ${params.monitoring_src_file}
          region file  : ${params.use_region_file} / ${params.region_file}
          output to    : ${params.output_dir}
@@ -149,7 +152,7 @@ process initial_sfind {
   script:
   """
   echo ${task.process} on \${HOSTNAME}
-  aegean --cores ${task.cpus} --background *_bkg.fits --noise *_rms.fits --table ${image} ${region_command} ${image}
+  aegean --background *_bkg.fits --noise *_rms.fits --table ${image} ${region_command} ${image}
   ls *.fits
   """
 }
@@ -197,7 +200,6 @@ process fits_warp {
   suff1=(params.refcat_ra=='ra' ? '_1':'')
   suff2=(params.refcat_ra=='ra' ? '_2':'')
 
-  if (params.warp == true)
   """
   echo ${task.process} on \${HOSTNAME}
   fits_warp.py --cores ${task.cpus} --refcat ${ref_catalogue} --incat ${basename}_comp.fits \
@@ -208,14 +210,30 @@ process fits_warp {
                --plot
   ls *.fits
   """
-  else
-  """
-  echo ${task.process} on \${HOSTNAME}
-  ln -s ${basename}.fits ${basename}_warped.fits
-  ls *.fits
-  """
 }
 
+
+process flux_warp {
+  label 'warp'
+  publishDir params.output_dir, mode: 'copy', pattern: "*_warped.fits", enabled: params.keep_epoch_images
+
+  input:
+  tuple val(basename), path(initial_catalogue)
+  each ref_catalogue
+
+  output:
+  tuple val(basename), path("*_warped.fits")
+
+  script:
+  suff1=(params.refcat_ra=='ra' ? '_1':'')
+  suff2=(params.refcat_ra=='ra' ? '_2':'')
+
+  """
+  echo ${task.process} on \${HOSTNAME}
+  match_catalogues ${initial_catalogue} ${ref_catalogue} -o matched.fits --ra2 RAJ2000 --dec2 DEJ2000
+  flux_warp matched.fits ${initial_catalogue} -o ${basename}_flux.fits
+  """
+}
 
 process make_mean_image {
   publishDir params.output_dir, mode: 'copy'
@@ -569,7 +587,7 @@ workflow {
   bane_raw( image_ch )
   // image_bkg_rms = epoch_label, image_fits, [bkg_fits, rms_fits]
   image_bkg_rms = bane_raw.out
-  if ( params.warp ) {
+  if ( params.fits_warp ) {
     if ( params.ref_catalogue == null ) {
       // No ref catalogue supplied so download default one
       download_gleam_catalogue()
