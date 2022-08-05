@@ -4,7 +4,6 @@ nextflow.enable.dsl=2
 
 author = "Paul Hancock"
 
-params.help = false
 if ( params.help ) {
     help = """Robbie.nf: A batch processing work-flow for the detection of radio transients and
              |        variables
