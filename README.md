@@ -1,5 +1,6 @@
-# Robbie: A batch processing work-flow for the detection of radio transients and variables
+# Robbie: A batch processing workflow for the detection of radio transients and variables
 
+[![Documentation Status](https://readthedocs.org/projects/robbie/badge/?version=latest)](https://robbie.readthedocs.io/en/latest/?badge=latest)
 ## Description
 
 Robbie automates the process of cataloguing sources, finding variables, and identifying transients.
@@ -25,33 +26,101 @@ Robbie relies on the following software:
 - [AegeanTools](https://github.com/PaulHancock/Aegean)
 - [fits_warp](https://github.com/nhurleywalker/fits_warp)
 - [Stils/TOPCAT](http://www.star.bris.ac.uk/~mbt/topcat/)
+- [Nextflow](https://www.nextflow.io/)
+- [SWarp](https://www.astromatic.net/software/swarp/)
 
-The best way to use Robbie is via a docker container which has all the sofware dependencies installed. Such a container can be built using `docker/Dockerfile`, or by pulling the latest build from [DockerHub](https://hub.docker.com/r/paulhancock/robbie-next) via `docker pull paulhancock/robbie-next`.
+All dependencies except for Nextflow will be installed in the docker image.
 
-Robbie scripts are written for Python3. If you require Python2 compatibility then you should invest in a time machine.
+## Installation
+The best way to use Robbie is via a docker container that has all the software dependencies installed. Ensure docker is running, then build the container using:
+```
+docker build -t paulhancock/robbie-next -f docker/Dockerfile .
+```
+
+or by pulling the latest build from [DockerHub](https://hub.docker.com/r/paulhancock/robbie-next) via
+```
+docker pull paulhancock/robbie-next
+```
+
+Then, install Nextflow with a package management system such as Conda:
+
+```
+conda install -c bioconda nextflow
+```
+
+Once Nextflow is installed, add robbie.nf to your path with
+```
+python setup.py install
+```
 
 ## Quickstart
-Robbie now uses Nextflow to manage the workflow. The `Makefile` is obsolete and no longer supported so don't use it.
+Robbie now uses Nextflow to manage the workflow and can be run on a local system or a supercomputing cluster. You can use a container via singularity, docker, or the host's software. The current development cycle tests Robbie using singularity on an HPC with the Slurm executor - other setups *should* work but haven't been extensively tested.
 
-Robbie can be run on a local system or on an HPC, and can use a container via singularity or docker, or can use software installed on the host. The current development cycle tests Robbie by using singularity on an HPC with the Slurm executor - other setups *should* work, but haven't been extensively tested.
+### `images.txt`
+Before running Robbie, you will need to create a text file that contains the paths to each image to be processed. For example, if within the "Robbie" parent directory there exists a folder named "images" containing the `.fits` files:
 
-### `main.nf` 
-This file describes the workflow and can be inspected but shouldn't need to be edited directly.
+```
+ls images/* > images.txt
+```
 
+will populate `images.txt` with the image paths relative to the parent directory.
+
+### `robbie.nf`
+This file describes the workflow and can be inspected but shouldn't be edited directly. To describe the command line arguments, use
+```
+robbie.nf --help
+```
 
 ### `nextflow.config`
-This file contains all the configuration setup with default values. Copy this file and change these values to suit your data.
+This file is the configuration setup and contains all the command line arguments' default values. You can change these defaults by copying the `nextflow.config` and editing the relevant params.\<argument\>. You can then use your custom config via:
+```
+nextflow -C my.config run robbie.nf
+```
+The `-C my.config` directs Nextflow to use *only* the configuration described in `my.config`. If you use `-c`, then it will also read the `nextflow.config` file.
 
-### Running
+### `-profile`
 
-Robbie can be run via: `nextflow -C my.config run main.nf -profile common,Zeus -resume`
+If you're running Robbie on your local machine, you should use the `-profile local` option to use the Robbie docker image. For example:
 
-The `-C my.config` directs nextflow to use *only* the configuration described in `my.config`. If you use `-c` then it will also read the `nextflow.config` file. The `-profile common,Zeus` allows you to use the `common` profile settings that are described in the config file, and `Zeus` uses the settings specific for the Zues cluster on Pawsey.
+```
+nextflow -C my.config run robbie.nf -profile local
+```
 
-Additional configuration files are stored in the `./config` directory, and may be useful templates for your work.
+If you're running Robbie on a supercomputing cluster (HPC), you should use the relevant cluster profile (`-profile zeus` or `-profile magnus`) to assure you're using the cluster's job queue (such as Slurm). If there isn't a profile for your cluster (check in `nextflow.config`), you may have to make your own.
+
+Additional configuration files are stored in the `./config` directory and may be useful templates for your work.
+
+## Visualisation
+
+Firstly, build the Docker image located in the robbie_viewer_server directory:
+
+```
+./build_docker.sh
+```
+
+once this is complete, run the viewer in the main Nextflow directory via:
+
+```
+./run_robbie_viewer.sh
+```
+
+This will run the viewer using the images within the default ``results`` directory. If your directory is different to the default, you can add either the relative or absolute path as an optional argument:
+
+```
+./run_robbie_viewer.sh -p path_to_dir
+```
+
+When plotting large images, it is recommended to also specify an RA and DEC position, as well as a size in coordinate units, to cutout a portion of the image for plotting.
+For example, if we want to plot an image with centre position of RA 335&deg;, DEC -15&deg; and size of 5&deg;:
+
+```
+./run_robbie_viewer.sh path_to_dir 335 -15 5
+```
 
 ## Credit
-If you make use of Robbie as part of your work please cite [Hancock et al. 2018](http://adsabs.harvard.edu/abs/2019A%26C....27...23H), and link to this repository.
+If you use Robbie as part of your work, please cite [Hancock et al. 2018](http://adsabs.harvard.edu/abs/2019A%26C....27...23H), and link to this repository.
+
+This project relies in part on software development provided by the [ADACS](https://adacs.org.au) merit allocation program for 2022A.
 
 ## Links
 You can obtain a docker image with the Robbie dependencies installed at [DockerHub](https://hub.docker.com/r/paulhancock/robbie-next/)

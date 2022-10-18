@@ -4,7 +4,6 @@
 *.db
 .idea
 *.mim
-*.png
 *images.txt
 work
 .nextflow*
@@ -17,3 +16,16 @@ env/*
 *.dot
 *.html
 trace.txt*
+*.egg-info
+version.txt
+dist/*
+profiling.md
+*.swp
+/docs/_build
+/docs/build
+/docs/doctrees
+example_data/
+build/
+scripts/epochs.txt
+scripts/mean.txt
+results/*

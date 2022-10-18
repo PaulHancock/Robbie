@@ -1,0 +1,13 @@
+astropy>=4.0
+matplotlib>=3
+numpy>=1.21
+pandas>=1.2
+python-dateutil>=2.8
+scipy>=1.6
+astroquery>=0.4.6
+git+https://github.com/PaulHancock/Aegean.git@v2.3.0
+git+https://github.com/nhurleywalker/fits_warp.git
+git+https://gitlab.com/Sunmish/flux_warp.git
+bokeh>=2.4.2
+reproject>=0.7.1
+radio-beam>=0.3.3

@@ -4,24 +4,21 @@ LABEL maintainer="Paul Hancock <paul.hancock@curtin.edu.au>"
 
 # non-python dependencies
 RUN apt update && \
-    apt install -y openjdk-11-jdk sqlite3 && \
+    apt install -y openjdk-11-jdk swarp && \
     apt-get autoremove -y && \
     apt-get clean
 
-# stilts 
+# stilts
 RUN cd /usr/local/lib && wget http://www.star.bris.ac.uk/~mbt/stilts/stilts.jar && \
     cd /usr/local/bin && echo 'java -jar /usr/local/lib/stilts.jar "$@"' > /usr/local/bin/stilts && chmod ugo+x /usr/local/bin/stilts
 
-# python modules, with specific versions specified for longevity
-ADD requirements.txt .
+# python dependencies, with specific versions specified for longevity, and Robbie scripts (always)
+WORKDIR /tmp/build
+ADD . /tmp/build
+# using pip install . will break the shebang lines of some scripts so stick with python setup.py install
 RUN pip install -r requirements.txt && \
-    mkdir /tmp/build && cd /tmp/build && \
-    git clone https://github.com/nhurleywalker/fits_warp.git && cd fits_warp && python setup.py install --force && \
-    git clone https://gitlab.com/Sunmish/flux_warp.git && cd flux_warp && python setup.py install --force &&\
+    python setup.py install && \
     rm -rf /tmp/build
 
-# add Robbie scripts (always)
-ADD "https://www.random.org/cgi-bin/randbyte?nbytes=10&format=h" skipcache
-RUN mkdir /tmp/build && cd /tmp/build && git clone https://github.com/PaulHancock/Robbie.git && \
-    cd Robbie && chmod ugo+x *.py && mv *.py /usr/bin/. && \
-    rm -rf /tmp/build
+#  set env
+ENV HOME=/tmp
