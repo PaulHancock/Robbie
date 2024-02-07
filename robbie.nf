@@ -336,6 +336,7 @@ process sfind_mean_image {
 
 process source_monitor {
   label 'aegean'
+  maxForks 1
 
   input:
   path mean_cat
@@ -618,7 +619,7 @@ workflow {
     sfind_mean_image.out,
   )
   compute_stats( join_fluxes.out )
-  plot_lc( compute_stats.out )
+  // plot_lc( compute_stats.out )
   mask_images(
     sfind_mean_image.out,
     image_bkg_rms,
