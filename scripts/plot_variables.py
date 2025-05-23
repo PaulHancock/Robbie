@@ -108,6 +108,7 @@ def plot_lc_table(flux_table, stats_table, start=0, stride=1, plot_dir="plots", 
         s = f"m={srow['m'][0]:5.3f}\nmd={srow['md'][0]:4.2f}\nchisq={srow['chisq_peak_flux'][0]:4.1f}"
 
         yerrs = list(row[err_fluxes][err_flux_mask])
+        yerrs = [e if e > 0 else 0 for e in yerrs]
         # convert epochs to datetime objects
         fig, ax = plt.subplots()
         ax.errorbar(epoch_times,
